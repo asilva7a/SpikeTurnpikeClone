@@ -19,8 +19,7 @@ clc; clear;
 
 
 %% Get user input for project folder
-initial_start_directory = '/home/cresp1el-local/Documents/MATLAB';
-%initial_start_directory = '/Users/cresp1el/Documents/MATLAB'; 
+initial_start_directory = '/home/silva7a-local/Documents/MATLAB'; 
 projectFolder = uigetdir(initial_start_directory, 'Select the project folder in which you want to analyze multiple groups');
 projectFolder = fullfile(projectFolder,'SpikeStuff');
 
@@ -29,22 +28,25 @@ dinfo = dir(projectFolder);
 dinfo(~[dinfo.isdir]) = [];
 dinfo(ismember({dinfo.name}, {'.', '..'})) = [];
 groupfoldernames = fullfile(projectFolder, {dinfo.name});
-
 numGroups = length(groupfoldernames);
 
-%% Iterate through groups and recordings
-for ii = 1:numGroups
-    [~,this_group] = fileparts(groupfoldernames(ii));
-    fprintf('Loading data for %s group\n',this_group);
+%% Start the parallel processing (or use a regular loop if debugging)
+if isempty(gcp('nocreate'))
+    parpool;  % Optional: Use parpool only if not running
+end
 
+%% Iterate through groups and recordings
+parfor ii = 1:numGroups  % Replace with `for` if debugging
     groupDir = groupfoldernames{ii};
+
+    % **Move this directory scan OUTSIDE the recording loop**:
     groupInfo = dir(groupDir);
     groupInfo(~[groupInfo.isdir]) = [];
     groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
-
-    % Now collect all recording folders in one call, outside the recording loop
+    
+    % Collect recording folder names once
     recfoldernames = fullfile(groupDir, {groupInfo.name});
-    numRecordings = length(recfoldernames);  
+    numRecordings = length(recfoldernames); 
 
     for jj = 1:numRecordings %loop through the recordings within a group folder
         [~,this_recording] = fileparts(recfoldernames(jj));
