@@ -31,13 +31,15 @@ groupfoldernames = fullfile(projectFolder, {dinfo.name});
 numGroups = length(groupfoldernames);
 
 %% Start the parallel processing (or use a regular loop if debugging)
-if isempty(gcp('nocreate'))
-    parpool;  % Optional: Use parpool only if not running
-end
+%uncomment when running full script
+%if isempty(gcp('nocreate'))
+    %parpool;  % Optional: Use parpool only if not running
+%end
 
 %% Iterate through groups and recordings
 parfor ii = 1:numGroups  % Replace with `for` if debugging
     groupDir = groupfoldernames{ii};
+    fprintf('Processing Group %d\n', ii);
 
     % **Move this directory scan OUTSIDE the recording loop**:
     groupInfo = dir(groupDir);
