@@ -38,11 +38,13 @@ for ii = 1:numGroups
     fprintf('Loading data for %s group\n',this_group);
 
     groupDir = groupfoldernames{ii};
-    dinfo2 = dir(groupDir);
-    dinfo2(~[dinfo2.isdir]) = []; 
-    dinfo2(ismember({dinfo2.name},{'.','..'})) = []; %remove non directories from struct dinfo2
-    recfoldernames = fullfile(groupDir, {dinfo2.name}); %create a 1xN cell array for each recording within group, N is number of recordings
-    numRecordings = length(recfoldernames);   
+    groupInfo = dir(groupDir);
+    groupInfo(~[groupInfo.isdir]) = [];
+    groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
+
+    % Now collect all recording folders in one call, outside the recording loop
+    recfoldernames = fullfile(groupDir, {groupInfo.name});
+    numRecordings = length(recfoldernames);  
 
     for jj = 1:numRecordings %loop through the recordings within a group folder
         [~,this_recording] = fileparts(recfoldernames(jj));
