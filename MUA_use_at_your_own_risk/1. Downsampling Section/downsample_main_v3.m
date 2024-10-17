@@ -30,6 +30,7 @@ dinfo(~[dinfo.isdir]) = [];
 dinfo(ismember({dinfo.name}, {'.', '..'})) = [];
 groupfoldernames = fullfile(projectFolder, {dinfo.name});
 
+numGroups = length(groupfoldernames);
 
 %% Iterate through groups and recordings
 for ii = 1:numGroups
