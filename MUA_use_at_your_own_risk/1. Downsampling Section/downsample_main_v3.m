@@ -36,6 +36,17 @@ parfor ii = 1:numGroups
         if ~exist(MUA_Directory, 'dir'), mkdir(MUA_Directory); end
         if ~exist(MUA_allData_Directory, 'dir'), mkdir(MUA_allData_Directory); end
 
+        % Save electrode order to .mat file (Integrated Section)
+        electrodes_order = [14; 20; 16; 18; 1; 31; 3; 29; 5; 27; 7; 25; ...
+                            9; 23; 11; 21; 13; 19; 15; 17; 12; 22; ...
+                            10; 24; 8; 26; 6; 28; 4; 30; 2; 32];
+
+        electrodesFile = fullfile(MUA_allData_Directory, 'electrodes_order.mat');
+        if ~isfile(electrodesFile)
+            save(electrodesFile, 'electrodes_order', '-v7.3');
+            fprintf('Saved electrode order for %s\n', recDir);
+        end
+
         % Skip if downsampled file already exists
         downsampledFile = fullfile(MUA_allData_Directory, 'downsampledData.mat');
         if isfile(downsampledFile)
@@ -67,14 +78,14 @@ end
 
 %% Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)
-    % Map the NSx file to avoid loading everything into memory
-    mappedFile = memmapfile(filepath, 'Format', 'int16');
+    % Use memmapfile to map the NSx data without loading everything into memory
+    mappedFile = memmapfile(filepath, 'Format', 'int16');  % Adjust format if needed
     totalSamples = numel(mappedFile.Data);
-
-    chunkSize = 1e6;  % Number of samples per chunk (adjust as needed)
+    
+    chunkSize = 1e6;  % Process 1 million samples at a time (adjust as needed)
     numChunks = ceil(totalSamples / chunkSize);
 
-    % Preallocate downsampled data
+    % Preallocate the downsampled data
     downsampledData = [];
 
     for i = 1:numChunks
@@ -85,15 +96,7 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
         % Load the chunk into memory
         dataChunk = mappedFile.Data(startIdx:endIdx);
 
-        % Ensure the chunk size is divisible by 'factor'
-        extraElements = mod(numel(dataChunk), factor);
-        if extraElements > 0
-            % Pad with zeros to make it divisible
-            padding = zeros(factor - extraElements, 1, 'like', dataChunk);
-            dataChunk = [dataChunk; padding];
-        end
-
-        % Downsample by taking the median of every 'factor' samples
+        % Downsample the chunk by taking the median of every 'factor' samples
         chunkDownsampled = median(reshape(dataChunk, factor, []), 1);
 
         % Append the downsampled chunk to the result
@@ -106,3 +109,4 @@ function save_data_async(outputFile, data)
     % Save data asynchronously to a MAT file
     save(outputFile, 'data', '-v7.3');
 end
+
