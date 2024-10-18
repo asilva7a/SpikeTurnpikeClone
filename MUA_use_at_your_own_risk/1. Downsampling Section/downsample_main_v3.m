@@ -1,7 +1,7 @@
 clc; clear;
 
 %% Get user input for the project folder
-initial_start_directory = '/home/silva7a-local/Documents/MATLAB';
+initial_start_directory = '/home/cresp1el-local/Documents/MATLAB';
 projectFolder = uigetdir(initial_start_directory, 'Select the project folder in which you want to analyze multiple groups');
 projectFolder = fullfile(projectFolder, 'SpikeStuff');
 
@@ -17,37 +17,10 @@ if isempty(gcp('nocreate'))
     parpool('local', 2);  % Adjust based on system memory
 end
 
-% Pre-check for existing electrode order files and create them if needed
-for ii = 1:numGroups
-    groupDir = groupfoldernames{ii};
-    groupInfo = dir(groupDir);
-    groupInfo(~[groupInfo.isdir]) = [];
-    groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
-    recfoldernames = fullfile(groupDir, {groupInfo.name});
-
-    for jj = 1:length(recfoldernames)
-        recDir = recfoldernames{jj};
-        MUA_Directory = fullfile(recDir, "MUA");
-        MUA_allData_Directory = fullfile(MUA_Directory, "allData/");
-        if ~exist(MUA_Directory, 'dir'), mkdir(MUA_Directory); end
-        if ~exist(MUA_allData_Directory, 'dir'), mkdir(MUA_allData_Directory); end
-
-        % Save electrode order if it doesn't already exist
-        electrodesFile = fullfile(MUA_allData_Directory, 'electrodes_order.mat');
-        if ~isfile(electrodesFile)
-            electrodes_order = [14; 20; 16; 18; 1; 31; 3; 29; 5; 27; ...
-                                7; 25; 9; 23; 11; 21; 13; 19; 15; 17; ...
-                                12; 22; 10; 24; 8; 26; 6; 28; 4; 30; 2; 32];
-            save(electrodesFile, 'electrodes_order', '-v7.3');
-            fprintf('Saved electrode order for %s\n', recDir);
-        end
-    end
-end
-
-% Preallocate struct array to store processed data and paths
+% Preallocate a struct array to store processed data and paths
 results = struct('data', {}, 'path', {});
 
-%% Parallel loop for data processing (no saves inside `parfor`)
+%% Parallel loop for data processing (optimized with `parfor`)
 parfor ii = 1:numGroups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
@@ -80,9 +53,9 @@ parfor ii = 1:numGroups
         end
         NSx_filepath = fullfile(recDir, NSx_file.name);
 
-        % Process the NSx file in chunks
+        % Process the NSx file in chunks and reshape correctly
         fprintf('Starting chunked processing for %s...\n', recDir);
-        downsampledData = process_nsx_in_chunks(NSx_filepath, 3);
+        downsampledData = process_nsx_in_chunks_optimized(NSx_filepath, 3);
 
         % Store the result and path for later saving
         localResults = [localResults; struct('data', downsampledData, 'path', downsampledFile)];
@@ -105,31 +78,34 @@ for ii = 1:numGroups
     end
 end
 
-
-%% Chunked NSx Processing Function
-function downsampledData = process_nsx_in_chunks(filepath, factor)
+%% Optimized Chunked NSx Processing Function
+function downsampledData = process_nsx_in_chunks_optimized(filepath, factor)
+    % Use memmapfile to read the data efficiently
     mappedFile = memmapfile(filepath, 'Format', 'int16');
     totalSamples = numel(mappedFile.Data);
 
-    chunkSize = 1e6;
-    numChunks = ceil(totalSamples / chunkSize);
+    % Ensure the data can be divided by 32 channels
+    numChannels = 32;
+    samplesPerChannel = totalSamples / numChannels;
 
-    downsampledData = [];
-    for i = 1:numChunks
-        startIdx = (i - 1) * chunkSize + 1;
-        endIdx = min(i * chunkSize, totalSamples);
+    if mod(samplesPerChannel, 1) ~= 0
+        error('Total samples are not divisible by 32 channels. Check the data.');
+    end
 
-        dataChunk = mappedFile.Data(startIdx:endIdx);
+    % Reshape the data into [numChannels x samplesPerChannel]
+    reshapedData = reshape(mappedFile.Data, numChannels, []);
 
-        remainder = mod(numel(dataChunk), factor);
-        if remainder > 0
-            padding = zeros(factor - remainder, 1, 'like', dataChunk);
-            dataChunk = [dataChunk; padding];
-            fprintf('Padded chunk %d with %d zeros.\n', i, numel(padding));
-        end
+    % Calculate the number of downsampled samples
+    numDownsampledSamples = floor(samplesPerChannel / factor);
+    downsampledData = zeros(numChannels, numDownsampledSamples, 'like', reshapedData);
 
-        chunkDownsampled = median(reshape(dataChunk, factor, []), 1);
-        downsampledData = [downsampledData, chunkDownsampled];
+    % Downsample each channel
+    parfor ch = 1:numChannels
+        % Extract the channel's data and reshape for median calculation
+        channelData = reshapedData(ch, 1:factor*numDownsampledSamples);
+        reshapedChannel = reshape(channelData, factor, []);
+        downsampledData(ch, :) = median(reshapedChannel, 1);
     end
 end
+
 
