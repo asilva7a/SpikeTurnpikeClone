@@ -66,7 +66,7 @@ parfor ii = 1:numGroups
         end
 
         % Skip if downsampled file already exists
-        downsampledFile = fullfile(MUA_allData_Directory, 'downsampledData.mat');
+        downsampledFile = fullfile(MUA_allData_Directory, 'electrode_data_downsampled.mat');
         if isfile(downsampledFile)
             fprintf('Skipping %s, downsampled data already exists.\n', recDir);
             continue;
