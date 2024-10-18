@@ -12,9 +12,21 @@ dinfo(ismember({dinfo.name}, {'.', '..'})) = [];
 groupfoldernames = fullfile(projectFolder, {dinfo.name});
 numGroups = length(groupfoldernames);
 
-%% Preload all recording paths to avoid file I/O conflicts in `parfor`
-recordingInfo = [];  % Struct to store file paths and directories
+%% Preallocate a struct array to store file paths and directories
+% Estimate the maximum number of recordings to avoid dynamic growth
+maxRecordings = numGroups * 50;  % Assuming up to 50 recordings per group (adjust as needed)
 
+% Initialize the struct array with empty fields
+recordingInfo(maxRecordings) = struct( ...
+    'nsx_path', '', ...
+    'save_path', '', ...
+    'recDir', '', ...
+    'MUA_Directory', '', ...
+    'MUA_allData_Directory', '');
+
+recordingCount = 0;  % Counter to keep track of how many recordings are added
+
+%% Loop through groups and collect recording paths
 for ii = 1:numGroups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
@@ -29,20 +41,19 @@ for ii = 1:numGroups
         NSx_file = dir(fullfile(recDir, '*.ns6'));
         if isempty(NSx_file), continue; end  % Skip if no NSx file found
 
-        NSx_filepath = fullfile(recDir, NSx_file.name);
-        MUA_Directory = fullfile(recDir, "MUA");
-        MUA_allData_Directory = fullfile(MUA_Directory, "allData/");
-        downsampledFile = fullfile(MUA_allData_Directory, 'electrode_data_downsampled.mat');
+        recordingCount = recordingCount + 1;  % Increment the counter
 
-        % Store the paths in the struct
-        recordingInfo(end+1) = struct( ...  %#ok<AGROW>
-            'nsx_path', NSx_filepath, ...
-            'save_path', downsampledFile, ...
-            'recDir', recDir, ...
-            'MUA_Directory', MUA_Directory, ...
-            'MUA_allData_Directory', MUA_allData_Directory);
+        % Store relevant paths in the struct
+        recordingInfo(recordingCount).nsx_path = fullfile(recDir, NSx_file.name);
+        recordingInfo(recordingCount).save_path = fullfile(recDir, "MUA/allData/electrode_data_downsampled.mat");
+        recordingInfo(recordingCount).recDir = recDir;
+        recordingInfo(recordingCount).MUA_Directory = fullfile(recDir, "MUA");
+        recordingInfo(recordingCount).MUA_allData_Directory = fullfile(recDir, "MUA/allData/");
     end
 end
+
+% Trim the preallocated struct array to the actual number of recordings
+recordingInfo = recordingInfo(1:recordingCount);
 
 %% Start parallel pool with limited workers
 if isempty(gcp('nocreate'))
@@ -77,7 +88,7 @@ parfor idx = 1:length(recordingInfo)
     end
 end
 
-%% Chunked NSx Processing Function
+%% Optimized Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)
     % Use memmapfile to read the data efficiently
     mappedFile = memmapfile(filepath, 'Format', 'int16');
@@ -106,3 +117,4 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
         downsampledData(ch, :) = median(reshapedChannel, 1);
     end
 end
+
