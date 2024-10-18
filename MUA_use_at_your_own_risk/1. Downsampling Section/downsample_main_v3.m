@@ -86,7 +86,7 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
     chunkSize = 1e6;  % Process 1 million samples at a time (adjust as needed)
     numChunks = ceil(totalSamples / chunkSize);
 
-    % Preallocate the downsampled data
+    % Preallocate downsampled data (initialize with empty array)
     downsampledData = [];
 
     for i = 1:numChunks
@@ -97,7 +97,17 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
         % Load the chunk into memory
         dataChunk = mappedFile.Data(startIdx:endIdx);
 
-        % Downsample the chunk by taking the median of every 'factor' samples
+        % Check if the chunk size is divisible by the downsampling factor
+        remainder = mod(numel(dataChunk), factor);
+        if remainder > 0
+            % Calculate the number of padding elements needed
+            padding = zeros(factor - remainder, 1, 'like', dataChunk);
+            % Pad the dataChunk with zeros
+            dataChunk = [dataChunk; padding];
+            fprintf('Padded chunk %d with %d zeros.\n', i, numel(padding));
+        end
+
+        % Reshape and downsample by taking the median of every 'factor' samples
         chunkDownsampled = median(reshape(dataChunk, factor, []), 1);
 
         % Append the downsampled chunk to the result
