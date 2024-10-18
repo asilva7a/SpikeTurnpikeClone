@@ -14,19 +14,19 @@ numGroups = length(groupfoldernames);
 
 %% Start parallel pool with a limited number of workers
 if isempty(gcp('nocreate'))
-    parpool('local', 2);  % Adjust to limit memory usage (e.g., 2 workers)
+    parpool('local', 2);  % Adjust based on memory constraints
 end
 
 %% Parallel loop over groups and recordings
-parfor ii = 1:numGroups  % Parallel loop over groups
+parfor ii = 1:numGroups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
     groupInfo(~[groupInfo.isdir]) = [];
     groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
     recfoldernames = fullfile(groupDir, {groupInfo.name});
 
-    % ---- Line 46: Inner 'for' loop iterating over recordings ----
-    for jj = 1:length(recfoldernames)  % Process recordings serially within the group
+    % Iterate over recordings in each group
+    for jj = 1:length(recfoldernames)
         recDir = recfoldernames{jj};
         fprintf('Processing %s\n', recDir);
 
@@ -36,24 +36,26 @@ parfor ii = 1:numGroups  % Parallel loop over groups
         if ~exist(MUA_Directory, 'dir'), mkdir(MUA_Directory); end
         if ~exist(MUA_allData_Directory, 'dir'), mkdir(MUA_allData_Directory); end
 
-        % ---- Save electrode order here ----
+        % Save electrode order asynchronously (avoid direct save inside parfor)
         electrodes_order = [14; 20; 16; 18; 1; 31; 3; 29; 5; 27; 7; 25; ...
                             9; 23; 11; 21; 13; 19; 15; 17; 12; 22; ...
                             10; 24; 8; 26; 6; 28; 4; 30; 2; 32];
+
         electrodesFile = fullfile(MUA_allData_Directory, 'electrodes_order.mat');
         if ~isfile(electrodesFile)
-            save(electrodesFile, 'electrodes_order', '-v7.3');
-            fprintf('Saved electrode order for %s\n', recDir);
+            f = parfeval(@save_data_async, 0, electrodesFile, electrodes_order);
+            fprintf('Saving electrode order asynchronously for %s\n', recDir);
+            wait(f);  % Ensure save completes before proceeding (optional)
         end
 
-        % ---- Check if downsampled data exists ----
+        % Skip if downsampled file already exists
         downsampledFile = fullfile(MUA_allData_Directory, 'downsampledData.mat');
         if isfile(downsampledFile)
             fprintf('Skipping %s, downsampled data already exists.\n', recDir);
             continue;
         end
 
-        % Find the NSx file for this recording
+        % Find NSx file for this recording
         NSx_file = dir(fullfile(recDir, '*.ns6'));
         if isempty(NSx_file)
             warning('No NS6 file found for %s. Skipping...\n', recDir);
@@ -61,26 +63,26 @@ parfor ii = 1:numGroups  % Parallel loop over groups
         end
         NSx_filepath = fullfile(recDir, NSx_file.name);
 
-        % ---- Chunk-based processing to avoid memory overload ----
+        % Process the NSx file in chunks to avoid memory overload
         fprintf('Starting chunked processing for %s...\n', recDir);
         downsampledData = process_nsx_in_chunks(NSx_filepath, 3);
 
-        % ---- Asynchronous saving using parfeval ----
+        % Save the downsampled data asynchronously with parfeval
         f = parfeval(@save_data_async, 0, downsampledFile, downsampledData);
-        fprintf('Saving started asynchronously for %s.\n', recDir);
+        fprintf('Saving downsampled data asynchronously for %s.\n', recDir);
 
-        % Optional: Wait for the save to complete (synchronize)
+        % Optional: Wait for the save to complete (useful for debugging)
         wait(f);
         fprintf('Save completed for %s.\n', recDir);
-    end  % End of inner 'for' loop
-end  % End of outer 'parfor' loop
+    end
+end
 
 %% Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)
     % Use memmapfile to map the NSx data without loading everything into memory
     mappedFile = memmapfile(filepath, 'Format', 'int16');  % Adjust format if needed
     totalSamples = numel(mappedFile.Data);
-    
+
     chunkSize = 1e6;  % Process 1 million samples at a time (adjust as needed)
     numChunks = ceil(totalSamples / chunkSize);
 
@@ -108,4 +110,5 @@ function save_data_async(outputFile, data)
     % Save data asynchronously to a MAT file
     save(outputFile, 'data', '-v7.3');
 end
+
 
