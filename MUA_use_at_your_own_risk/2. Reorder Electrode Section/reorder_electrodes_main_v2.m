@@ -19,7 +19,7 @@ clc; clear;
 
 
 %% Get user input for project folder
-initial_start_directory = '/Users/cresp1el/Documents/MATLAB'; 
+initial_start_directory = '/home/silva7a-local/Documents/MATLAB'; 
 projectFolder = uigetdir(initial_start_directory, 'Select the project folder in which you want to analyze multiple groups');
 projectFolder = fullfile(projectFolder,'SpikeStuff');
 
