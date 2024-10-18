@@ -18,15 +18,15 @@ if isempty(gcp('nocreate'))
 end
 
 %% Parallel loop over groups and recordings
-parfor ii = 1:numGroups
+parfor ii = 1:numGroups  % Parallel loop over groups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
     groupInfo(~[groupInfo.isdir]) = [];
     groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
     recfoldernames = fullfile(groupDir, {groupInfo.name});
 
-    % Iterate over recordings in each group
-    for jj = 1:length(recfoldernames)
+    % ---- Line 46: Inner 'for' loop iterating over recordings ----
+    for jj = 1:length(recfoldernames)  % Process recordings serially within the group
         recDir = recfoldernames{jj};
         fprintf('Processing %s\n', recDir);
 
@@ -36,25 +36,24 @@ parfor ii = 1:numGroups
         if ~exist(MUA_Directory, 'dir'), mkdir(MUA_Directory); end
         if ~exist(MUA_allData_Directory, 'dir'), mkdir(MUA_allData_Directory); end
 
-        % Save electrode order to .mat file (Integrated Section)
+        % ---- Save electrode order here ----
         electrodes_order = [14; 20; 16; 18; 1; 31; 3; 29; 5; 27; 7; 25; ...
                             9; 23; 11; 21; 13; 19; 15; 17; 12; 22; ...
                             10; 24; 8; 26; 6; 28; 4; 30; 2; 32];
-
         electrodesFile = fullfile(MUA_allData_Directory, 'electrodes_order.mat');
         if ~isfile(electrodesFile)
             save(electrodesFile, 'electrodes_order', '-v7.3');
             fprintf('Saved electrode order for %s\n', recDir);
         end
 
-        % Skip if downsampled file already exists
+        % ---- Check if downsampled data exists ----
         downsampledFile = fullfile(MUA_allData_Directory, 'downsampledData.mat');
         if isfile(downsampledFile)
             fprintf('Skipping %s, downsampled data already exists.\n', recDir);
             continue;
         end
 
-        % Find NSx file for this recording
+        % Find the NSx file for this recording
         NSx_file = dir(fullfile(recDir, '*.ns6'));
         if isempty(NSx_file)
             warning('No NS6 file found for %s. Skipping...\n', recDir);
@@ -62,19 +61,19 @@ parfor ii = 1:numGroups
         end
         NSx_filepath = fullfile(recDir, NSx_file.name);
 
-        % Process the NSx file in chunks to avoid memory overload
+        % ---- Chunk-based processing to avoid memory overload ----
         fprintf('Starting chunked processing for %s...\n', recDir);
         downsampledData = process_nsx_in_chunks(NSx_filepath, 3);
 
-        % Save the result asynchronously with parfeval
+        % ---- Asynchronous saving using parfeval ----
         f = parfeval(@save_data_async, 0, downsampledFile, downsampledData);
         fprintf('Saving started asynchronously for %s.\n', recDir);
 
-        % Optional: Monitor and wait for the save to complete
+        % Optional: Wait for the save to complete (synchronize)
         wait(f);
         fprintf('Save completed for %s.\n', recDir);
-    end
-end
+    end  % End of inner 'for' loop
+end  % End of outer 'parfor' loop
 
 %% Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)
