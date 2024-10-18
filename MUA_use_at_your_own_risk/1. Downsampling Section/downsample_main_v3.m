@@ -1,5 +1,22 @@
 clc; clear;
 
+% Starting with the following project folder structure...
+%
+% project_folder/
+% ├─ SpikeStuff/
+% │  ├─ Group_1/
+% │  │  ├─ Recording_1/
+% │  │  │  ├─ Recording1.ns6
+% │  │  │  ├─ Recording1.nev
+% │  │  │  ├─ Recording1_timestamps.txt
+% │  │  │  ├─ Recording1.ccf
+% │  │  ├─ Recording_2/
+% │  │  ├─ Recording_N/
+% │  ├─ Group_2/
+% ├─ LFP (Optional)/
+%
+% For each recording folder, this script will
+
 %% Get user input for the project folder
 initial_start_directory = '/home/cresp1el-local/Documents/MATLAB';
 projectFolder = uigetdir(initial_start_directory, 'Select the project folder in which you want to analyze multiple groups');
