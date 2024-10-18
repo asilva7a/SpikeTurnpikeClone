@@ -95,15 +95,16 @@ end
 %% Save all results sequentially after the `parfor` loop completes
 for ii = 1:numGroups
     for jj = 1:length(results(ii).data)
-        % Extract the downsampled data from the results struct
-        downsampledData = results(ii).data(jj).data;
+        % Extract the downsampled data
+        electrode_data_downsampled = results(ii).data(jj).data;
 
         % Save the downsampled data with the correct field name
-        save(results(ii).data(jj).path, 'downsampledData', '-v7.3');
+        save(results(ii).data(jj).path, 'electrode_data_downsampled', '-v7.3');
 
         fprintf('Saved downsampled data to %s\n', results(ii).data(jj).path);
     end
 end
+
 
 %% Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)
