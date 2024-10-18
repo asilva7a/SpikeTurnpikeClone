@@ -11,7 +11,7 @@ function electrode_data_original = ns6_to_mat_fun(ns6_file_directory)
 %}
 
 % Read the .ns6 data
-ns6_struct = openNSx('read','c:1:32', ns6_file_directory); %only will read channels 1-32, 33,34,35 are the analog signals
+ns6_struct = openNSx('read','c:1:32','uV','precision','double', ns6_file_directory); %only will read channels 1-32, 33,34,35 are the analog signals
 
 % Return the data from within the struct data
 electrode_data_original = ns6_struct.Data;

@@ -60,8 +60,8 @@ if isempty(gcp('nocreate'))
     parpool('local', 2);  % Adjust based on system memory
 end
 
-%% Process each recording in parallel
-parfor idx = 1:length(recordingInfo)
+%% Sequential loop for debugging (replace `parfor` with `for`)
+for idx = 1:length(recordingInfo)
     rec = recordingInfo(idx);
 
     % Skip if the downsampled file already exists
@@ -87,6 +87,7 @@ parfor idx = 1:length(recordingInfo)
         fprintf('Error processing %s: %s\n', rec.recDir, ME.message);
     end
 end
+
 
 %% Optimized Chunked NSx Processing Function
 function downsampledData = process_nsx_in_chunks(filepath, factor)

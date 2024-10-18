@@ -73,6 +73,7 @@ for n_folders = 1:numfolders
         % Define how many sample section we want to compute the median from.
         downsampling_factor = 3;
         
+
         % Run the "downsample_data_fun" to downsample the data from original data.
         if isfile(fullfile(file_directory_to_save_data,'allData',"electrode_data_downsampled.mat"))
             fprintf("    Downsampled data file already exists, skipping...\n");
