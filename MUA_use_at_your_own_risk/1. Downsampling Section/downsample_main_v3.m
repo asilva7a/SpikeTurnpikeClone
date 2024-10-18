@@ -12,74 +12,68 @@ dinfo(ismember({dinfo.name}, {'.', '..'})) = [];
 groupfoldernames = fullfile(projectFolder, {dinfo.name});
 numGroups = length(groupfoldernames);
 
-%% Start parallel pool with limited workers
-if isempty(gcp('nocreate'))
-    parpool('local', 2);  % Adjust based on system memory
-end
+%% Preload all recording paths to avoid file I/O conflicts in `parfor`
+recordingInfo = [];  % Struct to store file paths and directories
 
-% Preallocate a struct array to store processed data and paths
-results = struct('data', {}, 'path', {});
-
-%% Parallel loop for group-level processing
-parfor ii = 1:numGroups
+for ii = 1:numGroups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
     groupInfo(~[groupInfo.isdir]) = [];
     groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
     recfoldernames = fullfile(groupDir, {groupInfo.name});
 
-    localResults = [];  % Store results for this group
-
     for jj = 1:length(recfoldernames)
         recDir = recfoldernames{jj};
-        fprintf('Processing %s\n', recDir);
 
-        % Setup paths for downsampled data
+        % Locate NSx files and prepare paths for saving
+        NSx_file = dir(fullfile(recDir, '*.ns6'));
+        if isempty(NSx_file), continue; end  % Skip if no NSx file found
+
+        NSx_filepath = fullfile(recDir, NSx_file.name);
         MUA_Directory = fullfile(recDir, "MUA");
         MUA_allData_Directory = fullfile(MUA_Directory, "allData/");
         downsampledFile = fullfile(MUA_allData_Directory, 'electrode_data_downsampled.mat');
 
-        % Skip if downsampled data already exists
-        if isfile(downsampledFile)
-            fprintf('Skipping %s, downsampled data already exists.\n', recDir);
-            continue;
-        end
-
-        % Locate the NSx file
-        NSx_file = dir(fullfile(recDir, '*.ns6'));
-        if isempty(NSx_file)
-            warning('No NS6 file found for %s. Skipping...\n', recDir);
-            continue;
-        end
-        NSx_filepath = fullfile(recDir, NSx_file.name);
-
-        % Process the NSx file in chunks
-        fprintf('Starting chunked processing for %s...\n', recDir);
-        downsampledData = process_nsx_in_chunks(NSx_filepath, 3);
-
-        % Store the result and path for later saving
-        localResults = [localResults; struct('data', downsampledData, 'path', downsampledFile)];
+        % Store the paths in the struct
+        recordingInfo(end+1) = struct( ...  %#ok<AGROW>
+            'nsx_path', NSx_filepath, ...
+            'save_path', downsampledFile, ...
+            'recDir', recDir, ...
+            'MUA_Directory', MUA_Directory, ...
+            'MUA_allData_Directory', MUA_allData_Directory);
     end
-
-    % Store results for this group
-    results(ii).data = localResults;
 end
 
-%% Save all results sequentially after the `parfor` loop completes
-for ii = 1:numGroups
-    for jj = 1:length(results(ii).data)
-        % Extract the downsampled data
-        electrode_data_downsampled = results(ii).data(jj).data;
+%% Start parallel pool with limited workers
+if isempty(gcp('nocreate'))
+    parpool('local', 2);  % Adjust based on system memory
+end
 
-        % Create the allData directory if it doesn’t exist
-        [savePath, ~, ~] = fileparts(results(ii).data(jj).path);
-        if ~exist(savePath, 'dir')
-            mkdir(savePath);
-        end
+%% Process each recording in parallel
+parfor idx = 1:length(recordingInfo)
+    rec = recordingInfo(idx);
+
+    % Skip if the downsampled file already exists
+    if isfile(rec.save_path)
+        fprintf('Skipping %s, downsampled data already exists.\n', rec.recDir);
+        continue;
+    end
+
+    % Ensure directories exist
+    if ~exist(rec.MUA_Directory, 'dir'), mkdir(rec.MUA_Directory); end
+    if ~exist(rec.MUA_allData_Directory, 'dir'), mkdir(rec.MUA_allData_Directory); end
+
+    % Process the NSx file and save the downsampled data
+    try
+        fprintf('Starting chunked processing for %s...\n', rec.recDir);
+        downsampledData = process_nsx_in_chunks(rec.nsx_path, 3);
 
         % Save the downsampled data
-        save(results(ii).data(jj).path, 'electrode_data_downsampled', '-v7.3');
-        fprintf('Saved downsampled data to %s\n', results(ii).data(jj).path);
+        save(rec.save_path, 'electrode_data_downsampled', '-v7.3');
+        fprintf('Saved downsampled data to %s\n', rec.save_path);
+
+    catch ME
+        fprintf('Error processing %s: %s\n', rec.recDir, ME.message);
     end
 end
 
@@ -89,17 +83,14 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
     mappedFile = memmapfile(filepath, 'Format', 'int16');
     totalSamples = numel(mappedFile.Data);
 
-    % Ensure there are enough samples for at least 32 channels
+    % Ensure data can be divided by 32 channels
     numChannels = 32;
-    if mod(totalSamples, numChannels) ~= 0
-        % Trim extra samples that don't fit evenly across channels
-        trimmedSamples = floor(totalSamples / numChannels) * numChannels;
-        fprintf('Warning: Trimming %d excess samples.\n', totalSamples - trimmedSamples);
-        mappedFile.Data = mappedFile.Data(1:trimmedSamples);
+    samplesPerChannel = totalSamples / numChannels;
+    if mod(samplesPerChannel, 1) ~= 0
+        warning('Trimming extra samples to fit 32 channels.');
+        samplesPerChannel = floor(samplesPerChannel);
+        mappedFile.Data = mappedFile.Data(1:samplesPerChannel * numChannels);
     end
-
-    % Calculate the number of samples per channel
-    samplesPerChannel = numel(mappedFile.Data) / numChannels;
 
     % Reshape the data into [numChannels x samplesPerChannel]
     reshapedData = reshape(mappedFile.Data, numChannels, []);
@@ -108,14 +99,10 @@ function downsampledData = process_nsx_in_chunks(filepath, factor)
     numDownsampledSamples = floor(samplesPerChannel / factor);
     downsampledData = zeros(numChannels, numDownsampledSamples, 'like', reshapedData);
 
-    % Downsample each channel using a regular loop for safety
+    % Downsample each channel
     for ch = 1:numChannels
-        % Extract the channel's data and reshape for median calculation
         channelData = reshapedData(ch, 1:factor * numDownsampledSamples);
         reshapedChannel = reshape(channelData, factor, []);
         downsampledData(ch, :) = median(reshapedChannel, 1);
     end
 end
-
-
-
