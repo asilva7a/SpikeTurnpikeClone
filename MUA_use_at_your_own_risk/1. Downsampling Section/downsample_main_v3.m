@@ -20,7 +20,7 @@ end
 % Preallocate a struct array to store processed data and paths
 results = struct('data', {}, 'path', {});
 
-%% Parallel loop for data processing (optimized with `parfor`)
+%% Parallel loop for group-level processing
 parfor ii = 1:numGroups
     groupDir = groupfoldernames{ii};
     groupInfo = dir(groupDir);
@@ -28,18 +28,18 @@ parfor ii = 1:numGroups
     groupInfo(ismember({groupInfo.name}, {'.', '..'})) = [];
     recfoldernames = fullfile(groupDir, {groupInfo.name});
 
-    localResults = [];  % Store local results for each worker
+    localResults = [];  % Store results for this group
 
     for jj = 1:length(recfoldernames)
         recDir = recfoldernames{jj};
         fprintf('Processing %s\n', recDir);
 
-        % Locate the downsampled data file path
+        % Setup paths for downsampled data
         MUA_Directory = fullfile(recDir, "MUA");
         MUA_allData_Directory = fullfile(MUA_Directory, "allData/");
         downsampledFile = fullfile(MUA_allData_Directory, 'electrode_data_downsampled.mat');
 
-        % Skip if the downsampled file already exists
+        % Skip if downsampled data already exists
         if isfile(downsampledFile)
             fprintf('Skipping %s, downsampled data already exists.\n', recDir);
             continue;
@@ -53,15 +53,15 @@ parfor ii = 1:numGroups
         end
         NSx_filepath = fullfile(recDir, NSx_file.name);
 
-        % Process the NSx file in chunks and reshape correctly
+        % Process the NSx file in chunks
         fprintf('Starting chunked processing for %s...\n', recDir);
-        downsampledData = process_nsx_in_chunks_optimized(NSx_filepath, 3);
+        downsampledData = process_nsx_in_chunks(NSx_filepath, 3);
 
         % Store the result and path for later saving
         localResults = [localResults; struct('data', downsampledData, 'path', downsampledFile)];
     end
 
-    % Store local results in the global results array
+    % Store results for this group
     results(ii).data = localResults;
 end
 
@@ -71,26 +71,35 @@ for ii = 1:numGroups
         % Extract the downsampled data
         electrode_data_downsampled = results(ii).data(jj).data;
 
-        % Save the downsampled data with the correct field name
-        save(results(ii).data(jj).path, 'electrode_data_downsampled', '-v7.3');
+        % Create the allData directory if it doesn’t exist
+        [savePath, ~, ~] = fileparts(results(ii).data(jj).path);
+        if ~exist(savePath, 'dir')
+            mkdir(savePath);
+        end
 
+        % Save the downsampled data
+        save(results(ii).data(jj).path, 'electrode_data_downsampled', '-v7.3');
         fprintf('Saved downsampled data to %s\n', results(ii).data(jj).path);
     end
 end
 
-%% Optimized Chunked NSx Processing Function
-function downsampledData = process_nsx_in_chunks_optimized(filepath, factor)
+%% Chunked NSx Processing Function
+function downsampledData = process_nsx_in_chunks(filepath, factor)
     % Use memmapfile to read the data efficiently
     mappedFile = memmapfile(filepath, 'Format', 'int16');
     totalSamples = numel(mappedFile.Data);
 
-    % Ensure the data can be divided by 32 channels
+    % Ensure there are enough samples for at least 32 channels
     numChannels = 32;
-    samplesPerChannel = totalSamples / numChannels;
-
-    if mod(samplesPerChannel, 1) ~= 0
-        error('Total samples are not divisible by 32 channels. Check the data.');
+    if mod(totalSamples, numChannels) ~= 0
+        % Trim extra samples that don't fit evenly across channels
+        trimmedSamples = floor(totalSamples / numChannels) * numChannels;
+        fprintf('Warning: Trimming %d excess samples.\n', totalSamples - trimmedSamples);
+        mappedFile.Data = mappedFile.Data(1:trimmedSamples);
     end
+
+    % Calculate the number of samples per channel
+    samplesPerChannel = numel(mappedFile.Data) / numChannels;
 
     % Reshape the data into [numChannels x samplesPerChannel]
     reshapedData = reshape(mappedFile.Data, numChannels, []);
@@ -99,13 +108,14 @@ function downsampledData = process_nsx_in_chunks_optimized(filepath, factor)
     numDownsampledSamples = floor(samplesPerChannel / factor);
     downsampledData = zeros(numChannels, numDownsampledSamples, 'like', reshapedData);
 
-    % Downsample each channel
-    parfor ch = 1:numChannels
+    % Downsample each channel using a regular loop for safety
+    for ch = 1:numChannels
         % Extract the channel's data and reshape for median calculation
-        channelData = reshapedData(ch, 1:factor*numDownsampledSamples);
+        channelData = reshapedData(ch, 1:factor * numDownsampledSamples);
         reshapedChannel = reshape(channelData, factor, []);
         downsampledData(ch, :) = median(reshapedChannel, 1);
     end
 end
+
 
 
