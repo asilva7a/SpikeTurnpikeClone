@@ -106,6 +106,13 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     %% Create data table for export
         data_table_FR = table(groupsVec, cellTypesVec, timePeriodVec, FRs_vec, ...
             'VariableNames', {'Group', 'CellType', 'TimePeriod', 'FR'});
+    % Export Data to CSV
+    csvFileName = 'processed_FR_data.csv';  % Specify your desired filename
+    writetable(data_table_FR, csvFileName);
+
+    % Display confirmation
+    fprintf('Data successfully exported to %s\n', csvFileName);
+    
     end
 
 %% Helper Function to Calculate Firing Rate
