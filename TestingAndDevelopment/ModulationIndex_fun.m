@@ -1,14 +1,13 @@
 % Access the individual unit struct
-unit = all_data.Emx.emx_hctztreat_0001_rec1.cid546;  % Do not overwrite this struct
+unit = all_data.Emx.emx_hctztreat_0001_rec1.cid546;
 
 % Extract sampling frequency (in Hz)
 fs = unit.Sampling_Frequency;
 
-%% User input or default values for baseline/stim duration
+%% User input or default values for baseline/stim durations
 defaultStimTimeSec = 1860;  % Default: 31 minutes
 defaultBaselineSec = 1800;  % Default: 30 minutes
 defaultStimSec = 1800;      % Default: 30 minutes
-
 
 % Get user input (or use default if input is empty)
 stimTimeSec = input(sprintf('Enter time of stim (default = %d sec): ', defaultStimTimeSec));
@@ -55,25 +54,22 @@ fprintf('Number of Stim Spikes: %d\n', numSpikesStim);
 totalSpikes = numSpikesBaseline + numSpikesStim;
 totalDuration = baselineSec + stimDurationSec;
 
-%% Update firing rate fields only, without overwriting the struct
-if isempty(unit.MeanFR_baseline) && baselineSec > 0
-    all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_baseline = numSpikesBaseline / baselineSec;
-end
+%% Calculate the firing rates
+MeanFR_baseline = numSpikesBaseline / baselineSec;
+MeanFR_stim = numSpikesStim / stimDurationSec;
+MeanFR_total = totalSpikes / totalDuration;
 
-if isempty(unit.MeanFR_stim) && stimDurationSec > 0
-    all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_stim = numSpikesStim / stimDurationSec;
-end
-
-if isempty(unit.MeanFR_total) && totalDuration > 0
-    all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_total = totalSpikes / totalDuration;
-end
+%% Update specific fields in the original struct
+all_data.Emx.emx_hctztreat_0001_rec1.cid546.MeanFR_baseline = MeanFR_baseline;
+all_data.Emx.emx_hctztreat_0001_rec1.cid546.MeanFR_stim = MeanFR_stim;
+all_data.Emx.emx_hctztreat_0001_rec1.cid546.MeanFR_total = MeanFR_total;
 
 %% Display the calculated firing rates
-fprintf('Baseline Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_baseline);
-fprintf('Stim Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_stim);
-fprintf('Total Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_total);
+fprintf('Baseline Firing Rate: %.2f Hz\n', MeanFR_baseline);
+fprintf('Stim Firing Rate: %.2f Hz\n', MeanFR_stim);
+fprintf('Total Firing Rate: %.2f Hz\n', MeanFR_total);
 
-%% Store Results in a Struct
+%% Store Results in a Struct for Saving
 results = struct();
 results.MeanFR_baseline = MeanFR_baseline;
 results.MeanFR_stim = MeanFR_stim;
