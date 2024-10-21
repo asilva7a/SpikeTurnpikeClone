@@ -1,4 +1,8 @@
-function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plot_points, moment, period)
+function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plot_points, moment, preTreatmentPeriod, postTreatmentPeriod)
+    % Input: 
+    % - preTreatmentPeriod: Duration (in seconds) to analyze before the moment
+    % - postTreatmentPeriod: Duration (in seconds) to analyze after the moment
+
     groupNames = fieldnames(all_data);
 
     % Initialize vectors to store results
@@ -22,25 +26,34 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
 
                 % Check if the cell matches the required type and is a single unit
                 if any(strcmp(cell_types, cellData.Cell_Type)) && cellData.IsSingleUnit
+                    if ~isfield(cellData, 'SpikeTimes_all') || isempty(cellData.SpikeTimes_all)
+                        warning('Missing spike times for cell %s. Skipping.', cellID);
+                        continue;
+                    end
+
+                    % Convert spike times from samples to seconds
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
-                    % Calculate FR for 'Before' and 'After' periods
-                    FR_before = calculate_FR(spikeTimes, max(0, moment - period), moment, binSize);
-                    FR_after = calculate_FR(spikeTimes, moment, min(cellData.Recording_Duration, moment + period), binSize);
+                    % Calculate FR for the period *before* treatment
+                    FR_before = calculate_FR(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
+                    % Calculate FR for the period *after* treatment
+                    FR_after = calculate_FR(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
 
-                    % Store results if valid FRs are found
-                    if ~isempty(FR_before)
-                        FRs_vec(end+1,1) = FR_before;
-                        groupsVec{end+1,1} = groupName;
-                        cellTypesVec{end+1,1} = cellData.Cell_Type;
-                        timePeriodVec{end+1,1} = 'Before';
-                    end
-                    if ~isempty(FR_after)
-                        FRs_vec(end+1,1) = FR_after;
-                        groupsVec{end+1,1} = groupName;
-                        cellTypesVec{end+1,1} = cellData.Cell_Type;
-                        timePeriodVec{end+1,1} = 'After';
-                    end
+                    % Assign 0 Hz if no spikes were found in the period
+                    if isempty(FR_before), FR_before = 0; end
+                    if isempty(FR_after), FR_after = 0; end
+
+                    % Store results for 'Before' period
+                    FRs_vec(end+1,1) = FR_before;
+                    groupsVec{end+1,1} = groupName;
+                    cellTypesVec{end+1,1} = cellData.Cell_Type;
+                    timePeriodVec{end+1,1} = 'Before';
+
+                    % Store results for 'After' period
+                    FRs_vec(end+1,1) = FR_after;
+                    groupsVec{end+1,1} = groupName;
+                    cellTypesVec{end+1,1} = cellData.Cell_Type;
+                    timePeriodVec{end+1,1} = 'After';
                 end
             end
         end
@@ -61,7 +74,7 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         g.set_color_options('lightness', 40);
         g.set_point_options('markers', '^', 'base_size', 3);
         g.no_legend;
-        g.draw;
+        g.draw();
     end
 
     %% Create data table for export
