@@ -4,12 +4,16 @@ unit = all_data.Emx.emx_hctztreat_0001_rec1.cid546;  % Do not overwrite this str
 % Extract sampling frequency (in Hz)
 fs = unit.Sampling_Frequency;
 
-%% User input or default values for baseline/stim durations
+%% User input or default values for baseline/stim duration
+defaultStimTimeSec = 1860;  % Default: 31 minutes
 defaultBaselineSec = 1800;  % Default: 30 minutes
 defaultStimSec = 1800;      % Default: 30 minutes
 
+
 % Get user input (or use default if input is empty)
-stimTimeSec = input('Enter the stimulation time (in seconds): ');
+stimTimeSec = input(sprintf('Enter time of stim (default = %d sec): ', defaultStimTimeSec));
+if isempty(stimTimeSec), stimTimeSec = defaultStimTimeSec; end
+
 baselineSec = input(sprintf('Enter duration before stim (default = %d sec): ', defaultBaselineSec));
 if isempty(baselineSec), baselineSec = defaultBaselineSec; end
 
@@ -68,3 +72,25 @@ end
 fprintf('Baseline Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_baseline);
 fprintf('Stim Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_stim);
 fprintf('Total Firing Rate: %.2f Hz\n', all_data.Control.pvalb_notreat_0005_rec1.cid28.MeanFR_total);
+
+%% Store Results in a Struct
+results = struct();
+results.MeanFR_baseline = MeanFR_baseline;
+results.MeanFR_stim = MeanFR_stim;
+results.MeanFR_total = MeanFR_total;
+results.numSpikesBaseline = numSpikesBaseline;
+results.numSpikesStim = numSpikesStim;
+results.totalSpikes = totalSpikes;
+
+%% Save Results to MAT File
+save('modulation_results.mat', 'results');
+
+%% Write Results to CSV File
+% Convert struct to table for easy CSV writing
+resultsTable = struct2table(results);
+
+% Write to CSV
+writetable(resultsTable, 'modulation_results.csv');
+
+%% Display a Confirmation
+disp('Results saved to modulation_results.mat and modulation_results.csv');
