@@ -1,5 +1,5 @@
 % Access the individual unit struct
-unit = all_data.Emx.emx_hctztreat_0007_rec2.cid364;
+unit = syntheticData;
 
 % Extract sampling frequency (in Hz)
 fs = unit.Sampling_Frequency;
