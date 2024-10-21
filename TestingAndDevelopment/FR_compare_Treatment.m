@@ -59,28 +59,54 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         end
     end
 
-    %% Plotting with gramm library
+  %% Plotting with gramm library
     figure;
-    g = gramm('x', timePeriodVec, 'y', FRs_vec, 'color', groupsVec);
-    g.facet_grid([], cellTypesVec, 'scale', 'independent');
-    g.stat_summary('type', 'sem', 'geom', {'bar', 'black_errorbar'}, 'width', 0.6, 'dodge', 0.8, 'setylim', true);
-    g.set_names('x', 'Time Period', 'y', 'Firing Rate (Hz)', 'Color', 'Group', 'Column', 'Cell Type');
+    
+    % Ensure 'Before' and 'After' are treated as consistent categorical levels
+    timePeriodVec = categorical(timePeriodVec, {'Before', 'After'});
+    
+    % Create a gramm object, grouping only by cell type (ignoring recording group)
+    g = gramm('x', timePeriodVec, 'y', FRs_vec, 'color', cellTypesVec);
+    
+    % Facet by cell type (only columns), without grouping by recording group
+    g.facet_grid([], [], 'scale', 'independent');
+    
+    % Plot bars with SEM error bars
+    g.stat_summary('type', 'sem', 'geom', {'bar', 'black_errorbar'}, ...
+                   'width', 0.6, 'dodge', 0.8, 'setylim', true);
+    
+    % Set axis labels and title
+    g.set_names('x', 'Time Period', 'y', 'Firing Rate (Hz)', 'Color', 'Cell Type');
+    
+    % Hide legend (optional)
     g.no_legend;
+    
+    % Draw the plot
     g.draw();
-
+    
+    %% Optional: Add individual points to the plot
     if plot_points
-        g.update('x', timePeriodVec, 'y', FRs_vec, 'color', groupsVec);
+        % Update the plot to add points on top of the bars
+        g.update('x', timePeriodVec, 'y', FRs_vec, 'color', cellTypesVec);
+    
+        % Plot individual points with slight dodge for clarity
         g.geom_point('dodge', 0.8);
-        g.set_color_options('lightness', 40);
-        g.set_point_options('markers', '^', 'base_size', 3);
+    
+        % Set marker and point options
+        g.set_color_options('lightness', 40);  % Adjust point lightness
+        g.set_point_options('markers', {'^'}, 'base_size', 3);  % Ensure valid marker
+    
+        % Hide legend again, as individual points don’t need separate labels
         g.no_legend;
+    
+        % Draw the updated plot with points
         g.draw();
     end
 
     %% Create data table for export
-    data_table_FR = table(groupsVec, cellTypesVec, timePeriodVec, FRs_vec, ...
-        'VariableNames', {'Group', 'CellType', 'TimePeriod', 'FR'});
-end
+        data_table_FR = table(groupsVec, cellTypesVec, timePeriodVec, FRs_vec, ...
+            'VariableNames', {'Group', 'CellType', 'TimePeriod', 'FR'});
+    end
 
 %% Helper Function to Calculate Firing Rate
 function max_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
