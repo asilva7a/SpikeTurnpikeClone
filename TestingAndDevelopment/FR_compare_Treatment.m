@@ -115,17 +115,26 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     
     end
 
-%% Helper Function to Calculate Firing Rate
+%% Helper Function to Calculate Firing Rate (No Rounding)
 function max_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
+    % Generate precise interval bounds without rounding
     intervalBounds = startTime:binSize:endTime;
-    binned_FRs = [];
+    binned_FRs = [];  % Store firing rates for each bin
 
-    for ii = 1:length(intervalBounds)-1
-        n_spikes = length(spikeTimes((spikeTimes >= intervalBounds(ii)) & ...
-                                     (spikeTimes < intervalBounds(ii+1))));
-        binned_FRs(end+1,1) = n_spikes / binSize;
+    % Loop through bins and compute firing rate for each
+    for ii = 1:length(intervalBounds) - 1
+        % Count spikes within the exact interval
+        n_spikes = length(spikeTimes( ...
+            spikeTimes >= intervalBounds(ii) & spikeTimes < intervalBounds(ii + 1)));
+        
+        % Calculate firing rate in Hz (spikes per second)
+        FR_in_bin = n_spikes / binSize;
+
+        % Store the firing rate
+        binned_FRs(end + 1, 1) = FR_in_bin;
     end
 
+    % Return the maximum firing rate across bins, or empty if no bins exist
     if ~isempty(binned_FRs)
         max_FR = max(binned_FRs);
     else
