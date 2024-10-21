@@ -1,5 +1,5 @@
 % Access the individual unit struct
-unit = all_data.Emx.emx_hctztreat_0001_rec1.cid163;  % Do not overwrite this struct
+unit = all_data.Emx.emx_hctztreat_0001_rec1.cid546;  % Do not overwrite this struct
 
 % Extract sampling frequency (in Hz)
 fs = unit.Sampling_Frequency;
