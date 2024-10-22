@@ -56,23 +56,34 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         end
     end
 
-    %% Perform Paired t-Test for Each Unit
-    p_vals = nan(length(FRs_before), 1);  % Pre-allocate p-values array
-    h_vals = nan(length(FRs_before), 1);  % Pre-allocate hypothesis test results
+    %% Perform Bootstrapping to Identify Significant Changes
+    nBootstraps = 1000;  % Number of bootstrap iterations
+    alpha = 0.05;  % Significance level for 95% CI
+
+    % Pre-allocate for results
+    lower_CI = nan(length(FRs_before), 1);
+    upper_CI = nan(length(FRs_before), 1);
 
     for i = 1:length(FRs_before)
-        % Perform paired t-test for each unit
-        [h, p] = ttest(FRs_before(i), FRs_after(i));
-        
-        % Store the results
-        h_vals(i) = h;  % Hypothesis test result (1 = significant, 0 = not significant)
-        p_vals(i) = p;  % P-value for the test
-    end
+        % Compute the observed difference in firing rates
+        observed_diff = FRs_after(i) - FRs_before(i);
 
-    % Classify units based on p-values and firing rate differences
-    for i = 1:length(FRs_before)
-        if p_vals(i) < 0.05  % Significant change
-            if FRs_after(i) > FRs_before(i)
+        % Bootstrap: Resample the differences nBootstraps times
+        boot_diffs = nan(nBootstraps, 1);
+        for b = 1:nBootstraps
+            % Resample with replacement from the two rates
+            boot_before = FRs_before(randi(length(FRs_before), length(FRs_before), 1));
+            boot_after = FRs_after(randi(length(FRs_after), length(FRs_after), 1));
+            boot_diffs(b) = mean(boot_after - boot_before);
+        end
+
+        % Compute the 95% CI from the bootstrap distribution
+        lower_CI(i) = prctile(boot_diffs, alpha/2 * 100);
+        upper_CI(i) = prctile(boot_diffs, (1 - alpha/2) * 100);
+
+        % Determine if the observed difference is significant
+        if lower_CI(i) > 0 || upper_CI(i) < 0
+            if observed_diff > 0
                 responseTypeVec{i,1} = 'Increased';
             else
                 responseTypeVec{i,1} = 'Decreased';
@@ -82,16 +93,15 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         end
     end
 
-
     %% Create Data Table for Export
-    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, responseTypeVec, ...
-        'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'ResponseType'});
+    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, lower_CI, upper_CI, responseTypeVec, ...
+        'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'Lower_CI', 'Upper_CI', 'ResponseType'});
 
     % Export data to CSV
-    csvFileName = 'processed_FR_data_with_stats.csv';
+    csvFileName = 'processed_FR_data_with_bootstrap.csv';
     writetable(data_table_FR, csvFileName);
 
-    fprintf('Data with statistical results successfully exported to %s\n', csvFileName);
+    fprintf('Data with bootstrapping results successfully exported to %s\n', csvFileName);
 
     %% Visualize Results by Response Type
     figure;
@@ -133,3 +143,4 @@ function avg_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
         avg_FR = 0;
     end
 end
+
