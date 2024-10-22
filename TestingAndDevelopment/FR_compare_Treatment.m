@@ -19,7 +19,7 @@
 % The function also exports the results to a CSV file and creates plots using the 
 % gramm library.
 
-function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plot_points, moment, preTreatmentPeriod, postTreatmentPeriod)
+function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Extract group names from the data structure
     groupNames = fieldnames(all_data);
 
@@ -119,22 +119,66 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     writetable(data_table_FR, csvFileName);
     fprintf('Data with bootstrapping results successfully exported to %s\n', csvFileName);
 
-    %% Visualize Results by Response Type Using Gramm Library
+        %% Extract unique groups from the data
+    uniqueGroups = unique(groupsVec);  % e.g., {'Group1', 'Group2'}
+
+    %% Create a figure with subplots for each group and response type
     figure;
-    g = gramm('x', responseTypeVec, 'y', FRs_after - FRs_before, 'color', cellTypesVec);
 
-    % Create facets for each cell type (e.g., RS and FS)
-    g.facet_grid([], cellTypesVec, 'scale', 'independent');
+    % Iterate over each unique group
+    for groupIdx = 1:length(uniqueGroups)
+        groupName = uniqueGroups{groupIdx};  % Current group name
 
-    % Plot bars with SEM error bars
-    g.stat_summary('type', 'sem', 'geom', {'bar', 'black_errorbar'}, 'width', 0.6, 'dodge', 0.8);
+        % Filter data for the current group
+        isCurrentGroup = strcmp(groupsVec, groupName);
 
-    % Set axis labels and title
-    g.set_names('x', 'Response Type', 'y', 'Change in Firing Rate (Hz)', 'Color', 'Cell Type');
-    g.set_title('Change in Firing Rate (Post - Pre) by Response Type');
+        % Iterate over each response type (Increased, Decreased)
+        for responseIdx = 1:2  % 1 = Increased, 2 = Decreased
+            if responseIdx == 1
+                responseType = 'Increased';
+            else
+                responseType = 'Decreased';
+            end
 
-    % Draw the plot
-    g.draw();
+            % Filter data for the current response type
+            isCurrentResponse = strcmp(responseTypeVec, responseType);
+
+            % Get the indices of units that match the current group and response type
+            plotIdx = isCurrentGroup & isCurrentResponse;
+
+            % Extract the corresponding firing rates
+            preFR = FRs_before(plotIdx);
+            postFR = FRs_after(plotIdx);
+
+            % Skip this subplot if there are no matching units
+            if isempty(preFR), continue; end
+
+            % Create a subplot for the current group and response type
+            subplot(length(uniqueGroups), 2, (groupIdx - 1) * 2 + responseIdx);
+
+            % Plot paired lines for each unit
+            for unitIdx = 1:length(preFR)
+                plot([1, 2], [preFR(unitIdx), postFR(unitIdx)], '-o', ...
+                     'Color', [0, 0, 0], 'MarkerSize', 4);  % Black lines with circle markers
+                hold on;
+            end
+
+            % Customize the axes and labels
+            xticks([1 2]);  % Set x-axis ticks
+            xticklabels({'Pre-treatment', 'Post-treatment'});  % Label the x-axis ticks
+            ylabel('Firing Rate (Hz)');  % Set y-axis label
+
+            % Set the title based on group and response type
+            title(sprintf('%s %s Firing', groupName, responseType));
+
+            % Adjust y-axis limits for better comparison
+            ylim([0 max([preFR; postFR]) * 1.1]);
+        end
+    end
+
+    % Adjust layout to fit all subplots nicely
+    sgtitle('Paired Comparison of Pre- and Post-Treatment Firing Rates by Group');  % Overall title
+
 end
 
 %% Helper Function to Calculate Firing Rate (Average FR)
