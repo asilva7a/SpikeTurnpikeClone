@@ -65,11 +65,11 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     %% Plotting with gramm library
     figure;
     
-    % Create a gramm object, grouping only by cell type
+    % Create a gramm object, grouping by both time period and cell type
     g = gramm('x', timePeriodVec, 'y', FRs_vec, 'color', cellTypesVec);
     
-    % Facet by cell type, with independent scaling
-    g.facet_grid([], [], 'scale', 'independent');
+    % Use facet_grid to create separate bar plots for each cell type (RS, FS)
+    g.facet_grid([], cellTypesVec, 'scale', 'independent');  % Facet by cell type along rows
     
     % Plot bars with SEM error bars
     g.stat_summary('type', 'sem', 'geom', {'bar', 'black_errorbar'}, ...
@@ -78,14 +78,15 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     % Set axis labels and title
     g.set_names('x', 'Time Period', 'y', 'Firing Rate (Hz)', 'Color', 'Cell Type');
     
-    % Set the order of the 'Time Period' axis explicitly
-    g.set_order_options('x', {'Before', 'After'});  % Force the correct order
+    % Set the order of the 'Time Period' axis explicitly to 'Before' and 'After'
+    g.set_order_options('x', {'Before', 'After'});
     
-    % Hide legend (optional)
+    % Optionally adjust aesthetics (e.g., no legend if unnecessary)
     g.no_legend;
     
     % Draw the plot
     g.draw();
+
         
     %% Optional: Add individual points to the plot
     if plot_points
