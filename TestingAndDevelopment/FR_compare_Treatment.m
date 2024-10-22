@@ -119,20 +119,23 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     writetable(data_table_FR, csvFileName);
     fprintf('Data with bootstrapping results successfully exported to %s\n', csvFileName);
 
-        %% Extract unique groups from the data
+    %% Extract unique groups from the data
     uniqueGroups = unique(groupsVec);  % e.g., {'Group1', 'Group2'}
 
-    %% Create a figure with subplots for each group and response type
+    % Create a figure with subplots for each group and response type
     figure;
 
-    % Iterate over each unique group
+    % Define outlier detection threshold (IQR method)
+    outlierMultiplier = 1.5;  % Multiplier for IQR to detect outliers
+
+    % Iterate over each group
     for groupIdx = 1:length(uniqueGroups)
         groupName = uniqueGroups{groupIdx};  % Current group name
 
         % Filter data for the current group
         isCurrentGroup = strcmp(groupsVec, groupName);
 
-        % Iterate over each response type (Increased, Decreased)
+        % Iterate over response types (Increased, Decreased)
         for responseIdx = 1:2  % 1 = Increased, 2 = Decreased
             if responseIdx == 1
                 responseType = 'Increased';
@@ -150,34 +153,59 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
             preFR = FRs_before(plotIdx);
             postFR = FRs_after(plotIdx);
 
-            % Skip this subplot if there are no matching units
+            % Skip if there are no units matching the criteria
             if isempty(preFR), continue; end
+
+            %% Outlier Detection (IQR Method)
+            allFR = [preFR; postFR];  % Combine pre and post FRs
+            Q1 = prctile(allFR, 25);  % 25th percentile (Q1)
+            Q3 = prctile(allFR, 75);  % 75th percentile (Q3)
+            IQR = Q3 - Q1;  % Interquartile range
+
+            % Define the outlier thresholds
+            lowerBound = Q1 - outlierMultiplier * IQR;
+            upperBound = Q3 + outlierMultiplier * IQR;
+
+            % Identify non-outlier data points for plotting
+            nonOutlierIdx = preFR >= lowerBound & preFR <= upperBound & ...
+                            postFR >= lowerBound & postFR <= upperBound;
 
             % Create a subplot for the current group and response type
             subplot(length(uniqueGroups), 2, (groupIdx - 1) * 2 + responseIdx);
 
-            % Plot paired lines for each unit
+            %% Plot Paired Lines for Non-Outlier Units
             for unitIdx = 1:length(preFR)
-                plot([1, 2], [preFR(unitIdx), postFR(unitIdx)], '-o', ...
-                     'Color', [0, 0, 0], 'MarkerSize', 4);  % Black lines with circle markers
-                hold on;
+                if nonOutlierIdx(unitIdx)  % Plot only non-outlier units
+                    plot([1, 2], [preFR(unitIdx), postFR(unitIdx)], '-o', ...
+                         'Color', [0, 0, 0], 'MarkerSize', 6, 'MarkerFaceColor', 'w');
+                    hold on;
+                end
             end
 
-            % Customize the axes and labels
+            %% Customize Axes and Labels
             xticks([1 2]);  % Set x-axis ticks
             xticklabels({'Pre-treatment', 'Post-treatment'});  % Label the x-axis ticks
             ylabel('Firing Rate (Hz)');  % Set y-axis label
 
-            % Set the title based on group and response type
+            % Set title for the subplot
             title(sprintf('%s %s Firing', groupName, responseType));
 
-            % Adjust y-axis limits for better comparison
-            ylim([0 max([preFR; postFR]) * 1.1]);
+            %% Adjust Y-Axis Limits to Fit Markers Neatly
+            nonOutlierFR = allFR(allFR >= lowerBound & allFR <= upperBound);  % Non-outlier data only
+            yMin = min(nonOutlierFR) - 0.05 * range(nonOutlierFR);  % Small buffer below
+            yMax = max(nonOutlierFR) + 0.05 * range(nonOutlierFR);  % Small buffer above
+            ylim([max(0, yMin), yMax]);  % Ensure the lower limit is at least 0
+
+            %% Ensure the Plot Layout is Tight and Clean
+            set(gca, 'TickLength', [0.01 0.01]);  % Shorten tick marks for cleaner look
+            axis tight;  % Ensure the axes fit tightly around the data
         end
     end
 
-    % Adjust layout to fit all subplots nicely
+    %% Adjust Layout to Fit All Subplots
     sgtitle('Paired Comparison of Pre- and Post-Treatment Firing Rates by Group');  % Overall title
+    set(gcf, 'Position', [100, 100, 800, 800]);  % Resize figure window for better display
+
 
 end
 
