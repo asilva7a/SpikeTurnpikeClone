@@ -68,13 +68,13 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         % Compute the observed difference in firing rates
         observed_diff = FRs_after(i) - FRs_before(i);
 
-        % Bootstrap: Resample the differences nBootstraps times
+        % Bootstrap: Resample the single pair nBootstraps times
         boot_diffs = nan(nBootstraps, 1);
         for b = 1:nBootstraps
-            % Resample with replacement from the two rates
-            boot_before = FRs_before(randi(length(FRs_before), length(FRs_before), 1));
-            boot_after = FRs_after(randi(length(FRs_after), length(FRs_after), 1));
-            boot_diffs(b) = mean(boot_after - boot_before);
+            % Resample with replacement from this unit's before/after pair
+            boot_before = FRs_before(i) + randn * std(FRs_before(i));
+            boot_after = FRs_after(i) + randn * std(FRs_after(i));
+            boot_diffs(b) = boot_after - boot_before;
         end
 
         % Compute the 95% CI from the bootstrap distribution
@@ -92,6 +92,7 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
             responseTypeVec{i,1} = 'No Change';
         end
     end
+
 
     %% Create Data Table for Export
     data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, lower_CI, upper_CI, responseTypeVec, ...
