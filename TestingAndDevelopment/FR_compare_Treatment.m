@@ -58,7 +58,35 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
             end
         end
     end
+     %% Perform Paired t-Test to Identify Significant Changes
+        [h, p_vals] = ttest(FRs_before, FRs_after);  % Paired t-test
+    
+        % Classify units based on p-values and firing rate differences
+        for i = 1:length(FRs_before)
+            if p_vals(i) < 0.05  % Significant change
+                if FRs_after(i) > FRs_before(i)
+                    responseTypeVec{i,1} = 'Increased';
+                else
+                    responseTypeVec{i,1} = 'Decreased';
+                end
+            else
+                responseTypeVec{i,1} = 'No Change';
+            end
+        end
+    
+        %% Create Data Table for Export
+        data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, responseTypeVec, ...
+            'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'ResponseType'});
+    
+        % Export data to CSV
+        csvFileName = 'processed_FR_data_with_stats.csv';
+        writetable(data_table_FR, csvFileName);
+    
+        fprintf('Data with statistical results successfully exported to %s\n', csvFileName);
 
+    %% Visualize Results by Response Type
+    figure;
+    g = gramm('x', responseTypeVec, 'y', FRs_after - FRs_before, 'color', cellTypesVec);
     % Convert timePeriodVec to an ordinal categorical variable with the correct order
     timePeriodVec = categorical(timePeriodVec, {'Before', 'After'}, 'Ordinal', true);
     
