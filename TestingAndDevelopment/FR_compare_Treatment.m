@@ -59,16 +59,16 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
         end
     end
 
-  %% Plotting with gramm library
+    % Convert timePeriodVec to an ordinal categorical variable with the correct order
+    timePeriodVec = categorical(timePeriodVec, {'Before', 'After'}, 'Ordinal', true);
+    
+    %% Plotting with gramm library
     figure;
     
-    % Ensure 'Before' and 'After' are treated as consistent categorical levels
-    timePeriodVec = categorical(timePeriodVec, {'Before', 'After'});
-    
-    % Create a gramm object, grouping only by cell type (ignoring recording group)
+    % Create a gramm object, grouping only by cell type
     g = gramm('x', timePeriodVec, 'y', FRs_vec, 'color', cellTypesVec);
     
-    % Facet by cell type (only columns), without grouping by recording group
+    % Facet by cell type, with independent scaling
     g.facet_grid([], [], 'scale', 'independent');
     
     % Plot bars with SEM error bars
@@ -78,12 +78,15 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     % Set axis labels and title
     g.set_names('x', 'Time Period', 'y', 'Firing Rate (Hz)', 'Color', 'Cell Type');
     
+    % Set the order of the 'Time Period' axis explicitly
+    g.set_order_options('x', {'Before', 'After'});  % Force the correct order
+    
     % Hide legend (optional)
     g.no_legend;
     
     % Draw the plot
     g.draw();
-    
+        
     %% Optional: Add individual points to the plot
     if plot_points
         % Update the plot to add points on top of the bars
