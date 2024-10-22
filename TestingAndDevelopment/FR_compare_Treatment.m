@@ -115,8 +115,8 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, plo
     
     end
 
-%% Helper Function to Calculate Firing Rate (No Rounding)
-function max_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
+%% Helper Function to Calculate Average Firing Rate (FR)
+function avg_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
     % Generate precise interval bounds without rounding
     intervalBounds = startTime:binSize:endTime;
     binned_FRs = [];  % Store firing rates for each bin
@@ -134,10 +134,10 @@ function max_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
         binned_FRs(end + 1, 1) = FR_in_bin;
     end
 
-    % Return the maximum firing rate across bins, or empty if no bins exist
+    % Return the average firing rate across bins, or 0 if no bins exist
     if ~isempty(binned_FRs)
-        max_FR = max(binned_FRs);
+        avg_FR = mean(binned_FRs);  % Compute the average
     else
-        max_FR = [];
+        avg_FR = 0;  % No spikes or bins, set FR to 0
     end
 end
