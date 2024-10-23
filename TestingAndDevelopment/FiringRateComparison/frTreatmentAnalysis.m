@@ -1,3 +1,56 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PROJECT FOLDER STRUCTURE AND SCRIPT FUNCTIONALITY:
+%
+% Starting with the following project folder structure:
+%
+% project_folder/
+% ├─ SpikeStuff/                        % Main folder for all groups
+% │  ├─ Group_1/                        % Group-level folder (e.g., Treatment 1)
+% │  │  ├─ Recording_1/                 % Individual recording session
+% │  │  │  ├─ Recording1.ns6            % Raw data file (e.g., neural data at 30 kHz)
+% │  │  │  ├─ Recording1.nev            % Event markers (e.g., stim onsets, triggers)
+% │  │  │  ├─ Recording1_timestamps.txt % Additional timestamp file (optional)
+% │  │  │  ├─ Recording1.ccf            % Configuration or metadata file
+% │  │  ├─ Recording_2/                 % Another recording session for Group 1
+% │  │  ├─ Recording_N/                 % Additional recordings for Group 1
+% │  ├─ Group_2/                        % Another experimental group (e.g., Control)
+% │  │  ├─ Recording_1/
+% │  │  ├─ Recording_2/
+% ├─ LFP/ (Optional)                    % Optional folder for LFP data
+%
+% FUNCTIONALITY OF THIS SCRIPT:
+% 1. **Group and Recording Traversal**:
+%    - The script navigates through the `SpikeStuff/` folder, loading data from 
+%      each group (e.g., Group_1, Group_2) and each recording within those groups.
+%    - It processes raw neural data (`.ns6`) and extracts event markers (`.nev`).
+%
+% 2. **Data Extraction**:
+%    - From each **recording folder**, the script loads:
+%      - **Spike data**: Found in `.ns6` files (at 30 kHz).
+%      - **Stimulation markers or events**: Extracted from `.nev` or `.txt` files.
+%      - **Metadata/configuration**: Parsed from `.ccf` files or other metadata.
+%
+% 3. **Multi-Unit and Single-Unit Activity (MUA/SUA)**:
+%    - If the recording contains SUA or MUA data (e.g., from Kilosort), 
+%      this is handled and organized into MATLAB structures for analysis.
+%
+% 4. **Output**:
+%    - Processed spike times, metadata, and analysis results are saved into 
+%      structured MATLAB variables (`all_data`) and can be exported to `.mat` files.
+%
+% 5. **LFP Handling (Optional)**:
+%    - If LFP data is present, it can be processed and saved from the `LFP/` folder.
+%
+% EXAMPLE WORKFLOW:
+% - For each recording, the script:
+%   1. Loads raw data from `.ns6` and `.nev` files.
+%   2. Organizes spike times, events, and metadata into structured variables.
+%   3. Saves the results into `all_data.mat` for further analysis or visualization.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 % analyze_units.m
 % Main script to organize analysis, plotting, and statistical tests.
 
