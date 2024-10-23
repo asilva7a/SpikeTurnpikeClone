@@ -1,34 +1,46 @@
-function generate_PSTH(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
-    % Generate and plot time-locked PSTHs for each unit.
+function generate_PSTHs_by_response(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
+    % Generate three plots:
+    % 1. Overlay PSTHs for responsive units (Increased or Decreased).
+    % 2. Overlay PSTHs for non-responsive units.
+    % 3. Mean ± SEM PSTHs for all units.
+    % Reuses existing functions from the analysis pipeline.
 
+    % Initialize containers for PSTHs
+    allPSTHs = [];  % Store all PSTHs for mean ± SEM calculation
+    responsivePSTHs = [];  % Store PSTHs for responsive units
+    nonResponsivePSTHs = [];  % Store PSTHs for non-responsive units
+
+    % Iterate through all groups and recordings
     groupNames = fieldnames(all_data);
-
-    % Iterate over groups, mice, and units
     for g = 1:length(groupNames)
         groupName = groupNames{g};
-        mouseNames = fieldnames(all_data.(groupName));
+        recordingNames = fieldnames(all_data.(groupName));
 
-        for m = 1:length(mouseNames)
-            mouseName = mouseNames{m};
-            cellIDs = fieldnames(all_data.(groupName).(mouseName));
+        for r = 1:length(recordingNames)
+            recordingName = recordingNames{r};
+            unitNames = fieldnames(all_data.(groupName).(recordingName));
 
-            for c = 1:length(cellIDs)
-                cellID = cellIDs{c};
-                cellData = all_data.(groupName).(mouseName).(cellID);
+            % Process each unit within the current recording
+            for u = 1:length(unitNames)
+                unitName = unitNames{u};
+                unitData = all_data.(groupName).(recordingName).(unitName);
 
-                % Get spike times in seconds
-                spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
+                % Use existing spike alignment and PSTH logic
+                spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+                psthCounts = align_and_calculate_PSTH(spikeTimes, moment, prePeriod, postPeriod, binSize);
 
-                % Generate PSTH for the entire recording
-                edges = 0:binSize:(cellData.Recording_Duration);  % Define bin edges
-                counts = histcounts(spikeTimes, edges);  % Get spike counts
+                % Smooth the PSTH using the provided smoothing window
+                smoothedPSTH = conv(psthCounts, smoothingWindow, 'same') / binSize;
 
-                % Apply light smoothing
-                smoothedCounts = conv(counts, smoothingWindow, 'same') / binSize;
+                % Store the PSTH for later aggregation
+                allPSTHs = [allPSTHs; smoothedPSTH];
 
-                % Plot individual PSTH
-                plot_unit_PSTH(smoothedCounts, cellID, cellData);
+                % Classify based on ResponseType and store accordingly
+                if ismember(unitData.ResponseType, {'Increased', 'Decreased'})
+                    responsivePSTHs = [responsivePSTHs; smoothedPSTH];
+                else
+                    nonResponsivePSTHs = [nonResponsivePSTHs; smoothedPSTH];
+                end
             end
         end
     end
-end
