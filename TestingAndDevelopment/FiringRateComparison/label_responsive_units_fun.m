@@ -92,15 +92,30 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     title('Pre vs. Post Firing Rates');
     line([min(FRs_before), max(FRs_before)], [min(FRs_before), max(FRs_before)], 'Color', 'r', 'LineStyle', '--');
 
-    % Overlay Plot: Binned Firing Rates for the First Unit
+    % Select the Most Responsive Unit (or Ask User for an Index)
+    [~, mostResponsiveIndex] = max(abs(FRs_after - FRs_before));
+    disp(['Most responsive unit index: ', num2str(mostResponsiveIndex)]);
+    
+    userChoice = input('Enter a unit index for overlay plot (or press Enter to use the most responsive unit): ', 's');
+    if isempty(userChoice)
+        chosenIndex = mostResponsiveIndex;
+    else
+        chosenIndex = str2double(userChoice);
+        if isnan(chosenIndex) || chosenIndex < 1 || chosenIndex > length(FRs_before)
+            disp('Invalid input. Using the most responsive unit.');
+            chosenIndex = mostResponsiveIndex;
+        end
+    end
+
+    % Overlay Plot: Binned Firing Rates for the Chosen Unit
     if ~isempty(binned_FRs_before) && ~isempty(binned_FRs_after)
         figure;
-        plot(binned_FRs_before{1}, 'b', 'LineWidth', 1.5); hold on;
-        plot(binned_FRs_after{1}, 'r', 'LineWidth', 1.5);
+        plot(binned_FRs_before{chosenIndex}, 'b', 'LineWidth', 1.5); hold on;
+        plot(binned_FRs_after{chosenIndex}, 'r', 'LineWidth', 1.5);
         xlabel('Time Bin');
         ylabel('Firing Rate (Hz)');
         legend({'Before Treatment', 'After Treatment'});
-        title('Binned Firing Rates for Unit 1');
+        title(['Binned Firing Rates for Unit ', num2str(chosenIndex)]);
     end
 
     % Histogram: Fano Factor Distribution
