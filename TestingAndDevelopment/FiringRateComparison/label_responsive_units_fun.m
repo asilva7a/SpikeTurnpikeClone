@@ -123,8 +123,28 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     ylabel('Frequency');
     title('Bootstrapped Differences for Most Responsive Unit');
     legend('Bootstrap Distribution', 'Observed Difference');
-end
 
+    % Check and Plot Fano Factor Histograms
+    if ~isempty(FanoFactors_before) && ~isempty(FanoFactors_after)
+        figure;
+
+        % Plot Fano Factors Before Treatment
+        subplot(1, 2, 1);
+        histogram(FanoFactors_before, 'FaceColor', 'b');
+        xlabel('Fano Factor');
+        ylabel('Count');
+        title('Fano Factors Before Treatment');
+
+        % Plot Fano Factors After Treatment
+        subplot(1, 2, 2);
+        histogram(FanoFactors_after, 'FaceColor', 'r');
+        xlabel('Fano Factor');
+        ylabel('Count');
+        title('Fano Factors After Treatment');
+    else
+        disp('Fano Factor data is missing. Skipping Fano Factor histograms.');
+    end
+end
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
     % Perform Bootstrapping to Identify Significant Changes
