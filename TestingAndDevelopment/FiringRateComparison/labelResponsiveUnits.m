@@ -35,11 +35,47 @@
         end
     end
 
-    %% Create Data Table for Export
-    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, lower_CI, upper_CI, responseTypeVec, ...
-        'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'Lower_CI', 'Upper_CI', 'ResponseType'});
+    function cidArray = categorize_units_by_response(all_data)
+    % Initialize cell arrays for each category
+    positiveCIDs = {};
+    negativeCIDs = {};
+    nonResponsiveCIDs = {};
 
-    % Export the data table to a CSV file
-    csvFileName = 'processed_FR_data_with_bootstrap.csv';
-    writetable(data_table_FR, csvFileName);
-    fprintf('Data with bootstrapping results successfully exported to %s\n', csvFileName);
+    % Iterate over all groups, recordings, and units
+    groupNames = fieldnames(all_data);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordingNames = fieldnames(all_data.(groupName));
+
+        for r = 1:length(recordingNames)
+            recordingName = recordingNames{r};
+            unitNames = fieldnames(all_data.(groupName).(recordingName));
+
+            for u = 1:length(unitNames)
+                unitName = unitNames{u};
+                unitData = all_data.(groupName).(recordingName).(unitName);
+
+                % Classify units based on ResponseType
+                if strcmp(unitData.ResponseType, 'Increased')
+                    positiveCIDs{end+1} = unitName;
+                elseif strcmp(unitData.ResponseType, 'Decreased')
+                    negativeCIDs{end+1} = unitName;
+                else
+                    nonResponsiveCIDs{end+1} = unitName;
+                end
+            end
+        end
+    end
+
+    % Store the lists in a 2D cell array for easier access
+    cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
+    end
+
+    % Example usage: Call the function and access specific categories
+    cidArray = categorize_units_by_response(all_data);
+
+    % Access positive, negative, and non-responsive units
+    positiveUnits = cidArray{1};
+    negativeUnits = cidArray{2};
+    nonResponsiveUnits = cidArray{3};
+
