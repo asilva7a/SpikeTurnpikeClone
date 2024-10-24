@@ -13,7 +13,6 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     tempfilter = tempfilter/sum(tempfilter); %normalize the filter
 
     % Extract group names from the data structure
-    groupNames = fieldnames(all_data);
 
     % Initialize storage vectors for results
     groupsVec = {};       % Stores the group of each unit
@@ -23,6 +22,8 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     unitIDs = {};         % Stores the unique ID of each unit
 
     %% Iterate over groups, mice, and units to collect firing rate data
+    groupNames = fieldnames(all_data); % Extract group names from all_data
+    
     for groupNum = 1:length(groupNames)
         groupName = groupNames{groupNum};  % Current group
         mouseNames = fieldnames(all_data.(groupName));
