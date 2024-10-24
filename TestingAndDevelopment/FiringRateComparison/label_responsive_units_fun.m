@@ -1,10 +1,3 @@
-%% Function to Label Responsive Units
-% This function takes a data structure containing firing rate data for all units and returns a cell array of unit names categorized by response type.
-% Inputs:
-% - all_data: A struct containing firing rate data for all units.
-% Outputs:
-% - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
-
 function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Gaussian filter for temporal smoothing
     gausssigma = 1;  
@@ -20,6 +13,8 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     unitIDs = {};
     binned_FRs_before = {};  % Store time-binned firing rates (before)
     binned_FRs_after = {};   % Store time-binned firing rates (after)
+    FanoFactors_before = []; % Store Fano Factors (before)
+    FanoFactors_after = [];  % Store Fano Factors (after)
 
     % Iterate over groups, mice, and units
     groupNames = fieldnames(all_data);
@@ -44,7 +39,7 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     % Convert spike times from samples to seconds
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
-                    % Define bin edges for pre- and post-treatment periods using `binSize`
+                    % Define bin edges for pre- and post-treatment periods using binSize
                     preBinEdges = max(0, moment - preTreatmentPeriod):binSize:moment;
                     postBinEdges = moment:binSize:(moment + postTreatmentPeriod);
 
@@ -56,6 +51,14 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
                     FR_bins_after = conv(FR_bins_after, tempfilter, 'same');
 
+                    % Calculate Fano Factor for each period
+                    fano_before = var(FR_bins_before) / mean(FR_bins_before);
+                    fano_after = var(FR_bins_after) / mean(FR_bins_after);
+
+                    % Handle edge cases (e.g., NaN or Inf Fano Factor)
+                    if isnan(fano_before) || isinf(fano_before), fano_before = 0; end
+                    if isnan(fano_after) || isinf(fano_after), fano_after = 0; end
+
                     % Store the average firing rates (bulk comparison)
                     FR_before = mean(FR_bins_before);
                     FR_after = mean(FR_bins_after);
@@ -63,6 +66,8 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     % Store data in vectors and cells
                     FRs_before(end+1,1) = FR_before;
                     FRs_after(end+1,1) = FR_after;
+                    FanoFactors_before(end+1,1) = fano_before;
+                    FanoFactors_after(end+1,1) = fano_after;
                     groupsVec{end+1,1} = groupName;
                     cellTypesVec{end+1,1} = cellData.Cell_Type;
                     unitIDs{end+1,1} = cellID;
@@ -79,10 +84,13 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     % Label Responsive Units and store output in a 2D cell array
     cidArray = label_units_by_response(responseTypeVec, unitIDs);
 
-    % Return a table with both bulk and binned firing rates
-    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, binned_FRs_before, binned_FRs_after, responseTypeVec, ...
-                          'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'Binned_FRs_Before', 'Binned_FRs_After', 'ResponseType'});
+    % Return a table with both bulk and binned firing rates, including Fano Factors
+    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, ...
+                          binned_FRs_before, binned_FRs_after, FanoFactors_before, FanoFactors_after, responseTypeVec, ...
+                          'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', ...
+                                            'Binned_FRs_Before', 'Binned_FRs_After', 'FanoFactor_Before', 'FanoFactor_After', 'ResponseType'});
 end
+
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
     % Perform Bootstrapping to Identify Significant Changes
