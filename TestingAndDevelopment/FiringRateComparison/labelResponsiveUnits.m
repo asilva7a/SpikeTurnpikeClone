@@ -35,6 +35,7 @@
         end
     end
 
+    % Function to categorize units by their response type
     function cidArray = categorize_units_by_response(all_data)
     % Initialize cell arrays for each category
     positiveCIDs = {};
