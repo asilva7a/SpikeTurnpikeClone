@@ -65,16 +65,16 @@ preTreatmentPeriod = 1800;  % Seconds before the event
 postTreatmentPeriod = 1800;  % Seconds after the event
 
 % Generate and plot individual PSTHs for all units
-generate_PSTH(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
+generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
-plot_group_PSTH(all_data);
+plot_group_PSTH_fun(all_data);
 
 % Plot mean + SEM PSTHs for all units (no overlaid individual PSTHs)
-plot_mean_sem_PSTH(all_data);
+plot_mean_sem_PSTH_fun(all_data);
 
 % Generate percent change PSTHs (mean + SEM)
-percent_change_PSTH(all_data);
+percent_change_PSTH_fun(all_data);
 
 % Generate ranked heatmap of modulated units
-plot_heatmap(all_data);
+plot_heatmap_fun(all_data);
