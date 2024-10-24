@@ -5,7 +5,7 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     tempfilter = exp(-((-floor(gausswindow/2):floor(gausswindow/2)).^2) / (2*gausssigma^2));
     tempfilter = tempfilter / sum(tempfilter);  
 
-    % Initialize storage vectors for results
+    % Initialize storage vectors
     groupsVec = {};
     cellTypesVec = {};
     FRs_before = [];
@@ -15,6 +15,7 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     binned_FRs_after = {};   
     FanoFactors_before = []; 
     FanoFactors_after = [];  
+    bootResults = {};  % Store bootstrapped differences for visualization
 
     % Iterate over groups, mice, and units
     groupNames = fieldnames(all_data);
@@ -47,19 +48,26 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
                     FR_bins_after = conv(FR_bins_after, tempfilter, 'same');
 
-                    fano_before = var(FR_bins_before) / mean(FR_bins_before);
-                    fano_after = var(FR_bins_after) / mean(FR_bins_after);
-
-                    if isnan(fano_before) || isinf(fano_before), fano_before = 0; end
-                    if isnan(fano_after) || isinf(fano_after), fano_after = 0; end
-
                     FR_before = mean(FR_bins_before);
                     FR_after = mean(FR_bins_after);
 
+                    % Store the firing rates
                     FRs_before(end+1,1) = FR_before;
                     FRs_after(end+1,1) = FR_after;
+
+                    % Bootstrap the difference
+                    boot_diffs = bootstrap_difference(FR_before, FR_after);
+                    bootResults{end+1} = boot_diffs;
+
+                    % Fano Factors
+                    fano_before = var(FR_bins_before) / mean(FR_bins_before);
+                    fano_after = var(FR_bins_after) / mean(FR_bins_after);
+                    if isnan(fano_before) || isinf(fano_before), fano_before = 0; end
+                    if isnan(fano_after) || isinf(fano_after), fano_after = 0; end
                     FanoFactors_before(end+1,1) = fano_before;
                     FanoFactors_after(end+1,1) = fano_after;
+
+                    % Store metadata
                     groupsVec{end+1,1} = groupName;
                     cellTypesVec{end+1,1} = cellData.Cell_Type;
                     unitIDs{end+1,1} = cellID;
@@ -79,11 +87,21 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                           'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', ...
                                             'Binned_FRs_Before', 'Binned_FRs_After', 'FanoFactor_Before', 'FanoFactor_After', 'ResponseType'});
 
-    % Visualize the Firing Rate Changes and Fano Factors
-    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after);
+    % Visualize the results, including bootstrapping
+    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after, bootResults);
 end
 
-function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after)
+function boot_diffs = bootstrap_difference(FR_before, FR_after, nBootstraps)
+    if nargin < 3, nBootstraps = 1000; end
+    boot_diffs = zeros(nBootstraps, 1);
+    for b = 1:nBootstraps
+        boot_before = FR_before + randn * std(FR_before);
+        boot_after = FR_after + randn * std(FR_after);
+        boot_diffs(b) = boot_after - boot_before;
+    end
+end
+
+function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after, bootResults)
     % Scatter Plot: Pre vs. Post Firing Rates
     figure;
     scatter(FRs_before, FRs_after, 'filled');
@@ -92,45 +110,19 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     title('Pre vs. Post Firing Rates');
     line([min(FRs_before), max(FRs_before)], [min(FRs_before), max(FRs_before)], 'Color', 'r', 'LineStyle', '--');
 
-    % Select the Most Responsive Unit (or Ask User for an Index)
+    % Bootstrap Visualization for the Most Responsive Unit
     [~, mostResponsiveIndex] = max(abs(FRs_after - FRs_before));
-    disp(['Most responsive unit index: ', num2str(mostResponsiveIndex)]);
-    
-    userChoice = input('Enter a unit index for overlay plot (or press Enter to use the most responsive unit): ', 's');
-    if isempty(userChoice)
-        chosenIndex = mostResponsiveIndex;
-    else
-        chosenIndex = str2double(userChoice);
-        if isnan(chosenIndex) || chosenIndex < 1 || chosenIndex > length(FRs_before)
-            disp('Invalid input. Using the most responsive unit.');
-            chosenIndex = mostResponsiveIndex;
-        end
-    end
+    boot_diffs = bootResults{mostResponsiveIndex};
+    observed_diff = FRs_after(mostResponsiveIndex) - FRs_before(mostResponsiveIndex);
 
-    % Overlay Plot: Binned Firing Rates for the Chosen Unit
-    if ~isempty(binned_FRs_before) && ~isempty(binned_FRs_after)
-        figure;
-        plot(binned_FRs_before{chosenIndex}, 'b', 'LineWidth', 1.5); hold on;
-        plot(binned_FRs_after{chosenIndex}, 'r', 'LineWidth', 1.5);
-        xlabel('Time Bin');
-        ylabel('Firing Rate (Hz)');
-        legend({'Before Treatment', 'After Treatment'});
-        title(['Binned Firing Rates for Unit ', num2str(chosenIndex)]);
-    end
-
-    % Histogram: Fano Factor Distribution
     figure;
-    subplot(1,2,1);
-    histogram(FanoFactors_before, 'FaceColor', 'b');
-    xlabel('Fano Factor');
-    ylabel('Count');
-    title('Fano Factors Before Treatment');
-
-    subplot(1,2,2);
-    histogram(FanoFactors_after, 'FaceColor', 'r');
-    xlabel('Fano Factor');
-    ylabel('Count');
-    title('Fano Factors After Treatment');
+    histogram(boot_diffs, 30, 'FaceColor', 'b');
+    hold on;
+    xline(observed_diff, 'r', 'LineWidth', 2);
+    xlabel('Bootstrapped Difference');
+    ylabel('Frequency');
+    title('Bootstrapped Differences for Most Responsive Unit');
+    legend('Bootstrap Distribution', 'Observed Difference');
 end
 
 
