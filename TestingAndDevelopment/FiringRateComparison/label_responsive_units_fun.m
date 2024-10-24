@@ -6,15 +6,13 @@
 % - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
 
 function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
-    %Gaussian filter for temporal smoothing
-    gausssigma = 1; %standard deviation of the gaussian filter
-    gausswindow = 5; %width of the gaussian filter in standard deviations
-    tempfilter = exp(-((-floor(gausswindow/2):floor(gausswindow/2)).^2)/(2*gausssigma^2));
-    tempfilter = tempfilter/sum(tempfilter); %normalize the filter
+    % Gaussian filter for temporal smoothing
+    gausssigma = 1;  
+    gausswindow = 5;  
+    tempfilter = exp(-((-floor(gausswindow/2):floor(gausswindow/2)).^2) / (2*gausssigma^2));
+    tempfilter = tempfilter / sum(tempfilter);  
 
-    % Extract group names from the data structure
-
- % Initialize storage vectors for results
+    % Initialize storage vectors for results
     groupsVec = {};
     cellTypesVec = {};
     FRs_before = [];
@@ -23,7 +21,7 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     binned_FRs_before = {};  % Store time-binned firing rates (before)
     binned_FRs_after = {};   % Store time-binned firing rates (after)
 
-     % Iterate over groups, mice, and units
+    % Iterate over groups, mice, and units
     groupNames = fieldnames(all_data);
     for groupNum = 1:length(groupNames)
         groupName = groupNames{groupNum};
@@ -46,13 +44,13 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     % Convert spike times from samples to seconds
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
-                    % Define bin edges for pre- and post-treatment periods
-                    preBinEdges = max(0, moment - preTreatmentPeriod):timeBinSize:moment;
-                    postBinEdges = moment:timeBinSize:(moment + postTreatmentPeriod);
+                    % Define bin edges for pre- and post-treatment periods using `binSize`
+                    preBinEdges = max(0, moment - preTreatmentPeriod):binSize:moment;
+                    postBinEdges = moment:binSize:(moment + postTreatmentPeriod);
 
                     % Compute binned firing rates for both periods
-                    FR_bins_before = histcounts(spikeTimes, preBinEdges) / timeBinSize;
-                    FR_bins_after = histcounts(spikeTimes, postBinEdges) / timeBinSize;
+                    FR_bins_before = histcounts(spikeTimes, preBinEdges) / binSize;
+                    FR_bins_after = histcounts(spikeTimes, postBinEdges) / binSize;
 
                     % Smooth the binned firing rates using the Gaussian filter
                     FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
