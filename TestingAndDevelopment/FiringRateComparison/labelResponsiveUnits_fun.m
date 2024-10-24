@@ -5,7 +5,6 @@
 % Outputs:
 % - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
 
-
 function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Extract group names from the data structure
     groupNames = fieldnames(all_data);
@@ -110,13 +109,31 @@ function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUni
     %   negativeUnits - units with negative responses
     %   nonResponsiveUnits - units with no significant response
 
-    % Call the function to categorize units
-    cidArray = categorize_units_by_response(all_data);
+    % Initialize arrays to store categorized units
+    positiveUnits = {};
+    negativeUnits = {};
+    nonResponsiveUnits = {};
 
-    % Access positive, negative, and non-responsive units
-    positiveUnits = cidArray{1};
-    negativeUnits = cidArray{2};
-    nonResponsiveUnits = cidArray{3};
+    % Iterate over all data to categorize units
+    for i = 1:length(all_data)
+        cellData = all_data{i};
+        cellID = cellData.Cell_ID;
+        FR_before = cellData.FR_before;
+        FR_after = cellData.FR_after;
+
+        % Handle cases with missing data by assigning a rate of 0
+        if isempty(FR_before), FR_before = 0; end
+        if isempty(FR_after), FR_after = 0; end
+
+        % Determine the response type
+        if FR_after > FR_before
+            positiveUnits{end+1} = cellID;
+        elseif FR_after < FR_before
+            negativeUnits{end+1} = cellID;
+        else
+            nonResponsiveUnits{end+1} = cellID;
+        end
+    end
 end
 
 % Example usage: Call the function and access specific categories
