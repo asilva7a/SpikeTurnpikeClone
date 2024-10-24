@@ -80,10 +80,10 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                                             'Binned_FRs_Before', 'Binned_FRs_After', 'FanoFactor_Before', 'FanoFactor_After', 'ResponseType'});
 
     % Visualize the Firing Rate Changes and Fano Factors
-    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after);
+    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after);
 end
 
-function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after)
+function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after)
     % Scatter Plot: Pre vs. Post Firing Rates
     figure;
     scatter(FRs_before, FRs_after, 'filled');
@@ -93,7 +93,7 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     line([min(FRs_before), max(FRs_before)], [min(FRs_before), max(FRs_before)], 'Color', 'r', 'LineStyle', '--');
 
     % Overlay Plot: Binned Firing Rates for the First Unit
-    if ~isempty(FRs_before)
+    if ~isempty(binned_FRs_before) && ~isempty(binned_FRs_after)
         figure;
         plot(binned_FRs_before{1}, 'b', 'LineWidth', 1.5); hold on;
         plot(binned_FRs_after{1}, 'r', 'LineWidth', 1.5);
@@ -117,7 +117,6 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     ylabel('Count');
     title('Fano Factors After Treatment');
 end
-
 
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
