@@ -27,7 +27,10 @@ function generate_PSTHs_by_response(all_data, binSize, smoothingWindow, moment, 
 
                 % Use existing spike alignment and PSTH logic
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
-                psthCounts = align_and_calculate_PSTH(spikeTimes, moment, prePeriod, postPeriod, binSize);
+
+                %Generate PSTH for the unit
+                edges = 0:binSize(cellData.Recording_Duration); %define bin edges
+                counts = histcounts(spikeTimes, edges); %count spikes in each bin
 
                 % Smooth the PSTH using the provided smoothing window
                 smoothedPSTH = conv(psthCounts, smoothingWindow, 'same') / binSize;
