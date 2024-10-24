@@ -1,15 +1,66 @@
-%% Function to Label Responsive Units. Takes all_data as input and returns a cell array of unit names categorized by response type.
-%% Inputs:
-% - all_data: A struct containing firing rate data for all units
-%% Outputs:
-% - cidArray: A 2D cell array containing unit names categorized by response type
+%% Function to Label Responsive Units
+% This function takes a data structure containing firing rate data for all units and returns a cell array of unit names categorized by response type.
+% Inputs:
+% - all_data: A struct containing firing rate data for all units.
+% Outputs:
+% - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
 
 
-function cidArray = labelResponsiveUnits_fun(all_data)
-    % Initialize cell array to store response types
-    responseTypeVec = cell(length(FRs_before), 1);
-    
-%% Perform Bootstrapping to Identify Significant Changes
+function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+    % Extract group names from the data structure
+    groupNames = fieldnames(all_data);
+
+    % Initialize storage vectors for results
+    groupsVec = {};       % Stores the group of each unit
+    cellTypesVec = {};    % Stores the type of each unit (e.g., 'RS', 'FS')
+    FRs_before = [];      % Stores the firing rate before the stimulation
+    FRs_after = [];       % Stores the firing rate after the stimulation
+    unitIDs = {};         % Stores the unique ID of each unit
+    responseTypeVec = {}; % Stores response classification ('Increased', 'Decreased', 'No Change')
+
+    %% Iterate over groups, mice, and units to collect firing rate data
+    for groupNum = 1:length(groupNames)
+        groupName = groupNames{groupNum};  % Current group
+        mouseNames = fieldnames(all_data.(groupName));
+
+        for mouseNum = 1:length(mouseNames)
+            mouseName = mouseNames{mouseNum};  % Current mouse
+            cellIDs = fieldnames(all_data.(groupName).(mouseName));
+
+            for cellID_num = 1:length(cellIDs)
+                cellID = cellIDs{cellID_num};  % Current cell
+                cellData = all_data.(groupName).(mouseName).(cellID);
+
+                % Filter units based on cell type and whether they are single units
+                if any(strcmp(cell_types, cellData.Cell_Type)) && cellData.IsSingleUnit
+                    if ~isfield(cellData, 'SpikeTimes_all') || isempty(cellData.SpikeTimes_all)
+                        warning('Missing spike times for cell %s. Skipping.', cellID);
+                        continue;  % Skip units with missing spike data
+                    end
+
+                    % Convert spike times from samples to seconds
+                    spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
+
+                    % Calculate firing rates before and after the stimulation moment
+                    FR_before = calculate_FR(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
+                    FR_after = calculate_FR(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
+
+                    % Handle cases with missing data by assigning a rate of 0
+                    if isempty(FR_before), FR_before = 0; end
+                    if isempty(FR_after), FR_after = 0; end
+
+                    % Store the firing rates and other metadata
+                    FRs_before(end+1,1) = FR_before;
+                    FRs_after(end+1,1) = FR_after;
+                    groupsVec{end+1,1} = groupName;
+                    cellTypesVec{end+1,1} = cellData.Cell_Type;
+                    unitIDs{end+1,1} = cellID;
+                end
+            end
+        end
+    end
+
+    %% Perform Bootstrapping to Identify Significant Changes
     nBootstraps = 1000;  % Number of bootstrap iterations
     alpha = 0.05;  % Significance level for 95% confidence intervals (CIs)
 
@@ -46,48 +97,37 @@ function cidArray = labelResponsiveUnits_fun(all_data)
         end
     end
 
-    % Function to categorize units by their response type
-    function cidArray = categorize_units_by_response(all_data)
-    % Initialize cell arrays for each category
-    positiveCIDs = {};
-    negativeCIDs = {};
-    nonResponsiveCIDs = {};
-
-    % Iterate over all groups, recordings, and units
-    groupNames = fieldnames(all_data);
-    for g = 1:length(groupNames)
-        groupName = groupNames{g};
-        recordingNames = fieldnames(all_data.(groupName));
-
-        for r = 1:length(recordingNames)
-            recordingName = recordingNames{r};
-            unitNames = fieldnames(all_data.(groupName).(recordingName));
-
-            for u = 1:length(unitNames)
-                unitName = unitNames{u};
-                unitData = all_data.(groupName).(recordingName).(unitName);
-
-                % Classify units based on ResponseType
-                if strcmp(unitData.ResponseType, 'Increased')
-                    positiveCIDs{end+1} = unitName;
-                elseif strcmp(unitData.ResponseType, 'Decreased')
-                    negativeCIDs{end+1} = unitName;
-                else
-                    nonResponsiveCIDs{end+1} = unitName;
-                end
-            end
-        end
-    end
-
     % Store the lists in a 2D cell array
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
-    end
+end
 
-    % Example usage: Call the function and access specific categories
+function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
+    % Function to categorize units based on their response
+    % Input: 
+    %   all_data - a matrix or cell array containing unit data
+    % Output:
+    %   positiveUnits - units with positive responses
+    %   negativeUnits - units with negative responses
+    %   nonResponsiveUnits - units with no significant response
+
+    % Call the function to categorize units
     cidArray = categorize_units_by_response(all_data);
 
     % Access positive, negative, and non-responsive units
     positiveUnits = cidArray{1};
     negativeUnits = cidArray{2};
     nonResponsiveUnits = cidArray{3};
+end
+
+% Example usage: Call the function and access specific categories
+all_data = ... % (initialize your all_data variable here)
+[positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data);
+
+% Display the results
+disp('Positive Units:');
+disp(positiveUnits);
+disp('Negative Units:');
+disp(negativeUnits);
+disp('Non-Responsive Units:');
+disp(nonResponsiveUnits);
 
