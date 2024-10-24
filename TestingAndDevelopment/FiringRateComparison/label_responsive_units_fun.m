@@ -34,6 +34,9 @@ function data_table_FR = label_responsive_units(all_data, cell_types, binSize, m
                     if ~isfield(cellData, 'SpikeTimes_all') || isempty(cellData.SpikeTimes_all)
                         warning('Missing spike times for cell %s. Skipping.', cellID);
                         continue;  % Skip units with missing spike data
+                        % Create a table to store the results
+                        data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, responseTypeVec, ...
+                                              'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'ResponseType'});
                     end
 
                     % Convert spike times from samples to seconds
