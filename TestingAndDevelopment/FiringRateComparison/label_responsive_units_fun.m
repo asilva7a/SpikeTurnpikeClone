@@ -5,7 +5,7 @@
 % Outputs:
 % - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
 
-function data_table_FR = label_responsive_units(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Extract group names from the data structure
     groupNames = fieldnames(all_data);
 
