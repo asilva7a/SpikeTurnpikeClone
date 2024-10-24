@@ -11,10 +11,10 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     FRs_before = [];
     FRs_after = [];
     unitIDs = {};
-    binned_FRs_before = {};  % Store time-binned firing rates (before)
-    binned_FRs_after = {};   % Store time-binned firing rates (after)
-    FanoFactors_before = []; % Store Fano Factors (before)
-    FanoFactors_after = [];  % Store Fano Factors (after)
+    binned_FRs_before = {};  
+    binned_FRs_after = {};   
+    FanoFactors_before = []; 
+    FanoFactors_after = [];  
 
     % Iterate over groups, mice, and units
     groupNames = fieldnames(all_data);
@@ -36,34 +36,26 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                         continue;
                     end
 
-                    % Convert spike times from samples to seconds
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
-                    % Define bin edges for pre- and post-treatment periods using binSize
                     preBinEdges = max(0, moment - preTreatmentPeriod):binSize:moment;
                     postBinEdges = moment:binSize:(moment + postTreatmentPeriod);
 
-                    % Compute binned firing rates for both periods
                     FR_bins_before = histcounts(spikeTimes, preBinEdges) / binSize;
                     FR_bins_after = histcounts(spikeTimes, postBinEdges) / binSize;
 
-                    % Smooth the binned firing rates using the Gaussian filter
                     FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
                     FR_bins_after = conv(FR_bins_after, tempfilter, 'same');
 
-                    % Calculate Fano Factor for each period
                     fano_before = var(FR_bins_before) / mean(FR_bins_before);
                     fano_after = var(FR_bins_after) / mean(FR_bins_after);
 
-                    % Handle edge cases (e.g., NaN or Inf Fano Factor)
                     if isnan(fano_before) || isinf(fano_before), fano_before = 0; end
                     if isnan(fano_after) || isinf(fano_after), fano_after = 0; end
 
-                    % Store the average firing rates (bulk comparison)
                     FR_before = mean(FR_bins_before);
                     FR_after = mean(FR_bins_after);
 
-                    % Store data in vectors and cells
                     FRs_before(end+1,1) = FR_before;
                     FRs_after(end+1,1) = FR_after;
                     FanoFactors_before(end+1,1) = fano_before;
@@ -78,18 +70,54 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
         end
     end
 
-    % Categorize units based on bulk firing rate changes
     responseTypeVec = categorize_units(FRs_before, FRs_after);
 
-    % Label Responsive Units and store output in a 2D cell array
     cidArray = label_units_by_response(responseTypeVec, unitIDs);
 
-    % Return a table with both bulk and binned firing rates, including Fano Factors
     data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, ...
                           binned_FRs_before, binned_FRs_after, FanoFactors_before, FanoFactors_after, responseTypeVec, ...
                           'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', ...
                                             'Binned_FRs_Before', 'Binned_FRs_After', 'FanoFactor_Before', 'FanoFactor_After', 'ResponseType'});
+
+    % Visualize the Firing Rate Changes and Fano Factors
+    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after);
 end
+
+function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after)
+    % Scatter Plot: Pre vs. Post Firing Rates
+    figure;
+    scatter(FRs_before, FRs_after, 'filled');
+    xlabel('Firing Rate Before (Hz)');
+    ylabel('Firing Rate After (Hz)');
+    title('Pre vs. Post Firing Rates');
+    line([min(FRs_before), max(FRs_before)], [min(FRs_before), max(FRs_before)], 'Color', 'r', 'LineStyle', '--');
+
+    % Overlay Plot: Binned Firing Rates for the First Unit
+    if ~isempty(FRs_before)
+        figure;
+        plot(binned_FRs_before{1}, 'b', 'LineWidth', 1.5); hold on;
+        plot(binned_FRs_after{1}, 'r', 'LineWidth', 1.5);
+        xlabel('Time Bin');
+        ylabel('Firing Rate (Hz)');
+        legend({'Before Treatment', 'After Treatment'});
+        title('Binned Firing Rates for Unit 1');
+    end
+
+    % Histogram: Fano Factor Distribution
+    figure;
+    subplot(1,2,1);
+    histogram(FanoFactors_before, 'FaceColor', 'b');
+    xlabel('Fano Factor');
+    ylabel('Count');
+    title('Fano Factors Before Treatment');
+
+    subplot(1,2,2);
+    histogram(FanoFactors_after, 'FaceColor', 'r');
+    xlabel('Fano Factor');
+    ylabel('Count');
+    title('Fano Factors After Treatment');
+end
+
 
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
