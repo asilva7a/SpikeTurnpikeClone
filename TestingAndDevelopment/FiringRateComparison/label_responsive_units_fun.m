@@ -23,7 +23,7 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
 
     %% Iterate over groups, mice, and units to collect firing rate data
     groupNames = fieldnames(all_data); % Extract group names from all_data
-    
+
     for groupNum = 1:length(groupNames)
         groupName = groupNames{groupNum};  % Current group
         mouseNames = fieldnames(all_data.(groupName));
@@ -50,12 +50,16 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
                     % Calculate firing rates before and after the stimulation moment
-                    FR_before = calculateFiringRate_fun(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
-                    FR_after = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
+                    FR_before_raw = calculateFiringRate_fun(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
+                    FR_after_raw = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
 
                     % Handle cases with missing data by assigning a rate of 0
                     if isempty(FR_before), FR_before = 0; end
                     if isempty(FR_after), FR_after = 0; end
+
+                    % Apply temporal smoothing to the firing rates
+                    FR_before = conv(FR_before_raw, tempfilter, 'same');
+                    FR_after = conv(FR_after_raw, tempfilter, 'same');
 
                     % Store the firing rates and other metadata
                     FRs_before(end+1,1) = FR_before;
