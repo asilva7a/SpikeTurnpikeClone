@@ -55,8 +55,8 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
                     % Calculate firing rates before and after the stimulation moment
-                    FR_before = calculate_FR(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
-                    FR_after = calculate_FR(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
+                    FR_before = calculateFiringRate_fun(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
+                    FR_after = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
 
                     % Handle cases with missing data by assigning a rate of 0
                     if isempty(FR_before), FR_before = 0; end
@@ -227,7 +227,7 @@ set(gcf, 'Position', [100, 100, 800, 800]);  % Resize figure window for better d
 end
 
 %% Helper Function to Calculate Firing Rate (Average FR)
-function avg_FR = calculate_FR(spikeTimes, startTime, endTime, binSize)
+function avg_FR = calculateFiringRate_fun(spikeTimes, startTime, endTime, binSize)
     % Calculate firing rate by dividing the period into bins and counting spikes
     intervalBounds = startTime:binSize:endTime;
     binned_FRs = [];  % Store firing rates for each bin

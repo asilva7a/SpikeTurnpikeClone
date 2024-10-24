@@ -1,4 +1,4 @@
-function avg_FR = calculate_FR(spikeTimes, StartTime, endTime, binSize)
+function avg_FR = calculateFiringRate_fun(spikeTimes, StartTime, endTime, binSize)
     % Calculate firing rate by dividing the period into bins and counting spikes
     intervalBounds = StartTime:binSize:endTime;
     numBins = length(intervalBounds) - 1;

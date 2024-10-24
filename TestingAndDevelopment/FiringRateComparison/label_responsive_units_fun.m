@@ -43,8 +43,8 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
                     % Calculate firing rates before and after the stimulation moment
-                    FR_before = calculate_FR(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
-                    FR_after = calculate_FR(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
+                    FR_before = calculateFiringRate_fun(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
+                    FR_after = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
 
                     % Handle cases with missing data by assigning a rate of 0
                     if isempty(FR_before), FR_before = 0; end
