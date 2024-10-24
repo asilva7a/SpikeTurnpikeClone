@@ -23,57 +23,58 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
     binned_FRs_before = {};  % Store time-binned firing rates (before)
     binned_FRs_after = {};   % Store time-binned firing rates (after)
 
-    %% Iterate over groups, mice, and units to collect firing rate data
-    groupNames = fieldnames(all_data); % Extract group names from all_data
-
+     % Iterate over groups, mice, and units
+    groupNames = fieldnames(all_data);
     for groupNum = 1:length(groupNames)
-        groupName = groupNames{groupNum};  % Current group
+        groupName = groupNames{groupNum};
         mouseNames = fieldnames(all_data.(groupName));
 
         for mouseNum = 1:length(mouseNames)
-            mouseName = mouseNames{mouseNum};  % Current mouse
+            mouseName = mouseNames{mouseNum};
             cellIDs = fieldnames(all_data.(groupName).(mouseName));
 
             for cellID_num = 1:length(cellIDs)
-                cellID = cellIDs{cellID_num};  % Current cell
+                cellID = cellIDs{cellID_num};
                 cellData = all_data.(groupName).(mouseName).(cellID);
 
-                % Filter units based on cell type and whether they are single units
                 if any(strcmp(cell_types, cellData.Cell_Type)) && cellData.IsSingleUnit
                     if ~isfield(cellData, 'SpikeTimes_all') || isempty(cellData.SpikeTimes_all)
                         warning('Missing spike times for cell %s. Skipping.', cellID);
-                        continue;  % Skip units with missing spike data
-                        % Create a table to store the results
-                        data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, responseTypeVec, ...
-                                              'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'ResponseType'});
+                        continue;
                     end
 
                     % Convert spike times from samples to seconds
                     spikeTimes = cellData.SpikeTimes_all / cellData.Sampling_Frequency;
 
-                    % Calculate firing rates before and after the stimulation moment
-                    FR_before_raw = calculateFiringRate_fun(spikeTimes, max(0, moment - preTreatmentPeriod), moment, binSize);
-                    FR_after_raw = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
+                    % Define bin edges for pre- and post-treatment periods
+                    preBinEdges = max(0, moment - preTreatmentPeriod):timeBinSize:moment;
+                    postBinEdges = moment:timeBinSize:(moment + postTreatmentPeriod);
 
-                    % Handle cases with missing data by assigning a rate of 0
-                    if isempty(FR_before_raw), FR_before_raw = 0; end
-                    if isempty(FR_after_raw), FR_after_raw = 0; end
+                    % Compute binned firing rates for both periods
+                    FR_bins_before = histcounts(spikeTimes, preBinEdges) / timeBinSize;
+                    FR_bins_after = histcounts(spikeTimes, postBinEdges) / timeBinSize;
 
-                    % Apply temporal smoothing to the firing rates
-                    FR_before = conv(FR_before_raw, tempfilter, 'same');
-                    FR_after = conv(FR_after_raw, tempfilter, 'same');
+                    % Smooth the binned firing rates using the Gaussian filter
+                    FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
+                    FR_bins_after = conv(FR_bins_after, tempfilter, 'same');
 
-                    % Store the firing rates and other metadata
+                    % Store the average firing rates (bulk comparison)
+                    FR_before = mean(FR_bins_before);
+                    FR_after = mean(FR_bins_after);
+
+                    % Store data in vectors and cells
                     FRs_before(end+1,1) = FR_before;
                     FRs_after(end+1,1) = FR_after;
                     groupsVec{end+1,1} = groupName;
                     cellTypesVec{end+1,1} = cellData.Cell_Type;
                     unitIDs{end+1,1} = cellID;
+                    binned_FRs_before{end+1,1} = FR_bins_before;
+                    binned_FRs_after{end+1,1} = FR_bins_after;
                 end
             end
         end
     end
-
+    
     % Categorize units based on their response to the stimulation
     responseTypeVec = categorize_units(FRs_before, FRs_after);
 
