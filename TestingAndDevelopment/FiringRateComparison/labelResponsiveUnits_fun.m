@@ -59,6 +59,8 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
         end
     end
 
+    %% To-do: add plotting function for boot strap data as an example for the pvalb cid218, and one increase/decrease/nochange
+
     %% Categorize units based on their response to the stimulation
     % Perform Bootstrapping to Identify Significant Changes
     nBootstraps = 1000;  % Number of bootstrap iterations
