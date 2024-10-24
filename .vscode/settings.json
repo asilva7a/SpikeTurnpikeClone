@@ -1,4 +1,5 @@
 {
     "MATLAB.installPath": "/usr/local/MATLAB/R2023A",
-    "php.validate.executablePath": ""
+    "php.validate.executablePath": "",
+    "git.enableCommitSigning": false
 }

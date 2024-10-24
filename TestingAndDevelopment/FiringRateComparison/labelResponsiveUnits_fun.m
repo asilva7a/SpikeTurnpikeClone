@@ -15,7 +15,6 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     FRs_before = [];      % Stores the firing rate before the stimulation
     FRs_after = [];       % Stores the firing rate after the stimulation
     unitIDs = {};         % Stores the unique ID of each unit
-    responseTypeVec = {}; % Stores response classification ('Increased', 'Decreased', 'No Change')
 
     %% Iterate over groups, mice, and units to collect firing rate data
     for groupNum = 1:length(groupNames)
@@ -59,9 +58,14 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
         end
     end
 
-    %% To-do: add plotting function for boot strap data as an example for the pvalb cid218, and one increase/decrease/nochange
+    % Categorize units based on their response to the stimulation
+    responseTypeVec = categorize_units(FRs_before, FRs_after);
 
-    %% Categorize units based on their response to the stimulation
+    % Label Responsive Units and store output in 2D cell array
+    cidArray = label_responsive_units(responseTypeVec, unitIDs);
+end
+
+function responseTypeVec = categorize_units(FRs_before, FRs_after)
     % Perform Bootstrapping to Identify Significant Changes
     nBootstraps = 1000;  % Number of bootstrap iterations
     alpha = 0.05;  % Significance level for 95% confidence intervals (CIs)
@@ -69,6 +73,7 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     % Pre-allocate arrays to store CI results
     lower_CI = nan(length(FRs_before), 1);  % Lower bound of CI
     upper_CI = nan(length(FRs_before), 1);  % Upper bound of CI
+    responseTypeVec = cell(length(FRs_before), 1);
 
     for i = 1:length(FRs_before)
         % Compute the observed difference in firing rates for this unit
@@ -98,63 +103,24 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
             responseTypeVec{i,1} = 'No Change';
         end
     end
+end
+
+function cidArray = label_responsive_units(responseTypeVec, unitIDs)
+    positiveCIDs = {};
+    negativeCIDs = {};
+    nonResponsiveCIDs = {};
+
+    for i = 1:length(responseTypeVec)
+        switch responseTypeVec{i}
+            case 'Increased'
+                positiveCIDs{end+1} = unitIDs{i};
+            case 'Decreased'
+                negativeCIDs{end+1} = unitIDs{i};
+            case 'No Change'
+                nonResponsiveCIDs{end+1} = unitIDs{i};
+        end
+    end
 
     % Store the lists in a 2D cell array
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
 end
-
-%% Label Responsive Units and store output in 2D cell array
-function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
-    % Function to categorize units based on their response
-    % Input: 
-    %   all_data - a matrix or cell array containing unit data
-    % Output:
-    %   positiveUnits - units with positive responses
-    %   negativeUnits - units with negative responses
-    %   nonResponsiveUnits - units with no significant response
-
-    % Initialize arrays to store categorized units
-    positiveUnits = {};
-    negativeUnits = {};
-    nonResponsiveUnits = {};
-
-    % Iterate over all data to categorize units
-    for i = 1:length(all_data)
-        cellData = all_data{i};
-        cellID = cellData.Cell_ID;
-        FR_before = handle_missing_data(cellData.FR_before);
-        FR_after = handle_missing_data(cellData.FR_after);
-
-        % Determine the response type
-        if FR_after > FR_before
-            positiveUnits{end+1} = cellID;
-        elseif FR_after < FR_before
-            negativeUnits{end+1} = cellID;
-        else
-            nonResponsiveUnits{end+1} = cellID;
-        end
-    end
-end
-
-% Helper function to handle missing data
-function FR = handle_missing_data(FR)
-    if isempty(FR)
-        FR = 0;
-    end
-end
-
-% Example usage: Call the function and access specific categories
-all_data = ... % (initialize your all_data variable here)
-[positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data);
-
-% Display the results
-display_units('Positive Units:', positiveUnits);
-display_units('Negative Units:', negativeUnits);
-display_units('Non-Responsive Units:', nonResponsiveUnits);
-
-% Helper function to display units
-function display_units(label, units)
-    disp(label);
-    disp(units);
-end
-
