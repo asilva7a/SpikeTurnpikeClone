@@ -67,7 +67,7 @@
         end
     end
 
-    % Store the lists in a 2D cell array for easier access
+    % Store the lists in a 2D cell array
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
     end
 
