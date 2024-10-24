@@ -74,12 +74,16 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
             end
         end
     end
-    
-    % Categorize units based on their response to the stimulation
+
+    % Categorize units based on bulk firing rate changes
     responseTypeVec = categorize_units(FRs_before, FRs_after);
 
-    % Label Responsive Units and store output in 2D cell array
+    % Label Responsive Units and store output in a 2D cell array
     cidArray = label_units_by_response(responseTypeVec, unitIDs);
+
+    % Return a table with both bulk and binned firing rates
+    data_table_FR = table(unitIDs, groupsVec, cellTypesVec, FRs_before, FRs_after, binned_FRs_before, binned_FRs_after, responseTypeVec, ...
+                          'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', 'Binned_FRs_Before', 'Binned_FRs_After', 'ResponseType'});
 end
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
