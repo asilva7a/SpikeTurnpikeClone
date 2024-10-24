@@ -62,7 +62,7 @@ function data_table_FR = label_responsive_units(all_data, cell_types, binSize, m
     responseTypeVec = categorize_units(FRs_before, FRs_after);
 
     % Label Responsive Units and store output in 2D cell array
-    cidArray = label_responsive_units(responseTypeVec, unitIDs);
+    cidArray = label_units_by_response(responseTypeVec, unitIDs);
 end
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
@@ -105,7 +105,7 @@ function responseTypeVec = categorize_units(FRs_before, FRs_after)
     end
 end
 
-function cidArray = label_responsive_units(responseTypeVec, unitIDs)
+function cidArray = label_units_by_response(responseTypeVec, unitIDs)
     positiveCIDs = {};
     negativeCIDs = {};
     nonResponsiveCIDs = {};
