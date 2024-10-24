@@ -128,13 +128,13 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     % Define outlier detection threshold (IQR method)
     outlierMultiplier = 1.5;  % Multiplier for IQR to detect outliers
 
-    % Iterate over each group
+   % Iterate over each group
     for groupIdx = 1:length(uniqueGroups)
         groupName = uniqueGroups{groupIdx};  % Current group name
-
+    
         % Filter data for the current group
         isCurrentGroup = strcmp(groupsVec, groupName);
-
+    
         % Iterate over response types (Increased, Decreased)
         for responseIdx = 1:2  % 1 = Increased, 2 = Decreased
             if responseIdx == 1
@@ -142,38 +142,24 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
             else
                 responseType = 'Decreased';
             end
-
+    
             % Filter data for the current response type
             isCurrentResponse = strcmp(responseTypeVec, responseType);
-
+    
             % Get the indices of units that match the current group and response type
             plotIdx = isCurrentGroup & isCurrentResponse;
-
+    
             % Extract the corresponding firing rates
             preFR = FRs_before(plotIdx);
             postFR = FRs_after(plotIdx);
-
+    
             % Skip if there are no units matching the criteria
             if isempty(preFR), continue; end
-
-            %% Outlier Detection (IQR Method)
-            allFR = [preFR; postFR];  % Combine pre and post FRs
-            Q1 = prctile(allFR, 25);  % 25th percentile (Q1)
-            Q3 = prctile(allFR, 75);  % 75th percentile (Q3)
-            IQR = Q3 - Q1;  % Interquartile range
-
-            % Define the outlier thresholds
-            lowerBound = Q1 - outlierMultiplier * IQR;
-            upperBound = Q3 + outlierMultiplier * IQR;
-
-            % Identify non-outlier data points for plotting
-            nonOutlierIdx = preFR >= lowerBound & preFR <= upperBound & ...
-                            postFR >= lowerBound & postFR <= upperBound;
-
+    
             % Create a subplot for the current group and response type
             subplot(length(uniqueGroups), 2, (groupIdx - 1) * 2 + responseIdx);
-
-            %% Plot Paired Lines for Non-Outlier Units
+    
+            % Plot Paired Lines for Non-Outlier Units
             for unitIdx = 1:length(preFR)
                 if nonOutlierIdx(unitIdx)  % Plot only non-outlier units
                     plot([1, 2], [preFR(unitIdx), postFR(unitIdx)], '-o', ...
@@ -181,24 +167,28 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
                     hold on;
                 end
             end
-
-            %% Customize Axes and Labels
-            xticks([1 2]);  % Set x-axis ticks
-            xticklabels({'Pre-treatment', 'Post-treatment'});  % Label the x-axis ticks
-            ylabel('Firing Rate (Hz)');  % Set y-axis label
-
-            % Set title for the subplot
+    
+            % Customize Axes and Labels
+            xticks([1 2]);
+            xticklabels({'Pre-treatment', 'Post-treatment'});
+            ylabel('Firing Rate (Hz)');
             title(sprintf('%s %s Firing', groupName, responseType));
-
-            %% Adjust Y-Axis Limits to Fit Markers Neatly
+    
+            % Adjust Y-Axis Limits to Fit Markers Neatly
             nonOutlierFR = allFR(allFR >= lowerBound & allFR <= upperBound);  % Non-outlier data only
-            yMin = min(nonOutlierFR) - 0.05 * range(nonOutlierFR);  % Small buffer below
-            yMax = max(nonOutlierFR) + 0.05 * range(nonOutlierFR);  % Small buffer above
-            ylim([max(0, yMin), yMax]);  % Ensure the lower limit is at least 0
-
-            %% Ensure the Plot Layout is Tight and Clean
-            set(gca, 'TickLength', [0.01 0.01]);  % Shorten tick marks for cleaner look
-            axis tight;  % Ensure the axes fit tightly around the data
+            yMin = min(nonOutlierFR) - 0.05 * range(nonOutlierFR);
+            yMax = max(nonOutlierFR) + 0.05 * range(nonOutlierFR);
+            ylim([max(0, yMin), yMax]);
+    
+            % Add Text with Number of Units in the Group
+            numUnits = sum(plotIdx);  % Count the number of units for the group and response type
+            text(1.5, yMax - 0.1 * range(nonOutlierFR), ...
+                 sprintf('n = %d', numUnits), 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10, 'FontWeight', 'bold');
+    
+            % Ensure Plot Layout is Tight and Clean
+            set(gca, 'TickLength', [0.01 0.01]);
+            axis tight;
         end
     end
 
