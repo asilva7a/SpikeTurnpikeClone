@@ -6,6 +6,12 @@
 % - cidArray: A 2D cell array containing unit names categorized by response type ('Increased', 'Decreased', 'No Change').
 
 function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+    %Gaussian filter for temporal smoothing
+    gausssigma = 1; %standard deviation of the gaussian filter
+    gausswidth = 5; %width of the gaussian filter in standard deviations
+    tempfilter = exp(-((-floor(gausswindow/2):floor(gausswindow/2)).^2)/(2*gausssigma^2));
+    tempfilter = tempfilter/sum(tempfilter); %normalize the filter
+
     % Extract group names from the data structure
     groupNames = fieldnames(all_data);
 
@@ -126,7 +132,7 @@ function cidArray = label_units_by_response(responseTypeVec, unitIDs)
 
     % Store the lists in a 2D cell array
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
-    
+
     % Display the contents of cidArray in the workspace (optional)
     % assignin('base', 'cidArray', cidArray);
     % end
