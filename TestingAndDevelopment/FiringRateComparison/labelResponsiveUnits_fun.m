@@ -59,7 +59,8 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
         end
     end
 
-    %% Perform Bootstrapping to Identify Significant Changes
+    %% Categorize units based on their response to the stimulation
+    % Perform Bootstrapping to Identify Significant Changes
     nBootstraps = 1000;  % Number of bootstrap iterations
     alpha = 0.05;  % Significance level for 95% confidence intervals (CIs)
 
@@ -100,7 +101,9 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
 end
 
-function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
+    %% Label Responsive Units and store output in 2D cell array
+    function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
+    
     % Function to categorize units based on their response
     % Input: 
     %   all_data - a matrix or cell array containing unit data
