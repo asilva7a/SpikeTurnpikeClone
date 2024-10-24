@@ -1,3 +1,14 @@
+%% Function to Label Responsive Units. Takes all_data as input and returns a cell array of unit names categorized by response type.
+%% Inputs:
+% - all_data: A struct containing firing rate data for all units
+%% Outputs:
+% - cidArray: A 2D cell array containing unit names categorized by response type
+
+
+function cidArray = labelResponsiveUnits_fun(all_data)
+    % Initialize cell array to store response types
+    responseTypeVec = cell(length(FRs_before), 1);
+    
 %% Perform Bootstrapping to Identify Significant Changes
     nBootstraps = 1000;  % Number of bootstrap iterations
     alpha = 0.05;  % Significance level for 95% confidence intervals (CIs)
