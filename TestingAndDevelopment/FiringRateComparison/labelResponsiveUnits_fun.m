@@ -101,9 +101,8 @@ function data_table_FR = FR_compare_Treatment(all_data, cell_types, binSize, mom
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
 end
 
-    %% Label Responsive Units and store output in 2D cell array
-    function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
-    
+%% Label Responsive Units and store output in 2D cell array
+function [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data)
     % Function to categorize units based on their response
     % Input: 
     %   all_data - a matrix or cell array containing unit data
@@ -121,12 +120,8 @@ end
     for i = 1:length(all_data)
         cellData = all_data{i};
         cellID = cellData.Cell_ID;
-        FR_before = cellData.FR_before;
-        FR_after = cellData.FR_after;
-
-        % Handle cases with missing data by assigning a rate of 0
-        if isempty(FR_before), FR_before = 0; end
-        if isempty(FR_after), FR_after = 0; end
+        FR_before = handle_missing_data(cellData.FR_before);
+        FR_after = handle_missing_data(cellData.FR_after);
 
         % Determine the response type
         if FR_after > FR_before
@@ -139,15 +134,25 @@ end
     end
 end
 
+% Helper function to handle missing data
+function FR = handle_missing_data(FR)
+    if isempty(FR)
+        FR = 0;
+    end
+end
+
 % Example usage: Call the function and access specific categories
 all_data = ... % (initialize your all_data variable here)
 [positiveUnits, negativeUnits, nonResponsiveUnits] = labelResponsiveUnits_fun(all_data);
 
 % Display the results
-disp('Positive Units:');
-disp(positiveUnits);
-disp('Negative Units:');
-disp(negativeUnits);
-disp('Non-Responsive Units:');
-disp(nonResponsiveUnits);
+display_units('Positive Units:', positiveUnits);
+display_units('Negative Units:', negativeUnits);
+display_units('Non-Responsive Units:', nonResponsiveUnits);
+
+% Helper function to display units
+function display_units(label, units)
+    disp(label);
+    disp(units);
+end
 
