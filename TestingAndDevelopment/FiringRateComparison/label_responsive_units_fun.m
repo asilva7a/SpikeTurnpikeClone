@@ -14,12 +14,14 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
 
     % Extract group names from the data structure
 
-    % Initialize storage vectors for results
-    groupsVec = {};       % Stores the group of each unit
-    cellTypesVec = {};    % Stores the type of each unit (e.g., 'RS', 'FS')
-    FRs_before = [];      % Stores the firing rate before the stimulation
-    FRs_after = [];       % Stores the firing rate after the stimulation
-    unitIDs = {};         % Stores the unique ID of each unit
+ % Initialize storage vectors for results
+    groupsVec = {};
+    cellTypesVec = {};
+    FRs_before = [];
+    FRs_after = [];
+    unitIDs = {};
+    binned_FRs_before = {};  % Store time-binned firing rates (before)
+    binned_FRs_after = {};   % Store time-binned firing rates (after)
 
     %% Iterate over groups, mice, and units to collect firing rate data
     groupNames = fieldnames(all_data); % Extract group names from all_data
