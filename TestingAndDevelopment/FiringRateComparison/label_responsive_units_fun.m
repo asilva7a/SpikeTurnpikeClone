@@ -126,4 +126,8 @@ function cidArray = label_units_by_response(responseTypeVec, unitIDs)
 
     % Store the lists in a 2D cell array
     cidArray = {positiveCIDs; negativeCIDs; nonResponsiveCIDs};
+    
+    % Display the contents of cidArray in the workspace (optional)
+    % assignin('base', 'cidArray', cidArray);
+    % end
 end
