@@ -93,11 +93,16 @@ end
 
 function boot_diffs = bootstrap_difference(FR_before, FR_after, nBootstraps)
     if nargin < 3, nBootstraps = 1000; end
+
+    % Generate bootstrapped differences by resampling with replacement
     boot_diffs = zeros(nBootstraps, 1);
     for b = 1:nBootstraps
-        boot_before = FR_before + randn * std(FR_before);
-        boot_after = FR_after + randn * std(FR_after);
-        boot_diffs(b) = boot_after - boot_before;
+        % Resample firing rates with replacement
+        resampled_before = datasample(FR_before, length(FR_before), 'Replace', true);
+        resampled_after = datasample(FR_after, length(FR_after), 'Replace', true);
+
+        % Compute the difference in mean firing rate for this bootstrap sample
+        boot_diffs(b) = mean(resampled_after) - mean(resampled_before);
     end
 end
 
