@@ -54,8 +54,8 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     FR_after_raw = calculateFiringRate_fun(spikeTimes, moment, min(cellData.Recording_Duration, moment + postTreatmentPeriod), binSize);
 
                     % Handle cases with missing data by assigning a rate of 0
-                    if isempty(FR_before), FR_before = 0; end
-                    if isempty(FR_after), FR_after = 0; end
+                    if isempty(FR_before_raw), FR_before_raw = 0; end
+                    if isempty(FR_after_raw), FR_after_raw = 0; end
 
                     % Apply temporal smoothing to the firing rates
                     FR_before = conv(FR_before_raw, tempfilter, 'same');
