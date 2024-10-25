@@ -1,69 +1,70 @@
-function generate_PSTH(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod, responseTypeVec, unitIDs)
-    % Define colors for responsivity types
-    colors = struct('Increased', [1, 0, 0], ...  % Red
-                    'Decreased', [0, 0, 1], ...  % Blue
-                    'NoChange', [0, 0, 0]);      % Black
+function generate_unit_PSTHs(all_data, binSize, smoothingWindow)
+    % Generate time-locked PSTHs for each unit across the entire recording.
+    % The PSTHs are plotted individually with relevant metadata for sanity checking.
+    %
+    % INPUTS:
+    %   all_data       - Structure containing spike data for groups, recordings, and units.
+    %   binSize        - Size of time bins for PSTH (in seconds).
+    %   smoothingWindow- A vector specifying the smoothing window (e.g., [1 1 1 1 1]).
+    %
+    % Each plot will display:
+    %   - Unit ID
+    %   - Unit type (e.g., RS or FS)
+    %   - Channel number
+    %   - Recording name
+    %   - Whether the unit was modulated (Increased/Decreased/No Change)
 
-    % Get group names from the data
+    % Define a figure counter to manage plot layout
+    figCounter = 1;  % Keeps track of how many figures we generate
+    unitsPerFigure = 10;  % Number of subplots per figure window
+
+    % Iterate through all groups, recordings, and units
     groupNames = fieldnames(all_data);
-
-    % Iterate over each recording group (e.g., EMX, PVALB)
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordingNames = fieldnames(all_data.(groupName));
 
-        % Create a new figure for the current group
-        figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
-
-        % Initialize a subplot index
-        subplotIdx = 1;
-
-        % Iterate over recordings within the current group
         for r = 1:length(recordingNames)
             recordingName = recordingNames{r};
             unitNames = fieldnames(all_data.(groupName).(recordingName));
 
-            % Iterate over units within the recording
             for u = 1:length(unitNames)
                 unitName = unitNames{u};
                 unitData = all_data.(groupName).(recordingName).(unitName);
+
+                % Extract spike times (in seconds)
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
 
-                % Calculate the PSTH for this unit
-                psthCounts = histcounts(spikeTimes, ...
-                    moment - prePeriod : binSize : moment + postPeriod);
+                % Generate bin edges based on the entire recording duration
+                edges = 0:binSize:unitData.Recording_Duration;  % Bin edges
+
+                % Compute PSTH (spike counts per bin, raw firing rate in Hz)
+                psthCounts = histcounts(spikeTimes, edges) / binSize;  % In Hz
+
+                % Apply light smoothing using the provided smoothing window
                 smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
 
-                % Determine the response type for the current unit
-                unitIndex = find(strcmpi(unitIDs, unitName), 1);
-                if isempty(unitIndex)
-                    warning('Unit %s not found in unitIDs. Skipping.', unitName);
-                    continue;
-                end
-                responseType = responseTypeVec{unitIndex};
-
-                % Select the color based on the response type
-                switch responseType
-                    case 'Increased'
-                        color = colors.Increased;
-                    case 'Decreased'
-                        color = colors.Decreased;
-                    otherwise
-                        color = colors.NoChange;
+                % Check if a new figure is needed
+                if mod(u - 1, unitsPerFigure) == 0
+                    figure(figCounter);  % Create a new figure
+                    figCounter = figCounter + 1;
+                    clf;  % Clear the figure for fresh plotting
+                    tiledlayout(unitsPerFigure / 2, 2);  % Create a grid layout
                 end
 
-                % Create a subplot for the current unit
-                subplot(length(recordingNames), ceil(length(unitNames) / length(recordingNames)), subplotIdx);
-                hold on;
-
-                % Plot the PSTH
-                plot(smoothedPSTH, 'Color', color, 'LineWidth', 1.5);
-                title(['Unit: ', unitName]);
-                xlabel('Time Bin');
+                % Plot the PSTH for the current unit
+                nexttile;
+                plot(edges(1:end-1), smoothedPSTH, 'k', 'LineWidth', 1.5);
+                xlabel('Time (s)');
                 ylabel('Firing Rate (Hz)');
 
-                % Update subplot index
-                subplotIdx = subplotIdx + 1;
+                % Add metadata to the plot title
+                title(sprintf('Unit: %s | Type: %s | Ch: %d | Rec: %s | Mod: %s', ...
+                    unitName, unitData.Cell_Type, unitData.Template_Channel, ...
+                    recordingName, unitData.ResponseType));
+                
+                % Adjust y-axis limits for better visualization
+                ylim([0, max(smoothedPSTH) + 0.1 * max(smoothedPSTH)]);  
             end
         end
     end
