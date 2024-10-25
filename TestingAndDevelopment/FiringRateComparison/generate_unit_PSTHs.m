@@ -1,8 +1,11 @@
-function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod, responseTypeVec, unitIDs)
+function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod, responseTypeVec, unitIDs)
     % Define colors for responsivity types
     colors = struct('Increased', [1, 0, 0], ...  % Red
                     'Decreased', [0, 0, 1], ...  % Blue
                     'NoChange', [0, 0, 0]);      % Black
+
+    % Flatten unitIDs to a string array for reliable comparison
+    unitIDs_flat = string(unitIDs);  
 
     % Iterate over all recording groups
     groupNames = fieldnames(all_data);
@@ -32,12 +35,6 @@ function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeri
                     unitName = strtrim(unitNames{u});
                     unitData = all_data.(groupName).(recordingName).(unitName);
 
-                    % Ensure both unitName and unitIDs are compared as strings
-                    unitName = strtrim(unitName);  % Remove extra spaces from unitName
-
-                    % Flatten the cell array of unitIDs to a string array for better comparison
-                    unitIDs_flat = string(unitIDs);  
-
                     % Find the index of the current unit
                     unitIndex = find(unitIDs_flat == string(unitName), 1);
 
@@ -47,27 +44,22 @@ function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeri
                         continue;
                     end
 
-                    % Calculate PSTH for this unit
-                    spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
-                    psthCounts = histcounts(spikeTimes, ...
-                        moment - prePeriod : binSize : moment + postPeriod);
-                    smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
-
-                    % Find the response type for the unit
-                    unitIndex = find(strcmpi(unitIDs, unitName), 1);
-                    if isempty(unitIndex)
-                        warning('Unit %s not found in unitIDs. Skipping.', unitName);
-                        continue;
-                    end
+                    % Get the response type for the unit
                     responseType = responseTypeVec{unitIndex};
 
                     % Only plot if the response type matches the current subplot
                     if strcmpi(responseType, responseTypes{rt})
+                        % Calculate and plot the PSTH for this unit
+                        spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+                        psthCounts = histcounts(spikeTimes, ...
+                            moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod);
+                        smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
+
+                        % Plot the PSTH with the appropriate color
                         plot(smoothedPSTH, 'Color', colors.(strrep(responseType, ' ', '')), 'LineWidth', 1.5);
                     end
                 end
             end
-
             hold off;
         end
     end
