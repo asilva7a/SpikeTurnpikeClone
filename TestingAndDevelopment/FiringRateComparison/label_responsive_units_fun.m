@@ -42,37 +42,49 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
                     preBinEdges = max(0, moment - preTreatmentPeriod):binSize:moment;
                     postBinEdges = moment:binSize:(moment + postTreatmentPeriod);
 
-                    FR_bins_before = histcounts(spikeTimes, preBinEdges) / binSize;
-                    FR_bins_after = histcounts(spikeTimes, postBinEdges) / binSize;
+                    % Calculate firing rates before and after the stimulation
+                    FR_before = calculate_FR(spikeTimes, preBinEdges);
+                    FR_after = calculate_FR(spikeTimes, postBinEdges);
 
-                    FR_bins_before = conv(FR_bins_before, tempfilter, 'same');
-                    FR_bins_after = conv(FR_bins_after, tempfilter, 'same');
+                    % Handle cases with missing data by assigning a rate of 0
+                    FR_before = handle_missing_data(FR_before);
+                    FR_after = handle_missing_data(FR_after);
 
-                    FR_before = mean(FR_bins_before);
-                    FR_after = mean(FR_bins_after);
+                    % Perform bootstrapping
+                    nBootstraps = 1000;  % Number of bootstrap iterations
+                    boot_diffs = zeros(nBootstraps, 1);
+                    for b = 1:nBootstraps
+                        resample_before = datasample(FR_before, length(FR_before));
+                        resample_after = datasample(FR_after, length(FR_after));
+                        boot_diffs(b) = mean(resample_after) - mean(resample_before);
+                    end
+
+                    % Calculate the 95% confidence interval from the bootstrap distribution
+                    lower_CI = prctile(boot_diffs, 2.5);
+                    upper_CI = prctile(boot_diffs, 97.5);
+
+                    % Classify the unit based on whether the CI includes 0
+                    if lower_CI > 0 || upper_CI < 0
+                        responseType = mean(FR_after) > mean(FR_before) ? 'Increased' : 'Decreased';
+                    else
+                        responseType = 'No Change';
+                    end
+
+                    % Store results
+                    FanoFactors_before(end+1,1) = var(FR_before) / mean(FR_before);
+                    FanoFactors_after(end+1,1) = var(FR_after) / mean(FR_after);
+                    bootResults{end+1,1} = boot_diffs;
 
                     % Store the firing rates
                     FRs_before(end+1,1) = FR_before;
                     FRs_after(end+1,1) = FR_after;
 
-                    % Bootstrap the difference
-                    boot_diffs = bootstrap_difference(FR_before, FR_after);
-                    bootResults{end+1} = boot_diffs;
-
-                    % Fano Factors
-                    fano_before = var(FR_bins_before) / mean(FR_bins_before);
-                    fano_after = var(FR_bins_after) / mean(FR_bins_after);
-                    if isnan(fano_before) || isinf(fano_before), fano_before = 0; end
-                    if isnan(fano_after) || isinf(fano_after), fano_after = 0; end
-                    FanoFactors_before(end+1,1) = fano_before;
-                    FanoFactors_after(end+1,1) = fano_after;
-
                     % Store metadata
                     groupsVec{end+1,1} = groupName;
                     cellTypesVec{end+1,1} = cellData.Cell_Type;
                     unitIDs{end+1,1} = cellID;
-                    binned_FRs_before{end+1,1} = FR_bins_before;
-                    binned_FRs_after{end+1,1} = FR_bins_after;
+                    binned_FRs_before{end+1,1} = FR_before;
+                    binned_FRs_after{end+1,1} = FR_after;
                 end
             end
         end
@@ -130,7 +142,7 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     legend('Bootstrap Distribution', 'Observed Difference');
 
     % Check and Plot Fano Factor Histograms
-    if ~isempty(FanoFactors_before) && ~isempty(FanoFactors_after)
+    if ~isempty(FanoFactors_before) && !isempty(FanoFactors_after)
         figure;
 
         % Plot Fano Factors Before Treatment
@@ -213,4 +225,20 @@ function cidArray = label_units_by_response(responseTypeVec, unitIDs)
     % Display the contents of cidArray in the workspace (optional)
     % assignin('base', 'cidArray', cidArray);
     % end
+end
+
+% Helper function to calculate firing rate
+function avg_FR = calculate_FR(spikeTimes, binEdges)
+    binned_FRs = histcounts(spikeTimes, binEdges) / diff(binEdges(1:2));
+    avg_FR = mean(binned_FRs);
+    if isempty(avg_FR)
+        avg_FR = 0;  % Return 0 if no spikes were found
+    end
+end
+
+% Helper function to handle missing data
+function FR = handle_missing_data(FR)
+    if isempty(FR)
+        FR = 0;
+    end
 end
