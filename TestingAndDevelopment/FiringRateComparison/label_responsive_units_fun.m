@@ -65,7 +65,11 @@ function data_table_FR = label_responsive_units_fun(all_data, cell_types, binSiz
 
                     % Classify the unit based on whether the CI includes 0
                     if lower_CI > 0 || upper_CI < 0
-                        responseType = mean(FR_after) > mean(FR_before) ? 'Increased' : 'Decreased';
+                        if mean(FR_after) > mean(FR_before)
+                            responseType = 'Increased';
+                        else
+                            responseType = 'Decreased';
+                        end
                     else
                         responseType = 'No Change';
                     end
