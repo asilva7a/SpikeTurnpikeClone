@@ -1,4 +1,4 @@
-function generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
+function generate_PSTH(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
     % This function generates three types of PSTH plots:
     % 1. Overlay PSTHs for responsive units (Increased/Decreased).
     % 2. Overlay PSTHs for non-responsive units.
