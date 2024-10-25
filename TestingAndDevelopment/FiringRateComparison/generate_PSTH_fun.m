@@ -49,10 +49,25 @@ function generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, prePeriod
                 allPSTHs = [allPSTHs; smoothedPSTH];
 
                 % Classify and store PSTH based on ResponseType
-                if ismember(unitData.ResponseType, {'Increased', 'Decreased'})
-                    responsivePSTHs = [responsivePSTHs; smoothedPSTH];
-                else
-                    nonResponsivePSTHs = [nonResponsivePSTHs; smoothedPSTH];
+                % Initialize containers for PSTHs
+                    responsivePSTHs = {};  % Store PSTHs for responsive units
+                    nonResponsivePSTHs = {};  % Store PSTHs for non-responsive units
+
+                    % Iterate over all units to classify and store PSTHs
+                    for i = 1:length(responseTypeVec)
+                        % Get the response type for the current unit
+                        responseType = responseTypeVec{i};  
+
+                        % Retrieve the smoothed PSTH for this unit (assuming it's pre-computed)
+                        smoothedPSTH = binned_FRs_after{i};  
+
+                        % Classify and store the PSTH based on the response type
+                        if ismember(responseType, {'Increased', 'Decreased'})
+                            responsivePSTHs{end+1} = smoothedPSTH;
+                        else
+                            nonResponsivePSTHs{end+1} = smoothedPSTH;
+                        end
+                    end
                 end
             end
         end
