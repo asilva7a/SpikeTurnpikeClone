@@ -1,4 +1,4 @@
-function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod, responseTypeVec, unitIDs)
+function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod, responseTypeVec, unitIDs)
     % Define colors for responsivity types
     colors = struct('Increased', [1, 0, 0], ...  % Red
                     'Decreased', [0, 0, 1], ...  % Blue
@@ -27,7 +27,7 @@ function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeri
                 % Calculate PSTH
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
                 psthCounts = histcounts(spikeTimes, ...
-                    moment - prePeriod : binSize : moment + postPeriod);
+                    moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod);
                 smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
 
                 % Find the unit's response type from the data table
