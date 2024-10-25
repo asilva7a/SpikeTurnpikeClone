@@ -1,4 +1,4 @@
-function generate_PSTHs_by_response(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
+function generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod)
     % Generate three plots:
     % 1. Overlay PSTHs for responsive units (Increased or Decreased).
     % 2. Overlay PSTHs for non-responsive units.
