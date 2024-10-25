@@ -65,7 +65,7 @@ preTreatmentPeriod = 1800;  % Seconds before the event
 postTreatmentPeriod = 1800;  % Seconds after the event
 
 % Label responsive units based on firing rate changes
-label_responsive_units(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
+label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Generate and plot individual PSTHs for all units
 generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
