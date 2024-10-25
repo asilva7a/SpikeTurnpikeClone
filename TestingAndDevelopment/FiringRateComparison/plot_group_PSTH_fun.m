@@ -1,36 +1,41 @@
-function plot_group_PSTH(all_data)
-    % Plot overlaid PSTHs for responsive and non-responsive units.
+function plot_group_PSTH(psthData, smoothingWindow)
+    % Plot time-locked PSTHs for each unit with metadata
     
-    % Assuming all_data is a struct with fields 'responsive' and 'non_responsive'
-    % Each field contains an array of PSTH data for the respective units
-    
-    % Extract PSTH data
-    responsive_data = all_data.responsive;
-    non_responsive_data = all_data.non_responsive;
-    
-    % Define time vector (assuming PSTH data is aligned to a common time base)
-    time_vector = -100:100; % Example time vector, adjust as needed
-    
-    % Plot responsive units
-    figure;
-    subplot(2, 1, 1);
-    hold on;
-    for i = 1:length(responsive_data)
-        plot(time_vector, responsive_data{i}, 'b');
+    % Define a common time vector (adjust as needed)
+    time_vector = linspace(-1000, 2000, size(psthData.(1).PSTH, 2)); % Example: 3000 ms range
+
+    % Iterate over each group in the data
+    groupNames = fieldnames(psthData);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        units = fieldnames(psthData.(groupName));
+
+        % Create a figure for this group
+        figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
+
+        % Plot each unit individually as a sanity check
+        for u = 1:length(units)
+            unitID = units{u};
+            unitData = psthData.(groupName).(unitID);
+
+            % Apply light smoothing to the PSTH
+            smoothedPSTH = conv(unitData.PSTH, smoothingWindow, 'same');
+
+            % Create a subplot for this unit
+            subplot(ceil(length(units)/5), 5, u); % Adjust the grid for all units
+            plot(time_vector, smoothedPSTH, 'LineWidth', 1.5);
+
+            % Add title and labels with unit metadata
+            title(sprintf('Unit: %s | Type: %s\nRec: %s | Channel: %d\nResp: %s', ...
+                unitID, unitData.CellType, unitData.RecordingName, unitData.Channel, unitData.ResponseType));
+            xlabel('Time (ms)');
+            ylabel('Firing Rate (Hz)');
+
+            % Ensure the plot layout is clean
+            axis tight;
+        end
+
+        % Adjust figure layout to avoid overlap
+        sgtitle(['PSTHs for Group: ', groupName]);
     end
-    title('Responsive Units');
-    xlabel('Time (ms)');
-    ylabel('Firing Rate (Hz)');
-    hold off;
-    
-    % Plot non-responsive units
-    subplot(2, 1, 2);
-    hold on;
-    for i = 1:length(non_responsive_data)
-        plot(time_vector, non_responsive_data{i}, 'r');
-    end
-    title('Non-Responsive Units');
-    xlabel('Time (ms)');
-    ylabel('Firing Rate (Hz)');
-    hold off;
 end

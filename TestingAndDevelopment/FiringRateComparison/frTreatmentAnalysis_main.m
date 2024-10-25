@@ -75,7 +75,7 @@ unitIDs = data_table_FR.UnitID;
 psthData = generate_unit_PSTHs(data_table_FR, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
-plot_group_PSTH_fun(all_data);
+plot_group_PSTH_fun(psthData);
 
 % Plot mean + SEM PSTHs for all units (no overlaid individual PSTHs)
 plot_mean_sem_PSTH_fun(all_data);
