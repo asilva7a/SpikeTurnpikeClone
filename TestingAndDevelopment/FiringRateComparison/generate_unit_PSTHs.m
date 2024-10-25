@@ -1,10 +1,10 @@
-function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod, responseTypeVec, unitIDs)
+function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod, responseTypeVec, unitIDs)
     % Define colors for responsivity types
     colors = struct('Increased', [1, 0, 0], ...  % Red
                     'Decreased', [0, 0, 1], ...  % Blue
                     'NoChange', [0, 0, 0]);      % Black
 
-    % Iterate over groups in the data
+    % Iterate over all recording groups
     groupNames = fieldnames(all_data);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
@@ -12,54 +12,48 @@ function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, preTrea
 
         % Create a new figure for the current group
         figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
-        subplotIdx = 1;  % Subplot index
 
-        % Iterate over recordings
-        for r = 1:length(recordingNames)
-            recordingName = recordingNames{r};
-            unitNames = fieldnames(all_data.(groupName).(recordingName));
+        % Create three subplots: one for each response type
+        responseTypes = {'Increased', 'Decreased', 'No Change'};
+        for rt = 1:length(responseTypes)
+            subplot(1, 3, rt);  % 3 subplots: one per response type
+            hold on;
+            title([groupName, ' - ', responseTypes{rt}]);
+            xlabel('Time Bin');
+            ylabel('Firing Rate (Hz)');
 
-            % Iterate over units
-            for u = 1:length(unitNames)
-                unitName = strtrim(unitNames{u});  % Trim spaces
-                unitData = all_data.(groupName).(recordingName).(unitName);
+            % Iterate over recordings within the current group
+            for r = 1:length(recordingNames)
+                recordingName = recordingNames{r};
+                unitNames = fieldnames(all_data.(groupName).(recordingName));
 
-                % Calculate PSTH
-                spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
-                psthCounts = histcounts(spikeTimes, ...
-                    moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod);
-                smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
+                % Iterate over units within the current recording
+                for u = 1:length(unitNames)
+                    unitName = strtrim(unitNames{u});
+                    unitData = all_data.(groupName).(recordingName).(unitName);
 
-                % Find the unit's response type from the data table
-                unitIndex = find(strcmpi(unitIDs, unitName), 1);
-                if isempty(unitIndex)
-                    warning('Unit %s not found in unitIDs. Skipping.', unitName);
-                    continue;
+                    % Calculate PSTH for this unit
+                    spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+                    psthCounts = histcounts(spikeTimes, ...
+                        moment - prePeriod : binSize : moment + postPeriod);
+                    smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
+
+                    % Find the response type for the unit
+                    unitIndex = find(strcmpi(unitIDs, unitName), 1);
+                    if isempty(unitIndex)
+                        warning('Unit %s not found in unitIDs. Skipping.', unitName);
+                        continue;
+                    end
+                    responseType = responseTypeVec{unitIndex};
+
+                    % Only plot if the response type matches the current subplot
+                    if strcmpi(responseType, responseTypes{rt})
+                        plot(smoothedPSTH, 'Color', colors.(strrep(responseType, ' ', '')), 'LineWidth', 1.5);
+                    end
                 end
-                responseType = responseTypeVec{unitIndex};
-
-                % Choose color based on response type
-                switch responseType
-                    case 'Increased'
-                        color = colors.Increased;
-                    case 'Decreased'
-                        color = colors.Decreased;
-                    otherwise
-                        color = colors.NoChange;
-                end
-
-                % Create subplot and plot the PSTH
-                subplot(length(recordingNames), ceil(length(unitNames) / length(recordingNames)), subplotIdx);
-                hold on;
-                plot(smoothedPSTH, 'Color', color, 'LineWidth', 1.5);
-                title(['Unit: ', unitName]);
-                xlabel('Time Bin');
-                ylabel('Firing Rate (Hz)');
-                hold off;
-
-                % Update subplot index
-                subplotIdx = subplotIdx + 1;
             end
+
+            hold off;
         end
     end
 end
