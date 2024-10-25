@@ -71,11 +71,11 @@ data_table_FR = label_responsive_units_fun(all_data, {'RS', 'FS'}, binSize, mome
 responseTypeVec = data_table_FR.ResponseType;
 unitIDs = data_table_FR.UnitID;
 
-% Generate PSTHs grouped by Recording Group > Response Type
+% Generate PSTHs 
 psthData = generate_unit_PSTHs(data_table_FR, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
-plot_group_PSTH_fun(psthData);
+plot_group_PSTH(psthData, smoothingWindow);
 
 % Plot mean + SEM PSTHs for all units (no overlaid individual PSTHs)
 plot_mean_sem_PSTH_fun(all_data);
