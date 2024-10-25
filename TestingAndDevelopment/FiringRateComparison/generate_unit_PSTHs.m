@@ -1,3 +1,11 @@
+% Define analysis parameters
+binSize = 0.1;  % 100ms bins for PSTH
+smoothingWindow = [1 1 1 1 1];  % Light smoothing window
+moment = 1860;  % Reference event (e.g., stimulus onset)
+preTreatmentPeriod = 1800;  % Seconds before the event
+postTreatmentPeriod = 1800;  % Seconds after the event
+
+
 function generate_unit_PSTHs(data_table_FR, all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Define colors for responsivity types
     colors = struct('Increased', [1, 0, 0], ...  % Red
