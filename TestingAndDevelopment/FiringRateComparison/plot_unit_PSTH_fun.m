@@ -1,20 +1,34 @@
-function plot_unit_PSTH(smoothedCounts, cellID, cellData)
-    % Extract necessary metadata
-    templateChannel = cellData.Template_Channel;  % Use Template_Channel instead of Channel
-    recordingName = 'Unknown';  % Handle missing Recording_Name gracefully
-    if isfield(cellData, 'Recording_Name')
-        recordingName = cellData.Recording_Name;
+function plot_unit_PSTH_fun(psthData)
+    groups = fieldnames(psthData);
+    for g = 1:length(groups)
+        groupName = groups{g};
+        units = fieldnames(psthData.(groupName));
+        
+        figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
+        hold on;
+        
+        for u = 1:length(units)
+            unit = units{u};
+            psth = psthData.(groupName).(unit).PSTH;
+            responseType = psthData.(groupName).(unit).ResponseType;
+
+            % Define color based on response type
+            color = getColorForResponseType(responseType);
+            
+            % Plot the PSTH
+            plot(psth, 'Color', color, 'LineWidth', 1.5);
+        end
+        hold off;
     end
-
-    % Create the plot
-    figure;
-    plot(smoothedCounts, 'k', 'LineWidth', 1.5);  % Plot PSTH in black
-
-    % Add metadata to the plot title
-    title(sprintf('Unit: %s | Type: %s | Channel: %d | Recording: %s', ...
-        cellID, cellData.Cell_Type, templateChannel, recordingName));
-    xlabel('Time (s)');
-    ylabel('Firing Rate (Hz)');
-    axis tight;  % Fit the plot tightly to the data
 end
 
+function color = getColorForResponseType(responseType)
+    switch responseType
+        case 'Increased'
+            color = [1, 0, 0];  % Red
+        case 'Decreased'
+            color = [0, 0, 1];  % Blue
+        otherwise
+            color = [0, 0, 0];  % Black
+    end
+end
