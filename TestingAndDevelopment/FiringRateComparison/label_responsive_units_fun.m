@@ -90,9 +90,6 @@ end
                           binned_FRs_before, binned_FRs_after, FanoFactors_before, FanoFactors_after, responseTypeVec, ...
                           'VariableNames', {'UnitID', 'Group', 'CellType', 'FR_Before', 'FR_After', ...
                                             'Binned_FRs_Before', 'Binned_FRs_After', 'FanoFactor_Before', 'FanoFactor_After', 'ResponseType'});
-
-    % Visualize the results, including bootstrapping
-    visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after, bootResults);
 end
 
 function boot_diffs = bootstrap_difference(FR_before, FR_after, nBootstraps)
@@ -109,50 +106,6 @@ function boot_diffs = bootstrap_difference(FR_before, FR_after, nBootstraps)
         boot_diffs(b) = mean(resampled_after) - mean(resampled_before);
     end
 end
-
-function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactors_after, binned_FRs_before, binned_FRs_after, bootResults)
-    % Scatter Plot: Pre vs. Post Firing Rates
-    figure;
-    scatter(FRs_before, FRs_after, 'filled');
-    xlabel('Firing Rate Before (Hz)');
-    ylabel('Firing Rate After (Hz)');
-    title('Pre vs. Post Firing Rates');
-    line([min(FRs_before), max(FRs_before)], [min(FRs_before), max(FRs_before)], 'Color', 'r', 'LineStyle', '--');
-
-    % Bootstrap Visualization for the Most Responsive Unit
-    [~, mostResponsiveIndex] = max(abs(FRs_after - FRs_before));
-    boot_diffs = bootResults{mostResponsiveIndex};
-    observed_diff = FRs_after(mostResponsiveIndex) - FRs_before(mostResponsiveIndex);
-
-    figure;
-    histogram(boot_diffs, 30, 'FaceColor', 'b');
-    hold on;
-    xline(observed_diff, 'r', 'LineWidth', 2);
-    xlabel('Bootstrapped Difference');
-    ylabel('Frequency');
-    title('Bootstrapped Differences for Most Responsive Unit');
-    legend('Bootstrap Distribution', 'Observed Difference');
-
-    % Check and Plot Fano Factor Histograms
-    if ~isempty(FanoFactors_before) && ~isempty(FanoFactors_after)  % Corrected check
-        figure;
-
-        % Plot Fano Factors Before Treatment
-        subplot(1, 2, 1);
-        histogram(FanoFactors_before, 'FaceColor', 'b');
-        xlabel('Fano Factor');
-        ylabel('Count');
-        title('Fano Factors Before Treatment');
-
-        % Plot Fano Factors After Treatment
-        subplot(1, 2, 2);
-        histogram(FanoFactors_after, 'FaceColor', 'r');
-        xlabel('Fano Factor');
-        ylabel('Count');
-        title('Fano Factors After Treatment');
-    else
-        disp('Fano Factor data is missing. Skipping Fano Factor histograms.');
-    end
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
     % Perform Bootstrapping to Identify Significant Changes
