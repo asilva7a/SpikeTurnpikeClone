@@ -64,11 +64,15 @@ moment = 1860;  % Reference event (e.g., stimulus onset)
 preTreatmentPeriod = 1800;  % Seconds before the event
 postTreatmentPeriod = 1800;  % Seconds after the event
 
-% Label responsive units based on firing rate changes
-label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
+% Label responsive units and retrieve response types and unit IDs
+data_table_FR = label_responsive_units_fun(all_data, {'RS', 'FS'}, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
-% Generate and plot individual PSTHs for all units
-generate_PSTH(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
+% Extract response types and unit IDs from the data table
+responseTypeVec = data_table_FR.ResponseType;
+unitIDs = data_table_FR.UnitID;
+
+% Generate PSTHs for all units based on response types
+generate_PSTH(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod, responseTypeVec, unitIDs);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
 plot_group_PSTH_fun(all_data);
