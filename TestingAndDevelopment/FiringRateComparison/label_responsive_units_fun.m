@@ -188,4 +188,5 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
         title('Fano Factors After Treatment');
     else
         disp('Fano Factor data is missing. Skipping Fano Factor histograms.');
-   
+    end
+end
