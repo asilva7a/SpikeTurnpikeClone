@@ -1,21 +1,31 @@
 function generate_PSTH(all_data, binSize, smoothingWindow, moment, prePeriod, postPeriod, responseTypeVec, unitIDs)
-    % Initialize containers for PSTHs based on response types
-    increasedPSTHs = {};  
-    decreasedPSTHs = {};  
-    noChangePSTHs = {};  
+    % Define colors for responsivity types
+    colors = struct('Increased', [1, 0, 0], ...  % Red
+                    'Decreased', [0, 0, 1], ...  % Blue
+                    'NoChange', [0, 0, 0]);      % Black
 
-    % Iterate over all groups and units to generate PSTHs
+    % Get group names from the data
     groupNames = fieldnames(all_data);
+
+    % Iterate over each recording group (e.g., EMX, PVALB)
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordingNames = fieldnames(all_data.(groupName));
 
+        % Create a new figure for the current group
+        figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
+
+        % Initialize a subplot index
+        subplotIdx = 1;
+
+        % Iterate over recordings within the current group
         for r = 1:length(recordingNames)
             recordingName = recordingNames{r};
             unitNames = fieldnames(all_data.(groupName).(recordingName));
 
+            % Iterate over units within the recording
             for u = 1:length(unitNames)
-                unitName = strtrim(unitNames{u});  % Ensure no extra spaces
+                unitName = unitNames{u};
                 unitData = all_data.(groupName).(recordingName).(unitName);
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
 
@@ -24,73 +34,37 @@ function generate_PSTH(all_data, binSize, smoothingWindow, moment, prePeriod, po
                     moment - prePeriod : binSize : moment + postPeriod);
                 smoothedPSTH = conv(psthCounts, smoothingWindow, 'same');
 
-                % Debugging: Check the unit name and IDs
-                disp(['Current unit name: ', unitName]);
-                disp('Available unit IDs:');
-                disp(unitIDs);
-
-                % Find the response type
+                % Determine the response type for the current unit
                 unitIndex = find(strcmpi(unitIDs, unitName), 1);
-
-                % Handle cases where the unit is not found
                 if isempty(unitIndex)
                     warning('Unit %s not found in unitIDs. Skipping.', unitName);
-                    continue;  % Skip this unit
+                    continue;
                 end
-
-                % Get the response type for the matched unit
                 responseType = responseTypeVec{unitIndex};
 
-                % Store the PSTH based on the response type
+                % Select the color based on the response type
                 switch responseType
                     case 'Increased'
-                        increasedPSTHs{end+1} = smoothedPSTH;
+                        color = colors.Increased;
                     case 'Decreased'
-                        decreasedPSTHs{end+1} = smoothedPSTH;
-                    case 'No Change'
-                        noChangePSTHs{end+1} = smoothedPSTH;
+                        color = colors.Decreased;
+                    otherwise
+                        color = colors.NoChange;
                 end
+
+                % Create a subplot for the current unit
+                subplot(length(recordingNames), ceil(length(unitNames) / length(recordingNames)), subplotIdx);
+                hold on;
+
+                % Plot the PSTH
+                plot(smoothedPSTH, 'Color', color, 'LineWidth', 1.5);
+                title(['Unit: ', unitName]);
+                xlabel('Time Bin');
+                ylabel('Firing Rate (Hz)');
+
+                % Update subplot index
+                subplotIdx = subplotIdx + 1;
             end
         end
     end
-
-    % Plot the grouped PSTHs
-    plot_grouped_PSTHs(increasedPSTHs, decreasedPSTHs, noChangePSTHs);
 end
-
-function plot_grouped_PSTHs(increasedPSTHs, decreasedPSTHs, noChangePSTHs)
-    % Plot PSTHs for Increased units
-    figure;
-    subplot(1, 3, 1);
-    hold on;
-    for i = 1:length(increasedPSTHs)
-        plot(increasedPSTHs{i}, 'LineWidth', 1.5);
-    end
-    title('Increased Units');
-    xlabel('Time Bin');
-    ylabel('Firing Rate (Hz)');
-    hold off;
-
-    % Plot PSTHs for Decreased units
-    subplot(1, 3, 2);
-    hold on;
-    for i = 1:length(decreasedPSTHs)
-        plot(decreasedPSTHs{i}, 'LineWidth', 1.5);
-    end
-    title('Decreased Units');
-    xlabel('Time Bin');
-    ylabel('Firing Rate (Hz)');
-    hold off;
-
-    % Plot PSTHs for No Change units
-    subplot(1, 3, 3);
-    hold on;
-    for i = 1:length(noChangePSTHs)
-        plot(noChangePSTHs{i}, 'LineWidth', 1.5);
-    end
-    title('No Change Units');
-    xlabel('Time Bin');
-    ylabel('Firing Rate (Hz)');
-    hold off;
-end
-``
