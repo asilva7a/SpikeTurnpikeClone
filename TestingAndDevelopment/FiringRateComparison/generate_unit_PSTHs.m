@@ -32,19 +32,21 @@ function generate_unit_PSTHs(all_data, binSize, smoothingWindow, moment, prePeri
                     unitName = strtrim(unitNames{u});
                     unitData = all_data.(groupName).(recordingName).(unitName);
 
-                    % Inside generate_unit_PSTHs, before trying to find the unit index
-                    disp(['Looking for unit: ', unitName]);  % Print the current unit name
-                    disp('Available unit IDs:');
-                    disp(unitIDs);  % List all available unit IDs
+                    % Ensure both unitName and unitIDs are compared as strings
+                    unitName = strtrim(unitName);  % Remove extra spaces from unitName
 
-                    unitIndex = find(strcmpi(unitIDs, unitName), 1);
+                    % Flatten the cell array of unitIDs to a string array for better comparison
+                    unitIDs_flat = string(unitIDs);  
+
+                    % Find the index of the current unit
+                    unitIndex = find(unitIDs_flat == string(unitName), 1);
 
                     % Check if the unit was found
                     if isempty(unitIndex)
                         warning('Unit %s not found in unitIDs. Skipping.', unitName);
                         continue;
                     end
-                    
+
                     % Calculate PSTH for this unit
                     spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
                     psthCounts = histcounts(spikeTimes, ...
