@@ -68,7 +68,7 @@ postTreatmentPeriod = 1800;  % Seconds after the event
 label_responsive_units_fun(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Generate and plot individual PSTHs for all units
-generate_PSTH_fun(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
+generate_PSTH(all_data, binSize, smoothingWindow, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
 plot_group_PSTH_fun(all_data);
