@@ -72,9 +72,7 @@ responseTypeVec = data_table_FR.ResponseType;
 unitIDs = data_table_FR.UnitID;
 
 % Generate PSTHs grouped by Recording Group > Response Type
-generate_PSTHs(all_data, binSize, smoothingWindow, ...
-                    moment, preTreatmentPeriod, postTreatmentPeriod, ...
-                    data_table_FR.ResponseType, data_table_FR.UnitID);
+psthData = generate_PSTHs(data_table_FR, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
 plot_group_PSTH_fun(all_data);
