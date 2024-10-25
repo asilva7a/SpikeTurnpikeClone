@@ -101,9 +101,9 @@ function boot_diffs = bootstrap_difference(FR_before, FR_after, nBootstraps)
     % Generate bootstrapped differences by resampling with replacement
     boot_diffs = zeros(nBootstraps, 1);
     for b = 1:nBootstraps
-        % Resample firing rates with replacement
-        resampled_before = datasample(FR_before, length(FR_before), 'Replace', true);
-        resampled_after = datasample(FR_after, length(FR_after), 'Replace', true);
+        % Resample firing rates with replacement using randi
+        resampled_before = FR_before(randi(length(FR_before), length(FR_before), 1));
+        resampled_after = FR_after(randi(length(FR_after), length(FR_after), 1));
 
         % Compute the difference in mean firing rate for this bootstrap sample
         boot_diffs(b) = mean(resampled_after) - mean(resampled_before);
@@ -134,7 +134,7 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     legend('Bootstrap Distribution', 'Observed Difference');
 
     % Check and Plot Fano Factor Histograms
-    if ~isempty(FanoFactors_before) && !isempty(FanoFactors_after)
+    if ~isempty(FanoFactors_before) && ~isempty(FanoFactors_after)  % Corrected check
         figure;
 
         % Plot Fano Factors Before Treatment
@@ -153,7 +153,6 @@ function visualize_results(FRs_before, FRs_after, FanoFactors_before, FanoFactor
     else
         disp('Fano Factor data is missing. Skipping Fano Factor histograms.');
     end
-end
 
 function responseTypeVec = categorize_units(FRs_before, FRs_after)
     % Perform Bootstrapping to Identify Significant Changes
@@ -223,6 +222,7 @@ end
 function avg_FR = calculate_FR(spikeTimes, binEdges)
     binned_FRs = histcounts(spikeTimes, binEdges) / diff(binEdges(1:2));
     avg_FR = mean(binned_FRs);
+
     if isempty(avg_FR)
         avg_FR = 0;  % Return 0 if no spikes were found
     end
