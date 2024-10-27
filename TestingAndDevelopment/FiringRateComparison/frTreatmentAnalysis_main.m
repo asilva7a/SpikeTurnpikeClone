@@ -1,3 +1,6 @@
+% analyze_units.m
+% Main script to organize analysis, plotting, and statistical tests.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PROJECT FOLDER STRUCTURE AND SCRIPT FUNCTIONALITY:
 %
@@ -49,11 +52,6 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-% analyze_units.m
-% Main script to organize analysis, plotting, and statistical tests.
-
 % Load the data
 load('all_data.mat');  % Load your structured data
 
@@ -73,6 +71,9 @@ unitIDs = data_table_FR.UnitID;
 
 % Generate PSTHs 
 psthData = generate_unit_PSTHs(data_table_FR, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod);
+
+% Plot and save individual PSTHs to user specified directory
+plot_unit_PSTH_fun(psthData);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
 plot_group_PSTH(psthData, smoothingWindow);
