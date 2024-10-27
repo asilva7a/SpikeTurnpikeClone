@@ -1,6 +1,6 @@
-function plot_group_PSTH(psthData, smoothingWindow)
+function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
     % Define a colormap for different recordings
-    colormapList = lines(10);  % Generate 10 unique colors (can increase if needed)
+    colormapList = lines(10);  % Generate 10 unique colors
 
     % Get the group names (e.g., 'Control', 'Emx', 'Pvalb')
     groupNames = fieldnames(psthData);
@@ -11,10 +11,9 @@ function plot_group_PSTH(psthData, smoothingWindow)
         units = psthData.(groupName);  % Extract the struct for the current group
         unitIDs = fieldnames(units);   % Get unit IDs within the group
 
-        % Collect unique recording names from unit data
-        recordings = unique( ...
-            cellfun(@(x) units.(x).Recording, unitIDs, 'UniformOutput', false) ...
-        );
+        % Extract the recordings for the current group from data_table_FR
+        groupTable = data_table_FR(strcmp(data_table_FR.Group, groupName), :);
+        recordings = unique(groupTable.Recording);  % Unique recording names
         numRecordings = length(recordings);
 
         % Assign each recording a unique color
@@ -50,8 +49,8 @@ function plot_group_PSTH(psthData, smoothingWindow)
 
                 % Check if the unit belongs to the current response type
                 if strcmp(unitData.ResponseType, responseType)
-                    % Find the recording name for the unit
-                    recordingName = unitData.Recording;
+                    % Find the recording name for the unit in data_table_FR
+                    recordingName = groupTable{strcmp(groupTable.UnitID, unitID), 'Recording'}{1};
 
                     % Get the color for the unit's recording
                     recordingIdx = find(strcmp(recordings, recordingName));
@@ -72,3 +71,4 @@ function plot_group_PSTH(psthData, smoothingWindow)
         end
     end
 end
+
