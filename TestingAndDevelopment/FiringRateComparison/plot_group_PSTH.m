@@ -12,7 +12,7 @@ function plot_group_PSTH(psthData, smoothingWindow)
         unitIDs = fieldnames(units);   % Get unit IDs within the group
         
         % Extract recording names from the units
-        recordings = unique(cellfun(@(u) units.(u).RecordingName, unitIDs, 'UniformOutput', false));
+        recordings = groupName
         numRecordings = length(recordings);
         
         % Assign each recording a unique color
