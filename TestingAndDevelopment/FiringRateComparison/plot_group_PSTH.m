@@ -11,7 +11,7 @@ function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
         units = psthData.(groupName);  % Extract the struct for the current group
         unitIDs = fieldnames(units);   % Get unit IDs within the group
 
-        % Extract the recordings for the current group from data_table_FR
+        % Filter `data_table_FR` for the current group
         groupTable = data_table_FR(strcmp(data_table_FR.Group, groupName), :);
         recordings = unique(groupTable.Recording);  % Unique recording names
         numRecordings = length(recordings);
@@ -49,7 +49,7 @@ function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
 
                 % Check if the unit belongs to the current response type
                 if strcmp(unitData.ResponseType, responseType)
-                    % Find the recording name for the unit in data_table_FR
+                    % Find the recording name for the unit from `data_table_FR`
                     recordingName = groupTable{strcmp(groupTable.UnitID, unitID), 'Recording'}{1};
 
                     % Get the color for the unit's recording
