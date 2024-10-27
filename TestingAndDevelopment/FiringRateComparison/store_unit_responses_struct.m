@@ -1,6 +1,10 @@
-function responsive_units_struct = store_unit_responses_struct(all_data, cell_types, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
-    % Define Boxcar smoothing window
-    boxcarWindow = [1 1 1 1 1];
+function responsive_units_struct = store_unit_responses_struct(all_data, cell_types, params)
+    % Extract analysis parameters from the input struct `params`
+    binSize = params.binSize;
+    moment = params.moment;
+    preTreatmentPeriod = params.preTreatmentPeriod;
+    postTreatmentPeriod = params.postTreatmentPeriod;
+    boxcarWindow = params.boxcarWindow;  % Boxcar smoothing window
 
     % Initialize the nested struct for all units
     responsive_units_struct = struct();
@@ -25,7 +29,7 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
                 FR_after = NaN;
                 p = NaN;
 
-                % Process unit if it's a Single Unit and has spike data
+                % Process unit if it's a Single Unit with spike data
                 if any(strcmp(cell_types, cellData.Cell_Type)) && cellData.IsSingleUnit && ...
                    isfield(cellData, 'SpikeTimes_all') && ~isempty(cellData.SpikeTimes_all)
 
