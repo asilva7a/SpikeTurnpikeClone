@@ -12,7 +12,7 @@ function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
         unitIDs = fieldnames(units);   % Get unit IDs within the group
 
         % Filter `data_table_FR` for the current group
-        groupTable = data_table_FR(strcmp(data_table_FR.Group, groupName), :);
+        groupTable = data_table_FR(strcmp(data_table_FR{:,'Group'}, groupName), :);
         recordings = unique(groupTable.Recording);  % Unique recording names
         numRecordings = length(recordings);
 
