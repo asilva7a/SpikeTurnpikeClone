@@ -59,7 +59,7 @@ psthData = generate_unit_PSTHs(data_table_FR, all_data, ...
                                preTreatmentPeriod, postTreatmentPeriod);
 
 % Plot and save individual PSTHs to the selected directory
-plot_unit_PSTH_fun(psthData, moment, saveDir);
+% plot_unit_PSTH_fun(psthData, moment, saveDir);
 
 % Plot overlaid PSTHs for responsive vs. non-responsive units
 plot_group_PSTH(psthData, smoothingWindow);
