@@ -29,7 +29,7 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
                 unitData = all_data.(groupName).(recordingName).(unitID);
 
                 % Filter units by cell type and single-unit status
-                if any(strcmp(cell_types, unitData.Cell_Type))
+                if any(strcmp(cell_types, unitData.Cell_Type)) && unitData.IsSingleUnit
                     % Extract necessary data
                     spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
                     samplingFrequency = unitData.Sampling_Frequency;
@@ -62,6 +62,10 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
                         responseType = 'No Change';
                     end
 
+                    % Generate PSTH data for the unit
+                    binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
+                    psthCounts = histcounts(spikeTimes, binEdges);
+
                     % Store the data in responsive_units_struct
                     responsive_units_struct.(groupName).(recordingName).(unitID) = struct( ...
                         'SpikeTimes_all', spikeTimes, ...
@@ -76,7 +80,9 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
                         'ResponseType', responseType, ...
                         'Recording', recordingName, ...
                         'BinEdges_Pre', binEdges_Pre, ...
-                        'BinEdges_Post', binEdges_Post ...
+                        'BinEdges_Post', binEdges_Post, ...
+                        'PSTH', psthCounts, ...
+                        'BinEdges', binEdges ...
                     );
                 end
             end
@@ -97,4 +103,3 @@ function FR = handle_missing_data(FR)
         FR = 0;
     end
 end
-
