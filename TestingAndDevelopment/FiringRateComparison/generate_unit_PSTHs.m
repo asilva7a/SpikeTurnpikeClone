@@ -34,7 +34,12 @@ function psthData = generate_unit_PSTHs(responsive_units_struct, params)
                 binEdges = params.moment - params.preTreatmentPeriod : params.binSize : ...
                            params.moment + params.postTreatmentPeriod;
                 disp(['    Bin edges: ', num2str(binEdges(1:5)), ' ...']);  % Debug
-
+                
+                if isempty(spikeTimes) || spikeTimes(1) < binEdges(1) || spikeTimes(end) > binEdges(end)
+                    warning('Spike times for unit %s are out of binning range.', unitID);
+                    continue;
+                end
+                
                 % Calculate PSTH
                 psthCounts = histcounts(spikeTimes, binEdges);
                 if all(psthCounts == 0)
