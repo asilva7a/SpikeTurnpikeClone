@@ -1,10 +1,13 @@
-function plot_unit_PSTH_fun(responsive_units_struct, moment, savePath)
+function plot_unit_PSTH_fun(responsive_units_struct, params, savePath)
     % Plot individual PSTHs for each group, recording, and unit.
-    % Color-coded by response type and with a dashed line indicating the moment.
+    % Uses the params struct for moment and other settings.
 
     if nargin < 3
         savePath = pwd;  % Default to current directory if savePath is not provided
     end
+
+    % Extract the analysis parameters from the params struct
+    moment = params.moment;
 
     % Get the group names from the responsive_units_struct
     groups = fieldnames(responsive_units_struct);
