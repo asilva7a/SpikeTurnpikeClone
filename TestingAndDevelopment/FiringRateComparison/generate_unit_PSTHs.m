@@ -1,55 +1,47 @@
 function psthData = generate_unit_PSTHs(responsive_units_struct, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
-    % This function generates PSTHs for each unit in the provided data and
-    % stores them in a structured output for future plotting.
-
     % Initialize storage structure for PSTHs
     psthData = struct();
 
-    % Get group names from the responsive units struct
+    % Get group names
     groupNames = fieldnames(responsive_units_struct);
 
     % Iterate over all groups
     for g = 1:length(groupNames)
         groupName = groupNames{g};
-        groupData = responsive_units_struct.(groupName);
-        
-        % Get the recording names within the group
-        recordingNames = fieldnames(groupData);
+        recordings = fieldnames(responsive_units_struct.(groupName));  % Get recording names
+
+        % Initialize the group in psthData
+        psthData.(groupName) = struct();
 
         % Iterate over recordings within the group
-        for r = 1:length(recordingNames)
-            recordingName = recordingNames{r};
-            recordingData = groupData.(recordingName);
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(responsive_units_struct.(groupName).(recordingName));  % Get unit IDs
 
-            % Get the unit IDs within the recording
-            unitIDs = fieldnames(recordingData);
+            % Iterate over each unit
+            for u = 1:length(units)
+                unitID = units{u};
+                unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
-            % Initialize the group field in the output struct
-            if ~isfield(psthData, groupName)
-                psthData.(groupName) = struct();
-            end
-
-            % Iterate over units in the recording
-            for u = 1:length(unitIDs)
-                unitID = unitIDs{u};
-                unitData = recordingData.(unitID);
-
-                % Ensure the required fields exist
-                if ~isfield(unitData, 'SpikeTimes_all') || ~isfield(unitData, 'ResponseType')
+                % Check if spike times exist
+                if ~isfield(unitData, 'SpikeTimes_all') || isempty(unitData.SpikeTimes_all)
                     warning('Missing data for unit %s. Skipping.', unitID);
                     continue;
                 end
 
-                % Extract spike times and calculate the PSTH
+                % Extract spike times and normalize by sampling frequency
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+
+                % Define bin edges
                 binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
+                
+                % Calculate PSTH
                 psthCounts = histcounts(spikeTimes, binEdges);
 
-                % Store the PSTH data in the output structure
+                % Store PSTH data
                 psthData.(groupName).(unitID).PSTH = psthCounts;
                 psthData.(groupName).(unitID).ResponseType = unitData.ResponseType;
                 psthData.(groupName).(unitID).BinEdges = binEdges;
-                psthData.(groupName).(unitID).Recording = recordingName;
             end
         end
     end
