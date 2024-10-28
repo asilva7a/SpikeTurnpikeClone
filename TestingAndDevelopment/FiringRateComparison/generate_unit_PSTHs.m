@@ -1,43 +1,50 @@
-function psthData = generate_unit_PSTHs(responsive_units_struct, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+function psthData = generate_unit_PSTHs(responsive_units_struct, params)
     % Initialize storage structure for PSTHs
     psthData = struct();
 
-    % Get group names from responsive_units_struct
+    % Get unique group names from the responsive units struct
     groupNames = fieldnames(responsive_units_struct);
 
-    % Iterate over groups
+    % Iterate over all groups
     for g = 1:length(groupNames)
         groupName = groupNames{g};
+        disp(['Processing group: ', groupName]);  % Debug
+
         recordings = fieldnames(responsive_units_struct.(groupName));
 
-        % Initialize group in the output structure
-        psthData.(groupName) = struct();
-
-        % Iterate over recordings in the group
+        % Iterate over each recording in the group
         for r = 1:length(recordings)
             recordingName = recordings{r};
+            disp(['  Processing recording: ', recordingName]);  % Debug
+
             units = fieldnames(responsive_units_struct.(groupName).(recordingName));
 
-            % Iterate over units in the recording
+            % Iterate over units within the recording
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
+                disp(['    Processing unit: ', unitID]);  % Debug
+
                 % Extract spike times and sampling frequency
                 spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+                disp(['    SpikeTimes length: ', num2str(length(spikeTimes))]);  % Debug
 
-                % Define bin edges for the PSTH
-                binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
+                % Define bin edges
+                binEdges = params.moment - params.preTreatmentPeriod : params.binSize : ...
+                           params.moment + params.postTreatmentPeriod;
+                disp(['    Bin edges: ', num2str(binEdges(1:5)), ' ...']);  % Debug
 
-                % Calculate the PSTH
+                % Calculate PSTH
                 psthCounts = histcounts(spikeTimes, binEdges);
+                if all(psthCounts == 0)
+                    warning('    PSTH for unit %s is empty.', unitID);
+                end
 
-                % Store PSTH data in the output structure
-                psthData.(groupName).(unitID) = struct(...
-                    'PSTH', psthCounts, ...
-                    'ResponseType', unitData.ResponseType, ...
-                    'BinEdges', binEdges, ...
-                    'Recording', recordingName);
+                % Store the PSTH in the output structure
+                psthData.(groupName).(recordingName).(unitID).PSTH = psthCounts;
+                psthData.(groupName).(recordingName).(unitID).BinEdges = binEdges;
+                psthData.(groupName).(recordingName).(unitID).ResponseType = unitData.ResponseType;
             end
         end
     end

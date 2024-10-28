@@ -44,6 +44,12 @@ function plot_group_PSTH(responsive_units_struct, params)
                     unitID = units{u};
                     unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
+                    % Debugging: Display the unit data fields
+                    disp(['Processing unit: ', unitID]);
+                    disp(['Response type: ', unitData.ResponseType]);
+                    disp('PSTH data:');
+                    disp(unitData.PSTH);  % Ensure PSTH is valid and not empty
+
                     % Ensure the unit has the necessary fields
                     if ~isfield(unitData, 'PSTH') || ~isfield(unitData, 'ResponseType')
                         warning('Skipping unit %s: Missing PSTH or ResponseType field.', unitID);
@@ -81,3 +87,4 @@ function plot_group_PSTH(responsive_units_struct, params)
         end
     end
 end
+

@@ -1,75 +1,51 @@
 function plot_unit_PSTH_fun(responsive_units_struct, params, savePath)
-    % Plot individual PSTHs for each group, recording, and unit.
-    % Uses the params struct for moment and other settings.
-
+    % Default save path if not provided
     if nargin < 3
-        savePath = pwd;  % Default to current directory if savePath is not provided
+        savePath = pwd;
     end
 
-    % Extract the analysis parameters from the params struct
-    moment = params.moment;
+    groupNames = fieldnames(responsive_units_struct);  % Get all groups
 
-    % Get the group names from the responsive_units_struct
-    groups = fieldnames(responsive_units_struct);
-
-    % Iterate over each group
-    for g = 1:length(groups)
-        groupName = groups{g};
+    % Iterate over groups
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
         recordings = fieldnames(responsive_units_struct.(groupName));
 
-        % Iterate over each recording within the group
+        % Iterate over recordings within the group
         for r = 1:length(recordings)
             recordingName = recordings{r};
             units = fieldnames(responsive_units_struct.(groupName).(recordingName));
 
-            % Iterate over each unit within the recording
+            % Iterate over each unit in the recording
             for u = 1:length(units)
-                unitName = units{u};
-                unitData = responsive_units_struct.(groupName).(recordingName).(unitName);
+                unitID = units{u};
+                unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
-                % Extract PSTH and response type
+                disp(['Plotting PSTH for ', groupName, ' - ', recordingName, ' - ', unitID]);  % Debug
+
+                % Extract PSTH data
                 psth = unitData.PSTH;
-                responseType = unitData.ResponseType;
+                if isempty(psth)
+                    warning('    PSTH for unit %s is empty. Skipping plot.', unitID);
+                    continue;
+                end
 
-                % Create a figure for this unit
-                figure('Name', ['PSTH - ', groupName, ' - ', recordingName, ' - ', unitName], ...
-                    'NumberTitle', 'off');
+                % Create figure
+                figure('Name', ['PSTH - ', groupName, ' - ', unitID], 'NumberTitle', 'off');
                 hold on;
 
-                % Generate the time bins for plotting
-                timeBins = linspace(0, length(psth) - 1, length(psth));
+                % Plot PSTH
+                plot(1:length(psth), psth, 'LineWidth', 1.5);
+                xline(params.moment, '--k', 'LineWidth', 1.5);  % Dashed line for moment
 
-                % Plot the PSTH for this unit
-                plot(timeBins, psth, 'Color', getColorForResponseType(responseType), 'LineWidth', 1.5);
-
-                % Add vertical dashed line at the moment (e.g., stimulus onset)
-                xline(moment, '--k', 'LineWidth', 1.5);  % Dashed black line
-
-                % Add title, labels, and legend
-                title(sprintf('PSTH for %s (Response: %s)', unitName, responseType), 'Interpreter', 'none');
+                % Add labels and save plot
+                title(sprintf('PSTH for %s (Response: %s)', unitID, unitData.ResponseType));
                 xlabel('Time Bins');
                 ylabel('Firing Rate (Hz)');
-                legend({sprintf('%s PSTH', unitName), 'Moment'}, 'Location', 'best');
-
-                % Save the figure as a PNG file
-                saveName = sprintf('PSTH_%s_%s_%s.png', groupName, recordingName, unitName);
-                saveas(gcf, fullfile(savePath, saveName));
-
+                saveas(gcf, fullfile(savePath, sprintf('PSTH_%s_%s.png', groupName, unitID)));
                 hold off;
-                close(gcf);  % Close the figure after saving
+                close(gcf);
             end
         end
-    end
-end
-
-% Helper function to define color based on response type
-function color = getColorForResponseType(responseType)
-    switch responseType
-        case 'Increased'
-            color = [1, 0, 0];  % Red
-        case 'Decreased'
-            color = [0, 0, 1];  % Blue
-        otherwise
-            color = [0, 0, 0];  % Black
     end
 end
