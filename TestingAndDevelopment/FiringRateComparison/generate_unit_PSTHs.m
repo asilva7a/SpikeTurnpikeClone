@@ -1,8 +1,8 @@
-function psthData = generate_unit_PSTHs(responsive_units_struct, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+function psthData = generate_unit_PSTHs(responsive_units_struct, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % Initialize storage structure for PSTHs
     psthData = struct();
 
-    % Get group names
+    % Get group names from the responsive_units_struct
     groupNames = fieldnames(responsive_units_struct);
 
     % Iterate over all groups
@@ -21,27 +21,36 @@ function psthData = generate_unit_PSTHs(responsive_units_struct, binSize, moment
             % Iterate over each unit
             for u = 1:length(units)
                 unitID = units{u};
-                unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
-                % Check if spike times exist
-                if ~isfield(unitData, 'SpikeTimes_all') || isempty(unitData.SpikeTimes_all)
-                    warning('Missing data for unit %s. Skipping.', unitID);
-                    continue;
+                % Cross-reference with all_data to get SpikeTimes_all
+                if isfield(all_data.(groupName), recordingName) && ...
+                   isfield(all_data.(groupName).(recordingName), unitID)
+
+                    % Access the unit data from all_data
+                    unitData = all_data.(groupName).(recordingName).(unitID);
+
+                    % Ensure SpikeTimes_all is available
+                    if isfield(unitData, 'SpikeTimes_all') && ~isempty(unitData.SpikeTimes_all)
+                        % Extract spike times and normalize by sampling frequency
+                        spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+
+                        % Define bin edges
+                        binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
+
+                        % Calculate PSTH
+                        psthCounts = histcounts(spikeTimes, binEdges);
+
+                        % Store PSTH data
+                        psthData.(groupName).(unitID).PSTH = psthCounts;
+                        psthData.(groupName).(unitID).ResponseType = ...
+                            responsive_units_struct.(groupName).(recordingName).(unitID).ResponseType;
+                        psthData.(groupName).(unitID).BinEdges = binEdges;
+                    else
+                        warning('Missing or empty spike times for unit %s. Skipping.', unitID);
+                    end
+                else
+                    warning('Unit %s not found in all_data. Skipping.', unitID);
                 end
-
-                % Extract spike times and normalize by sampling frequency
-                spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
-
-                % Define bin edges
-                binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
-                
-                % Calculate PSTH
-                psthCounts = histcounts(spikeTimes, binEdges);
-
-                % Store PSTH data
-                psthData.(groupName).(unitID).PSTH = psthCounts;
-                psthData.(groupName).(unitID).ResponseType = unitData.ResponseType;
-                psthData.(groupName).(unitID).BinEdges = binEdges;
             end
         end
     end
