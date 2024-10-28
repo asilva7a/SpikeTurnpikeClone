@@ -29,7 +29,7 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
                 unitData = all_data.(groupName).(recordingName).(unitID);
 
                 % Filter units by cell type and single-unit status
-                if any(strcmp(cell_types, unitData.Cell_Type)) && unitData.IsSingleUnit
+                if any(strcmp(cell_types, unitData.Cell_Type))
                     % Extract necessary data
                     spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
                     samplingFrequency = unitData.Sampling_Frequency;
