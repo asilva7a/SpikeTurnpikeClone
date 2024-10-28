@@ -1,72 +1,56 @@
-function psthData = generate_unit_PSTHs(data_table_FR, all_data, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
+function psthData = generate_unit_PSTHs(responsive_units_struct, binSize, moment, preTreatmentPeriod, postTreatmentPeriod)
     % This function generates PSTHs for each unit in the provided data and
     % stores them in a structured output for future plotting.
-    
+
     % Initialize storage structure for PSTHs
     psthData = struct();
 
-    % Get unique group names from the data table
-    uniqueGroups = unique(data_table_FR.Group);
+    % Get group names from the responsive units struct
+    groupNames = fieldnames(responsive_units_struct);
 
-    % Iterate over all unique recording groups
-    for g = 1:length(uniqueGroups)
-        groupName = uniqueGroups{g};
+    % Iterate over all groups
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        groupData = responsive_units_struct.(groupName);
         
-        % Filter the data table for the current group
-        groupTable = data_table_FR(strcmp(data_table_FR.Group, groupName), :);
+        % Get the recording names within the group
+        recordingNames = fieldnames(groupData);
 
-        % Initialize group field in the output structure
-        psthData.(groupName) = struct();
+        % Iterate over recordings within the group
+        for r = 1:length(recordingNames)
+            recordingName = recordingNames{r};
+            recordingData = groupData.(recordingName);
 
-        % Define response types
-        responseTypes = {'Increased', 'Decreased', 'No Change'};
-        
-        % Iterate over response types
-        for rt = 1:length(responseTypes)
-            responseType = responseTypes{rt};
-            
-            % Filter the table for the current response type
-            responseTable = groupTable(strcmp(groupTable.ResponseType, responseType), :);
+            % Get the unit IDs within the recording
+            unitIDs = fieldnames(recordingData);
 
-            % Iterate over each unit in the filtered table
-            for u = 1:height(responseTable)
-                unitID = responseTable.UnitID{u};
-                
-                % Find the recording name for this unit
-                recordingName = find_recording_for_unit(all_data, groupName, unitID);
+            % Initialize the group field in the output struct
+            if ~isfield(psthData, groupName)
+                psthData.(groupName) = struct();
+            end
 
-                % If the recording is not found, skip this unit
-                if isempty(recordingName)
-                    warning('Unit %s not found in all_data. Skipping.', unitID);
+            % Iterate over units in the recording
+            for u = 1:length(unitIDs)
+                unitID = unitIDs{u};
+                unitData = recordingData.(unitID);
+
+                % Ensure the required fields exist
+                if ~isfield(unitData, 'SpikeTimes_all') || ~isfield(unitData, 'ResponseType')
+                    warning('Missing data for unit %s. Skipping.', unitID);
                     continue;
                 end
 
-                % Extract spike times for this unit
-                spikeTimes = all_data.(groupName).(recordingName).(unitID).SpikeTimes_all / ...
-                             all_data.(groupName).(recordingName).(unitID).Sampling_Frequency;
-
-                % Calculate the PSTH
+                % Extract spike times and calculate the PSTH
+                spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
                 binEdges = moment - preTreatmentPeriod : binSize : moment + postTreatmentPeriod;
                 psthCounts = histcounts(spikeTimes, binEdges);
 
-                % Store the PSTH data in the structure
+                % Store the PSTH data in the output structure
                 psthData.(groupName).(unitID).PSTH = psthCounts;
-                psthData.(groupName).(unitID).ResponseType = responseType;
+                psthData.(groupName).(unitID).ResponseType = unitData.ResponseType;
                 psthData.(groupName).(unitID).BinEdges = binEdges;
+                psthData.(groupName).(unitID).Recording = recordingName;
             end
         end
     end
-end
-
-% Helper function to find the recording name for a given unit
-function recordingName = find_recording_for_unit(all_data, groupName, unitID)
-    % Iterate through all recordings in the group to find the unit
-    recordingNames = fieldnames(all_data.(groupName));
-    for r = 1:length(recordingNames)
-        if isfield(all_data.(groupName).(recordingNames{r}), unitID)
-            recordingName = recordingNames{r};
-            return;
-        end
-    end
-    recordingName = '';  % Return empty if unit not found
 end
