@@ -1,32 +1,27 @@
-function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
+function plot_group_PSTH(responsive_units_struct, params)
     % Define a colormap for different recordings
     colormapList = lines(10);  % Generate 10 unique colors
 
     % Get the group names (e.g., 'Control', 'Emx', 'Pvalb')
-    groupNames = fieldnames(psthData);
+    groupNames = fieldnames(responsive_units_struct);
 
     % Iterate over all groups
     for g = 1:length(groupNames)
         groupName = groupNames{g};
-        units = psthData.(groupName);  % Extract the struct for the current group
-        unitIDs = fieldnames(units);   % Get unit IDs within the group
-
-        % Filter `data_table_FR` for the current group
-        groupTable = data_table_FR(strcmp(data_table_FR{:,'Group'}, groupName), :);
-        recordings = unique(groupTable.Recording);  % Unique recording names
-        numRecordings = length(recordings);
+        recordings = fieldnames(responsive_units_struct.(groupName));  % Get recordings
 
         % Assign each recording a unique color
+        numRecordings = length(recordings);
         recordingColors = colormapList(1:numRecordings, :);  % Ensure enough colors
 
         % Create a new figure for this group
         figure('Name', ['PSTHs - ', groupName], 'NumberTitle', 'off');
 
-        % Create a 1x3 layout: one subplot for each response type
+        % Define response types
         responseTypes = {'Increased', 'Decreased', 'NoChange'};
 
-        % Iterate over response types to plot them in the corresponding subplot
-        for rt = 1:3
+        % Iterate over response types to plot them in corresponding subplots
+        for rt = 1:length(responseTypes)
             responseType = responseTypes{rt};
 
             % Create a subplot for the current response type
@@ -36,39 +31,42 @@ function plot_group_PSTH(psthData, data_table_FR, smoothingWindow)
             xlabel('Time (ms)');
             ylabel('Firing Rate (Hz)');
 
-            % Plot units belonging to the current response type
-            for u = 1:length(unitIDs)
-                unitID = unitIDs{u};
-                unitData = units.(unitID);  % Extract unit data
+            % Iterate over all recordings in the group
+            for r = 1:numRecordings
+                recordingName = recordings{r};
+                units = fieldnames(responsive_units_struct.(groupName).(recordingName));
 
-                % Ensure the unit has the required fields
-                if ~isfield(unitData, 'PSTH') || ~isfield(unitData, 'ResponseType')
-                    warning('Skipping unit %s: Missing PSTH or ResponseType field.', unitID);
-                    continue;
-                end
+                % Iterate over units in the current recording
+                for u = 1:length(units)
+                    unitID = units{u};
+                    unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
-                % Check if the unit belongs to the current response type
-                if strcmp(unitData.ResponseType, responseType)
-                    % Find the recording name for the unit from `data_table_FR`
-                    recordingName = groupTable{strcmp(groupTable.UnitID, unitID), 'Recording'}{1};
+                    % Ensure the unit has the necessary fields
+                    if ~isfield(unitData, 'PSTH') || ~isfield(unitData, 'ResponseType')
+                        warning('Skipping unit %s: Missing PSTH or ResponseType field.', unitID);
+                        continue;
+                    end
 
-                    % Get the color for the unit's recording
-                    recordingIdx = find(strcmp(recordings, recordingName));
-                    color = recordingColors(recordingIdx, :);
+                    % Check if the unit matches the current response type
+                    if strcmp(unitData.ResponseType, responseType)
+                        % Get the color for the current recording
+                        color = recordingColors(r, :);
 
-                    % Smooth the PSTH data
-                    smoothedPSTH = conv(unitData.PSTH, smoothingWindow, 'same');
+                        % Smooth the PSTH data
+                        smoothedPSTH = conv(unitData.PSTH, params.smoothingWindow, 'same');
 
-                    % Plot the PSTH with the appropriate color
-                    plot(smoothedPSTH, 'Color', color, 'LineWidth', 1.5);
+                        % Plot the PSTH with the appropriate color
+                        plot(smoothedPSTH, 'Color', color, 'LineWidth', 1.5);
 
-                    % Optionally, add unit ID as text annotation
-                    text(length(smoothedPSTH), smoothedPSTH(end), unitID, ...
-                         'FontSize', 8, 'Interpreter', 'none');
+                        % Optionally, add unit ID as text annotation
+                        text(length(smoothedPSTH), smoothedPSTH(end), unitID, ...
+                             'FontSize', 8, 'Interpreter', 'none');
+                    end
                 end
             end
             hold off;
         end
     end
 end
+
 
