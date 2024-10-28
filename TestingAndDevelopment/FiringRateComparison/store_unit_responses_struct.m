@@ -87,5 +87,14 @@ end
 % Helper function to calculate firing rate
 function FR = calculate_FR(spikeTimes, binEdges)
     % Compute histogram of spike times in specified bins
-    binned_FRs = histcounts(spikeTimes, binEdges) / diff(binEdge
+    binned_FRs = histcounts(spikeTimes, binEdges) / diff(binEdges(1:2));
+    FR = mean(binned_FRs);
+end
+
+% Helper function to handle missing data
+function FR = handle_missing_data(FR)
+    if isempty(FR)
+        FR = 0;
+    end
+end
 
