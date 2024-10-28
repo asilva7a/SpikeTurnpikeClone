@@ -68,7 +68,7 @@
     
     % Generate percent change PSTHs (mean + SEM)
     percent_change_PSTH_fun(all_data);
-    
+        
     % Generate ranked heatmap of modulated units
     plot_heatmap_fun(all_data);
     
