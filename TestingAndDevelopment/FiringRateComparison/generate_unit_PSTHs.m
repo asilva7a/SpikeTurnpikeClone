@@ -1,67 +1,70 @@
-function responsive_units_struct = generate_unit_PSTHs(responsive_units_struct, params)
-    % This function generates both full-recording and labeling PSTHs.
+function responsive_units_struct = generate_unit_PSTHs(responsive_units_struct, params, saveDir)
+    % Generates full-recording and time-locked PSTHs for each unit and stores them in the struct.
+    % Saves the plots as a PDF in the specified directory.
 
-    groupNames = fieldnames(responsive_units_struct);  % Get group names
+    % Define PDF save path
+    pdfFilePath = fullfile(saveDir, 'aligned_spike_data.pdf');
+    fig = figure('Visible', 'off', 'Position', [100, 100, 1200, 800]);
 
+    % Iterate over all groups, recordings, and units
+    groupNames = fieldnames(responsive_units_struct);
     for g = 1:length(groupNames)
-        groupName = groupNames{g};  % Use curly braces to index the cell array
-        recordings = fieldnames(responsive_units_struct.(groupName));  % Get recordings
+        groupName = groupNames{g};
+        recordings = fieldnames(responsive_units_struct.(groupName));
 
         for r = 1:length(recordings)
-            recordingName = recordings{r};  % Use curly braces here too
+            recordingName = recordings{r};
             units = fieldnames(responsive_units_struct.(groupName).(recordingName));
 
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
 
-                % Extract and align spike times with the moment
-                spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
-                alignedSpikeTimes = spikeTimes - params.moment;
+                % Process and store PSTHs
+                [fullPSTH, fullBinEdges] = compute_full_PSTH(unitData, params);
+                [labelPSTH, labelBinEdges, alignedSpikeTimes] = compute_label_PSTH(unitData, params);
 
-                % Plot to debug alignment (optional)
-                figure;
-                plot(alignedSpikeTimes, 'o');
-                xlabel('Spike Index');
-                ylabel('Time Relative to Moment (s)');
-                title(sprintf('Aligned Spike Times for %s - %s', recordingName, unitID));
-
-                % Full Recording PSTH
-                fullBinEdges = 0:params.binSize:max(spikeTimes);
-                fullPSTH = histcounts(spikeTimes, fullBinEdges);
-
-                % Store full PSTH in the struct
+                % Store computed data in the struct
                 responsive_units_struct.(groupName).(recordingName).(unitID).PSTH_Full = fullPSTH;
                 responsive_units_struct.(groupName).(recordingName).(unitID).Full_BinEdges = fullBinEdges;
-
-                % Labeling PSTH (Pre- and Post-Treatment)
-                labelBinEdges = -params.preTreatmentPeriod:params.binSize:params.postTreatmentPeriod;
-                labelPSTH = histcounts(alignedSpikeTimes, labelBinEdges);
-
-                % Store labeling PSTH in the struct
                 responsive_units_struct.(groupName).(recordingName).(unitID).PSTH_Label = labelPSTH;
                 responsive_units_struct.(groupName).(recordingName).(unitID).Label_BinEdges = labelBinEdges;
 
-                % Check if PSTHs are empty
-                if all(labelPSTH == 0)
-                    warning('Labeling PSTH for unit %s is empty.', unitID);
-                end
-                if all(fullPSTH == 0)
-                    warning('Full-recording PSTH for unit %s is empty.', unitID);
-                end
+                % Call the plotting function
+                plot_unit_PSTH(fig, alignedSpikeTimes, fullBinEdges, fullPSTH, ...
+                               labelBinEdges, labelPSTH, groupName, recordingName, unitID, unitData, pdfFilePath);
 
-                % Debugging Output: Verify Data Access
+                % Debugging output
                 fprintf('Processed %s - %s - %s\n', groupName, recordingName, unitID);
-                disp(['First aligned spike: ', num2str(min(alignedSpikeTimes))]);
-                disp(['Last aligned spike: ', num2str(max(alignedSpikeTimes))]);
-                disp(['Full Bin Edges: ', num2str(fullBinEdges(1)), ' to ', num2str(fullBinEdges(end))]);
-                disp(['Label Bin Edges: ', num2str(labelBinEdges(1)), ' to ', num2str(labelBinEdges(end))]);
             end
         end
     end
+
+    % Close the figure after saving all plots
+    close(fig);
+    fprintf('All aligned spike data saved to %s\n', pdfFilePath);
 end
 
+%% Helper Functions
 
-    
+%Generate PSTH for the whole recording
+function [fullPSTH, binEdges] = compute_full_PSTH(unitData, params)
+    % Generate PSTH for the entire recording
+    spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+    binEdges = 0:params.binSize:(90 * 60);  % 90-minute recording assumption
+    fullPSTH = histcounts(spikeTimes, binEdges) / params.binSize;
+end
 
+% Generate labels for PSTHs based on pre and post firing behavior
+function [labelPSTH, binEdges, alignedSpikeTimes] = compute_label_PSTH(unitData, params)
+    % Generate PSTH for pre- and post-treatment periods
+    spikeTimes = unitData.SpikeTimes_all / unitData.Sampling_Frequency;
+    alignedSpikeTimes = spikeTimes - params.moment;
+    binEdges = -params.preTreatmentPeriod:params.binSize:params.postTreatmentPeriod;
+    labelPSTH = histcounts(alignedSpikeTimes, binEdges) / params.binSize;
 
+    % Handle empty PSTH
+    if isempty(labelPSTH)
+        labelPSTH = zeros(1, length(binEdges) - 1);
+    end
+end

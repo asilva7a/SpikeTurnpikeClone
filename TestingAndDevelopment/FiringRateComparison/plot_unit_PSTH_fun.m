@@ -1,51 +1,36 @@
-function plot_unit_PSTH_fun(responsive_units_struct, params, savePath)
-    % Default save path if not provided
-    if nargin < 3
-        savePath = pwd;
-    end
+function plot_unit_PSTH_fun(fig, alignedSpikeTimes, fullBinEdges, fullPSTH, ...
+                        labelBinEdges, labelPSTH, groupName, recordingName, ...
+                        unitID, unitData, pdfFilePath)
+    % Clear the figure for the next plot
+    clf;
 
-    groupNames = fieldnames(responsive_units_struct);  % Get all groups
+    % Plot aligned spike times
+    subplot(3, 1, 1);
+    plot(alignedSpikeTimes, 'o');
+    xlabel('Spike Index');
+    ylabel('Time Relative to Treatment (s)');
+    title(sprintf('Aligned Spikes: %s - %s', recordingName, unitID));
 
-    % Iterate over groups
-    for g = 1:length(groupNames)
-        groupName = groupNames{g};
-        recordings = fieldnames(responsive_units_struct.(groupName));
+    % Plot full recording PSTH
+    subplot(3, 1, 2);
+    plot(fullBinEdges(1:end-1), fullPSTH, 'r');
+    xlabel('Time (s)');
+    ylabel('Firing Rate (Hz)');
+    title(sprintf('Full Recording PSTH: %s - %s', recordingName, unitID));
 
-        % Iterate over recordings within the group
-        for r = 1:length(recordings)
-            recordingName = recordings{r};
-            units = fieldnames(responsive_units_struct.(groupName).(recordingName));
+    % Plot label PSTH (pre/post treatment)
+    subplot(3, 1, 3);
+    plot(labelBinEdges(1:end-1), labelPSTH, 'b');
+    xlabel('Time (s)');
+    ylabel('Firing Rate (Hz)');
+    title(sprintf('Label PSTH: %s - %s', recordingName, unitID));
 
-            % Iterate over each unit in the recording
-            for u = 1:length(units)
-                unitID = units{u};
-                unitData = responsive_units_struct.(groupName).(recordingName).(unitID);
+    % Annotation with metadata
+    annotation('textbox', [0.1, 0.05, 0.8, 0.1], 'String', ...
+               sprintf('Group: %s | Recording: %s | Unit: %s | Cell Type: %s | Response: %s', ...
+                       groupName, recordingName, unitID, unitData.Cell_Type, unitData.ResponseType), ...
+               'HorizontalAlignment', 'center', 'FitBoxToText', 'on');
 
-                disp(['Plotting PSTH for ', groupName, ' - ', recordingName, ' - ', unitID]);  % Debug
-
-                % Extract PSTH data
-                psth = unitData.PSTH;
-                if isempty(psth)
-                    warning('    PSTH for unit %s is empty. Skipping plot.', unitID);
-                    continue;
-                end
-
-                % Create figure
-                figure('Name', ['PSTH - ', groupName, ' - ', unitID], 'NumberTitle', 'off');
-                hold on;
-
-                % Plot PSTH
-                plot(1:length(psth), psth, 'LineWidth', 1.5);
-                xline(params.moment, '--k', 'LineWidth', 1.5);  % Dashed line for moment
-
-                % Add labels and save plot
-                title(sprintf('PSTH for %s (Response: %s)', unitID, unitData.ResponseType));
-                xlabel('Time Bins');
-                ylabel('Firing Rate (Hz)');
-                saveas(gcf, fullfile(savePath, sprintf('PSTH_%s_%s.png', groupName, unitID)));
-                hold off;
-                close(gcf);
-            end
-        end
-    end
+    % Save the figure to the PDF
+    exportgraphics(fig, pdfFilePath, 'Append', true);
 end
