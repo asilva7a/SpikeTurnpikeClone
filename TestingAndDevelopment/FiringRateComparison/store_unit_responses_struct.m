@@ -4,7 +4,7 @@ function responsive_units_struct = store_unit_responses_struct(all_data, cell_ty
     moment = params.moment;
     preTreatmentPeriod = params.preTreatmentPeriod;
     postTreatmentPeriod = params.postTreatmentPeriod;
-    boxcarWindow = params.boxcarWindow;  % Boxcar smoothing window
+    boxcarWindow = params.smoothingWindow;  % Boxcar smoothing window
 
     % Initialize the nested struct for all units
     responsive_units_struct = struct();
