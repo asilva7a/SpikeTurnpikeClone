@@ -26,12 +26,14 @@ defaultParams = {'0.1', '[1 1 1 1 1]', '1860', '1800', '1800'};
 % Get user input
 userInput = inputdlg(prompt, dlgtitle, dims, defaultParams);
 
-% Parse user input
-binSize = str2double(userInput{1});
-smoothingWindow = str2num(userInput{2}); %#ok<ST2NM>
-moment = str2double(userInput{3});
-preTreatmentPeriod = str2double(userInput{4});
-postTreatmentPeriod = str2double(userInput{5});
+% Parse user input into the params struct
+params = struct();
+params.binSize = str2double(userInput{1});
+params.smoothingWindow = str2num(userInput{2}); %#ok<ST2NM>
+params.moment = str2double(userInput{3});
+params.preTreatmentPeriod = str2double(userInput{4});
+params.postTreatmentPeriod = str2double(userInput{5});
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load Data and Process Units
@@ -40,10 +42,12 @@ postTreatmentPeriod = str2double(userInput{5});
 % Load the data
 load('all_data.mat');  % Load your structured data
 
+% Define the cell types to analyze
+cell_types = {'RS', 'FS'};
+
 % Label responsive units and retrieve response types and unit IDs
-data_table_FR = label_responsive_units_fun(all_data, {'RS', 'FS'}, ...
-                                           binSize, moment, ...
-                                           preTreatmentPeriod, postTreatmentPeriod);
+responsive_units_struct = store_unit_responses_struct(all_data, cell_types, params);
+
 
 % Extract response types and unit IDs from the data table
 responseTypeVec = data_table_FR.ResponseType;
