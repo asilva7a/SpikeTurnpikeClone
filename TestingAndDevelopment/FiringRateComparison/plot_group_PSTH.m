@@ -31,6 +31,9 @@ function plot_group_PSTH(responsive_units_struct, params)
             xlabel('Time (ms)');
             ylabel('Firing Rate (Hz)');
 
+            % Track if any units were plotted
+            unitsPlotted = false;
+
             % Iterate over all recordings in the group
             for r = 1:numRecordings
                 recordingName = recordings{r};
@@ -61,12 +64,20 @@ function plot_group_PSTH(responsive_units_struct, params)
                         % Optionally, add unit ID as text annotation
                         text(length(smoothedPSTH), smoothedPSTH(end), unitID, ...
                              'FontSize', 8, 'Interpreter', 'none');
+
+                        % Mark that a unit was plotted
+                        unitsPlotted = true;
                     end
                 end
             end
+
+            % If no units were plotted, display a message
+            if ~unitsPlotted
+                text(0.5, 0.5, 'No units for this response type', ...
+                    'HorizontalAlignment', 'center', 'Units', 'normalized');
+            end
+
             hold off;
         end
     end
 end
-
-
