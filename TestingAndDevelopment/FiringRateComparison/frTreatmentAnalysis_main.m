@@ -59,7 +59,7 @@
                                params.preTreatmentPeriod, params.postTreatmentPeriod);
 
     % Plot and save individual PSTHs to the selected directory
-    % plot_unit_PSTH_fun(psthData, moment, saveDir);
+    plot_unit_PSTH_fun(responsive_units_struct, params, saveDir);
     
     % Plot overlaid PSTHs for responsive vs. non-responsive units
     plot_group_PSTH(psthData, smoothingWindow);
