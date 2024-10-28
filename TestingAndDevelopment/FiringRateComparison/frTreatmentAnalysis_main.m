@@ -60,7 +60,7 @@
     responsive_units_struct = generate_unit_PSTHs(responsive_units_struct, params, saveDir);
     
     % Plot and save individual PSTHs to the selected directory
-    %plot_unit_PSTH_fun(responsive_units_struct, params, saveDir);
+    plot_unit_PSTH_fun(responsive_units_struct, params, saveDir);
     
     % Plot overlaid PSTHs for responsive vs. non-responsive units
     plot_group_PSTH(responsive_units_struct, params);
