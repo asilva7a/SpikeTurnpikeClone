@@ -1,47 +1,60 @@
-function plot_unit_PSTH_fun(psthData, moment, savePath)
-    % Plot individual PSTHs for each group and unit, color-coded by response type,
-    % and save each plot with a dashed line indicating the moment.
+function plot_unit_PSTH_fun(responsive_units_struct, moment, savePath)
+    % Plot individual PSTHs for each group, recording, and unit.
+    % Color-coded by response type and with a dashed line indicating the moment.
 
     if nargin < 3
         savePath = pwd;  % Default to current directory if savePath is not provided
     end
 
-    groups = fieldnames(psthData);  % Extract all groups from psthData
+    % Get the group names from the responsive_units_struct
+    groups = fieldnames(responsive_units_struct);
 
+    % Iterate over each group
     for g = 1:length(groups)
-        groupName = groups{g};  % Current group name
-        units = fieldnames(psthData.(groupName));  % Extract units for this group
+        groupName = groups{g};
+        recordings = fieldnames(responsive_units_struct.(groupName));
 
-        for u = 1:length(units)
-            unitName = units{u};  % Current unit name
-            unitData = psthData.(groupName).(unitName);
+        % Iterate over each recording within the group
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(responsive_units_struct.(groupName).(recordingName));
 
-            % Extract PSTH and response type
-            psth = unitData.PSTH;
-            responseType = unitData.ResponseType;
+            % Iterate over each unit within the recording
+            for u = 1:length(units)
+                unitName = units{u};
+                unitData = responsive_units_struct.(groupName).(recordingName).(unitName);
 
-            % Create a figure for this unit
-            figure('Name', ['PSTH - ', groupName, ' - ', unitName], 'NumberTitle', 'off');
-            hold on;
+                % Extract PSTH and response type
+                psth = unitData.PSTH;
+                responseType = unitData.ResponseType;
 
-            % Plot the PSTH for this unit
-            timeBins = linspace(0, length(psth) - 1, length(psth));  % Assuming time bins are consecutive
-            plot(timeBins, psth, 'Color', getColorForResponseType(responseType), 'LineWidth', 1.5);
+                % Create a figure for this unit
+                figure('Name', ['PSTH - ', groupName, ' - ', recordingName, ' - ', unitName], ...
+                    'NumberTitle', 'off');
+                hold on;
 
-            % Add vertical dashed line at the moment (e.g., stimulus onset)
-            xline(moment, '--k', 'LineWidth', 1.5);  % Dashed black line
+                % Generate the time bins for plotting
+                timeBins = linspace(0, length(psth) - 1, length(psth));
 
-            % Add title, labels, and legend
-            title(sprintf('PSTH for %s (Response: %s)', unitName, responseType));
-            xlabel('Time Bins');
-            ylabel('Firing Rate (Hz)');
-            legend({sprintf('%s PSTH', unitName), 'Moment'}, 'Location', 'best');
+                % Plot the PSTH for this unit
+                plot(timeBins, psth, 'Color', getColorForResponseType(responseType), 'LineWidth', 1.5);
 
-            % Save the figure as a PNG file
-            saveas(gcf, fullfile(savePath, sprintf('PSTH_%s_%s.png', groupName, unitName)));
+                % Add vertical dashed line at the moment (e.g., stimulus onset)
+                xline(moment, '--k', 'LineWidth', 1.5);  % Dashed black line
 
-            hold off;
-            close(gcf);  % Close the figure after saving
+                % Add title, labels, and legend
+                title(sprintf('PSTH for %s (Response: %s)', unitName, responseType), 'Interpreter', 'none');
+                xlabel('Time Bins');
+                ylabel('Firing Rate (Hz)');
+                legend({sprintf('%s PSTH', unitName), 'Moment'}, 'Location', 'best');
+
+                % Save the figure as a PNG file
+                saveName = sprintf('PSTH_%s_%s_%s.png', groupName, recordingName, unitName);
+                saveas(gcf, fullfile(savePath, saveName));
+
+                hold off;
+                close(gcf);  % Close the figure after saving
+            end
         end
     end
 end
@@ -57,5 +70,3 @@ function color = getColorForResponseType(responseType)
             color = [0, 0, 0];  % Black
     end
 end
-
-
