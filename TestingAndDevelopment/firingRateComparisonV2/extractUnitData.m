@@ -78,6 +78,6 @@ end
 
 %% To Do
 %   Need:
-%    1.
+%    1. Change naming for spike times all; want to avoid confusion later
 %   Want:
 %    1. Arrange fields in struct in alphabetical order
