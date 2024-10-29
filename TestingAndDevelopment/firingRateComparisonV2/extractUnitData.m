@@ -51,7 +51,11 @@ function cellDataStruct = extractUnitData(all_data, saveFolder)
 % Specify save file name
 saveFile = 'cellDataStruct.mat';
 
-% Create full saving fire path
-savePath = fullfile()
+% Create full saving file path
+savePath = fullfile(saveFolder, saveFile);
+
+% Save struct to directory
+save(savePath, 'cellDataStruct');
+disp(['Struct saved to:', savePath]);
 
 end
