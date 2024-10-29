@@ -1,13 +1,4 @@
 function [cellDataStruct] = extractUnitData(all_data)
-    persistent hasRun;
-
-    if ~isempty(hasRun) && hasRun
-        disp('extractUnitData has already been executed. Skipping...');
-        return;
-    end
-
-    hasRun = true;  % Mark as executed
-
     % Debugging output
     disp('extractUnitData called');
 
