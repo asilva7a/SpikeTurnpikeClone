@@ -1,76 +1,86 @@
-function cellDataStruct = extractUnitData(all_data, saveFolder)
-% extractUnitData 
-%   Does what is says on the box
-%   Extracts variables from all_data struct to create cellData struct
-%   Saves cellData to user specified directory for later use
-%   Clears workspace
+function [cellDataStruct] = extractUnitData(all_data)
+    persistent hasRun;
 
-%% Extract relevant data from all_data struct
-    % Get group name (assuming 'Pvalb' is the 2nd field)
+    if ~isempty(hasRun) && hasRun
+        disp('extractUnitData has already been executed. Skipping...');
+        return;
+    end
+
+    hasRun = true;  % Mark as executed
+
+    % Debugging output
+    disp('extractUnitData called');
+
+    % Initialize the struct to ensure no previous data is carried over
+    cellDataStruct = struct();
+
+    %% Extract relevant data from all_data struct
     groupName = fieldnames(all_data);  
-    group = groupName{2};  
+    group = groupName{2};  % Assuming 'Pvalb' is the second field
 
-    % Get recording name (assuming it's the 2nd recording)
     recordingName = fieldnames(all_data.(group));  
-    recording = recordingName{2};  
+    recording = recordingName{2};  % Assuming 'pvalb_hctztreat_0008_rec1'
 
-    % Get unit info (assuming 'cid314' is the 32nd unit)
     unitID = fieldnames(all_data.(group).(recording));  
-    unit = unitID{32};  
+    unit = unitID{32};  % Assuming 'cid314' is the 32nd unit
 
     % Extract the unit data
     unitData = all_data.(group).(recording).(unit);
 
-    %% Generate Struct for storing extracted data
-    cellDataStruct = struct();  
+    %% Dynamic Copy of Selected Fields Using Loop
+    % Define the fields you want to copy
+    fieldsToCopy = {
+        'SpikeTimes_all', 'Sampling_Frequency', 'Cell_Type', ...
+        'IsSingleUnit', 'Recording_Duration'
+    };
 
-    % Extract data from the struct fields
-    spikeTimes = unitData.SpikeTimes_all;
-    samplingFrequency = unitData.Sampling_Frequency;
-    cellType = unitData.Cell_Type;
-    isSingleUnit = unitData.IsSingleUnit;
-    recordingLength = unitData.Recording_Duration;
-    binWidth = 0.1;  % Bin width in seconds
+    % Initialize an empty struct to store the copied fields
+    newUnitStruct = struct();
 
-    % Store relevant data in the struct
-    cellDataStruct.(group).(recording).(unit) = struct( ...
-        'spikeTimes', spikeTimes, ...
-        'samplingFrequency', samplingFrequency, ...
-        'cellType', cellType, ...
-        'isSingleUnit', isSingleUnit, ...
-        'firingRate', [], ...
-        'treatmentMoment', [], ...
-        'psthRaw', [], ...
-        'psthSmoothed', [], ...
-        'pValue', [], ...
-        'responseType', [], ...
-        'recording', recordingName, ...
-        'binWidth', binWidth, ...
-        'recordingLength', recordingLength ...
-    );
-
-    %% Handle the Save Directory and Save the Struct
-    % Check if the save folder exists, if not, create it
-    if ~exist(saveFolder, 'dir')
-        mkdir(saveFolder);
-        disp(['Directory created: ', saveFolder]);
+    % Loop through the fields and copy the data
+    for i = 1:numel(fieldsToCopy)
+        field = fieldsToCopy{i};
+        if isfield(unitData, field)
+            % Use dynamic field assignment
+            newUnitStruct.(strrep(field, '_', '')) = unitData.(field);
+        else
+            disp(['Warning: Field ' field ' not found in unitData.']);
+        end
     end
 
-    % Define the save file name and path
-    saveFile = 'cellDataStruct.mat';
-    savePath = fullfile(saveFolder, saveFile);
+    % Add additional fields manually as needed
+    newUnitStruct.firingRate = [];
+    newUnitStruct.treatmentMoment = [];
+    newUnitStruct.psthRaw = [];
+    newUnitStruct.psthSmoothed = [];
+    newUnitStruct.pValue = [];
+    newUnitStruct.responseType = [];
+    newUnitStruct.recording = recording;
+    newUnitStruct.binWidth = 0.1;
 
-    % Save the struct to the specified directory
+    % Store the new struct in the final output
+    cellDataStruct.(group).(recording).(unit) = newUnitStruct;
+
+    %% Handle Save Logic
+    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
+    savePath = fullfile(saveDir, 'cellDataStruct.mat');
+
+    if isfile(savePath)
+        disp('Overwriting existing file.');
+        delete(savePath);  % Remove old file
+    else
+        disp('Saving new file.');
+    end
+
     try
-        save(savePath, 'cellDataStruct');
-        disp(['Struct saved to: ', savePath]);
+        save(savePath, 'cellDataStruct', '-v7');
+        disp('Struct saved successfully.');
     catch ME
         disp('Error saving the file:');
         disp(ME.message);
     end
 
-    %% Optional: Clear local variables to prevent workspace clutter
-    clear groupName group recordingName recording unitID unit unitData ...
-          spikeTimes samplingFrequency cellType isSingleUnit ...
-          recordingLength binWidth saveFile savePath;
+    % Display the struct for debugging
+    disp('Struct after assignment:');
+    disp(cellDataStruct);
 end
