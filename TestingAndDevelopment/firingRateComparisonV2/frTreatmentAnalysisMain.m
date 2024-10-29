@@ -1,3 +1,18 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% To-Do
+    % PSTH Plotting
+%       [x] Loading data and selecting directories
+%       [ ] Extract data to struct
+%       [ ] Calculate raw PSTH for single unit
+%       [ ] Plot raw PSTH for single unit
+%       [ ] Smoothing PSTH with boxcar smoothing
+%       [ ] Plot unit PSTH with smoothing
+%   % Curve Plotting
+%       [ ] ...
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % analyze_units
 % Main script for analysing the single unit data
 
@@ -12,6 +27,7 @@
     if saveDir == 0
         error('No directory selected. Exiting script.');
     end
+    
 %% Extract Unit Data Into Data Structure (in progress)
 
 % Load data
