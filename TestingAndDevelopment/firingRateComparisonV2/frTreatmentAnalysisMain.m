@@ -25,7 +25,7 @@ filePath = fullfile(dataFolder, fileName);
 
 % Load the file
 if exist(filePath, "file") == 2;
-    load(filePath);
+    load(filePath, 'all_data');
     disp('File loaded successfully!');
 else
     error('File not found: %s', filePath);
@@ -48,11 +48,11 @@ saveFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
 
 %% Extract Unit Data Into Data Structure (in progress)
 
-% Load data
-load('all_data.mat')
-
 % Extract relevant fields from all_data struct
-extractUnitData(all_data, saveFolder);
+cellDataStruct = extractUnitData(all_data, saveFolder);
+
+% Optional: Display struct for debugging
+disp(cellDataStruct);
 
 %% Analysis (to do)
 
