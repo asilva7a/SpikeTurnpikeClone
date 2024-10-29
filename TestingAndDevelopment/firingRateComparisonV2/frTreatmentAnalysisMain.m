@@ -12,6 +12,16 @@
     if saveDir == 0
         error('No directory selected. Exiting script.');
     end
+%% Extract Unit Data Into Data Structure (in progress)
 
 % Load data
 load('all_data.mat')
+
+% Extract relevant fields from all_data struct
+extractUnitData(all_data);
+
+%% Analysis (to do)
+
+%% Plotting (to do)
+
+
