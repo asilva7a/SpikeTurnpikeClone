@@ -1,7 +1,12 @@
-function [outputArg1,outputArg2] = untitled(inputArg1,inputArg2)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
-outputArg1 = inputArg1;
-outputArg2 = inputArg2;
-end
+function edges = edgeCalculator(start, binWidth, stop)
+    % calculateEdges: Generates leading edges for histogram bins
+    % Inputs:
+    %   start     - Start of the binning range
+    %   binWidth  - Width of each bin
+    %   stop      - End of the binning range
+    % Output:
+    %   edges     - Vector of leading edges for the bins
 
+    % Calculate edges
+    edges = start:binWidth:stop - 1;  % Generate leading edges
+end
