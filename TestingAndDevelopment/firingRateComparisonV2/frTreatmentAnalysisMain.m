@@ -52,7 +52,7 @@ saveFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
 load('all_data.mat')
 
 % Extract relevant fields from all_data struct
-extractUnitData(all_data,saveFolder);
+extractUnitData(all_data, saveFolder);
 
 %% Analysis (to do)
 
