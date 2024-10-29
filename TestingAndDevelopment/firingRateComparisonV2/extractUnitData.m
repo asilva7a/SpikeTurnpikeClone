@@ -75,3 +75,9 @@ function [cellDataStruct] = extractUnitData(all_data)
     disp('Struct after assignment:');
     disp(cellDataStruct);
 end
+
+%% To Do
+%   Need:
+%    1.
+%   Want:
+%    1. Arrange fields in struct in alphabetical order
