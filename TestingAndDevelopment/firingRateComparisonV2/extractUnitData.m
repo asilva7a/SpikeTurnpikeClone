@@ -34,7 +34,7 @@ function cellDataStruct = extractUnitData(all_data, saveFolder)
     binWidth = 0.1; % Set bin width in ms
 
     % Store all relevant data in the struct
-    cellDataStruct.(groupName).(recordingName).(unitID) = struct( ...
+    cellDataStruct.(group).(recording).(unit) = struct( ...
         'spikeTimes', spikeTimes, ...
         'samplingFrequency', samplingFrequency, ...
         'cellType', cellType, ...
@@ -52,14 +52,22 @@ function cellDataStruct = extractUnitData(all_data, saveFolder)
 
 %% Save struct
 
-% Specify save file name
-saveFile = 'cellDataStruct.mat';
+% Define the save file name and path
+    saveFile = 'cellDataStruct.mat';
+    savePath = fullfile(saveFolder, saveFile);
 
-% Create full saving file path
-savePath = fullfile(saveFolder, saveFile);
+    % Save the struct to the specified directory
+    try
+        save(savePath, 'cellDataStruct');
+        disp(['Struct saved to: ', savePath]);
+    catch ME
+        disp('Error saving the file:');
+        disp(ME.message);
+    end
 
-% Save struct to directory
-save(savePath, 'cellDataStruct');
-disp(['Struct saved to:', savePath]);
+    %% Optional: Clear local variables to prevent workspace clutter
+    clear groupName group recordingName recording unitID unit unitData ...
+          spikeTimes samplingFrequency cellType isSingleUnit ...
+          recordingLength binWidth saveFile savePath;
 
 end
