@@ -50,7 +50,7 @@ try
     load(cellDataStructPath, 'cellDataStruct');
     disp('Loaded cellDataStruct.mat successfully!');
     disp('Loaded cellDataStruct in detail:');
-    disp(struct2table(cellDataStruct.Pvalb));  % Display as table
+    disp(struct2table(cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314,"AsArray",true));  % Display as table
 catch ME
     error('Error loading cellDataStruct.mat: %s', ME.message);
 end
@@ -60,6 +60,6 @@ end
 
 %% Plotting (to do)
 
-disp('Main script completed.');
 
+ 
 
