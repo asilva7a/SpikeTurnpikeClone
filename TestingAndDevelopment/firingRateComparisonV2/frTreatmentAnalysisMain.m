@@ -55,16 +55,31 @@ catch ME
     error('Error loading cellDataStruct.mat: %s', ME.message);
 end
 
-%% Analysis (to do)
+%% Analysis
 
 % Generate PTSH for single unit
 [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellDataStruct);
 
+% Generate PSTH with boxcar smoothing
+[smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct);
 
-disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0);
 
 
 %% Plotting (to do)
+
+% Plot raw PSTH
+try
+    plotPSTHRaw(binEdges, fullPSTH, 1860);  % Assuming plotPSTHRaw is available
+catch ME
+    warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+end
+
+% Plot smooth PSTH
+try
+    plotPSTHRaw(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) with Boxcar smoothing');  % Assuming plotPSTHRaw is available
+catch ME
+    warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+end
 
 
  
