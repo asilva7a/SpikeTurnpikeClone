@@ -1,49 +1,65 @@
-%Generate PSTH for the whole recording
-function [fullPSTH, binEdges] = generatePSTH(cellDataStruct)
-    % Generate PSTH for the entire recording
-    
-    % Specify unit for analysis
-    unitData = cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314; 
-    
-    % Convert spike times from samples to seconds
-    spikeTimes = unitData.SpikeTimesall / unitData.SpikeTimesall; % Converts spike times to s
-    
-    % Set binning based on recording length
-    recordingLength = unitData.RecordingDuration; % Recording duration in seconds
-    binWidth = unitData.binWidth;  % bin width in seconds
-    
-     % Calculate bin edges using the helper function
-    binEdges = edgeCalculator(0, binWidth, recordingLength);  % Generate bin edges
+function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
+    %% Generate PSTH for the entire recording
+    %
+    %   arg1
+    %   arg2 
+    %
+    %% 
 
-    % if data array is given
-    if max(spikeTimes)>0
-        if length(spikeTimes)-(edge(end)-1) < bin % if length of data is less than 1 bin more than final starting bin
-            lastbin = find(length(spikeTimes)-(edge-1) >= bin, 1, 'last' );
-        else
-            lastbin = length(edge);
+    % Extract Unit Data
+    unitData = cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0;
+
+    % Extract spiketimes for whole recording and normalize to sample rate
+    spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
+
+        % Debugging: Check spikeTimes
+        disp('Spike Times (in seconds):');
+        disp(spikeTimes);
+
+   % Set Binning
+    recordingLength = unitData.RecordingDuration;  % Recording length in seconds
+    binWidth = unitData.binWidth;  % Bin width in seconds
+
+        % Debugging: Check the bin width and recording length
+        fprintf('Bin width: %.2f s, Recording length: %.2f s\n', binWidth, recordingLength);
+
+    % Calculate bin edges with helper function
+    binEdges = edgeCalculator(0, binWidth, recordingLength);
+
+        % Debugging: Check bin edges
+        disp('Bin Edges:');
+        disp(binEdges);
+
+    % Split Data
+    numBins = length(binEdges) - 1;  % Number of bins
+    splitData = cell(1, numBins);  % Preallocate cell array for bin data
+
+        % Loop through bins and extract spikes for each bin
+        for i = 1:numBins
+            binStart = binEdges(i);
+            binEnd = binEdges(i + 1);
+    
+            % Extract spikes within the current bin
+            splitData{i} = spikeTimes(spikeTimes >= binStart & spikeTimes < binEnd);
+    
+            % Debugging: Print spikes in the current bin
+            fprintf('Bin %2d | Start: %6.2f s | End: %6.2f s | Spikes: %3d\n', ...
+            i, binStart, binEnd, length(splitData{i}));
         end
-    end
 
-    %Split Spike Data into Bins
-    splitdata = zeros(floor(bin),floor(lastbin)); % prealocate 
-    start_edge = edges(1:lastbin);
-    end_edge = start_edge+bin-1; % add bin amount after subtracting first point
-    for i = 1:lastbin
-        splitdata(:,i) = data(floor(start_edge(i)):floor(end_edge(i))); % extract data
-    end
+    % Calculate PSTH
+    spikeCounts = cellfun(@length, splitData);  % Spike counts per bin
+    fullPSTH = spikeCounts / binWidth;  % Convert to firing rate (spikes per second)
+    
+    % Plot PSTH
+    plotPSTH(binEdges, fullPSTH, 1860)
 
-    % Generate PSTH using split data
-    %fullPSTH = 
-
-    % Save PSTH to cellData struct
+    % Save PTSH to struct
     cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314.psthRaw = fullPSTH;
-    cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314.splitData = splitData;
-
 end
 
-%% Helper Functions
-    % Edge calculator generates leading edges for binning
-    function edges = edgeCalculator(start, binWidth, stop)
-        edges = start:binWidth:stop - 1;  % Generate leading edges
-    end
-    
+%% Helper Function: Calculate Bin Edges
+function edges = edgeCalculator(start, binWidth, stop)
+    % Generate the leading edges for binning
+    edges = start:binWidth:stop;  % Include stop value for the last bin edge
+end
