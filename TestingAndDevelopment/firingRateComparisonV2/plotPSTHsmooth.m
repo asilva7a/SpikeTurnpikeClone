@@ -1,4 +1,4 @@
-function plotPSTHsmooth(binEdges, fullPSTH, lineTime, figTitle)
+function plotPSTHsmooth(binEdges, smoothPSTH, lineTime, figTitle)
     % plotPSTH - Plots the Peri-Stimulus Time Histogram (PSTH)
     % 
     % Inputs:
@@ -14,7 +14,7 @@ function plotPSTHsmooth(binEdges, fullPSTH, lineTime, figTitle)
     f = figure;
 
     % Plot the PSTH with black bars and edges
-    bar(binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
+    bar(binEdges(1:end-1), smoothPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
 
     % Add labels and title
     xlabel('Time (s)');
