@@ -5,9 +5,9 @@
 %       [x] Extract data to struct
 %       [x] Calculate raw PSTH for single unit
 %       [x] Plot raw PSTH for single unit
-%       [ ] Fix data not being saved to struct
-%       [ ] Smoothing PSTH with boxcar smoothing
-%       [ ] Plot unit PSTH with smoothing
+%       [X] Fix data not being saved to struct
+%       [X] Smoothing PSTH with boxcar smoothing
+%       [X] Plot unit PSTH with smoothing
 %   Curve Plotting
 %       [ ] ...
 
