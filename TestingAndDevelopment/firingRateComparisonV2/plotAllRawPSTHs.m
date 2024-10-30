@@ -1,6 +1,8 @@
 function plotAllRawPSTHs(cellDataStruct, lineTime)
     % plotAllRawPSTHs: Plots and saves PSTHs for all units with metadata.
     
+    load('cellDataStruct');
+
     %% Set Default Arg values
     if nargin < 2 || isempty(lineTime)
         lineTime = 1860;
@@ -61,7 +63,11 @@ function plotAllRawPSTHs(cellDataStruct, lineTime)
                     % Prepare metadata for annotation
                     cellType = unitData.CellType;
                     templateChannel = unitData.TemplateChannel;
-                    singleUnitStatus = ifelse(unitData.IsSingleUnit, "Single Unit", "Not Single Unit");
+                    if unitData.IsSingleUnit == 1 % Set Single Unit Status
+                        singleUnitStatus = "Single Unit";
+                    else
+                        singleUnitStatus = "Not Single Unit";
+                    end
 
                     % Format metadata for display on the plot
                     metadataText = sprintf('Cell Type: %s | Channel: %d | %s | Unit ID: %s', ...
