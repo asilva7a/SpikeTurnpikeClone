@@ -43,7 +43,7 @@ function plotPSTH(binEdges, fullPSTH, lineTime, figTitle)
     
     % Construct the file name (save directory + name + extension)
     saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';  % Replace with desired directory
-    fileName = sprintf('%s_%s.png', unitName, dateStr);  % e.g., 'unit_001_2024-10-30_13-45.png'
+    fileName = sprintf('RawPSTH-%s_%s.png', unitName, dateStr);  % e.g., 'RawPSTH-unit_001_2024-10-30_13-45.png'
     fullPath = fullfile(saveDir, fileName);
     
     % Save the figure as a PNG with high resolution
