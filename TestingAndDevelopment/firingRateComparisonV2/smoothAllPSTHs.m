@@ -1,4 +1,4 @@
-function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, windowSize)
+function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFilePath, windowSize)
     % smoothAllPSTHs: Smooths the raw PSTH for all units using a boxcar filter.
     %
     % Inputs:
@@ -9,7 +9,7 @@ function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, windowSize)
     %   - cellDataStruct: Updated structure with smoothed PSTHs
 
     % Set default window size if not provided
-    if nargin < 2
+    if nargin < 3
         windowSize = 5;
     end
 
@@ -52,27 +52,12 @@ function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, windowSize)
         end
     end
 
-    % Save the updated struct to a file
-    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
-    savePath = fullfile(saveDir, 'cellDataStruct.mat');
-
-    % Check if the file already exists
-    if isfile(savePath)
-        disp('Overwriting existing file.');
-        delete(savePath);  % Remove the old file
-    else
-        disp('Saving new file.');
-    end
-
+    % Save the updated struct to the specified data file path
     try
-        % Save the updated struct to disk
-        save(savePath, 'cellDataStruct', '-v7');
-        disp('Struct saved successfully.');
+        save(dataFilePath, 'cellDataStruct', '-v7');
+        fprintf('Struct saved successfully to: %s\n', dataFilePath);
     catch ME
-    fprintf('Error in Group: %s | Recording: %s | Unit: %s\n', ...
-            groupName, recordingName, unitID);
-    warning('Error identifier: %s\nMessage: %s\nStack: %s', ...
-            ME.identifier, ME.message, ME.getReport);
+        fprintf('Error saving the file: %s\n', ME.message);
     end
 end
 
