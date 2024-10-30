@@ -29,7 +29,7 @@ function [fullPSTH, binEdges] = generatePSTH(cellDataStruct)
     cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314.psthRaw = fullPSTH;
     
     % Debugging: Display the PSTH length
-    fprintf('Generated PSTH with %d bins for unit %s\n', length(fullPSTH), unitID);
+    fprintf('Generated PSTH with %d bins for unit %s\n', length(fullPSTH), unitData);
 
 end
 
@@ -38,22 +38,25 @@ end
     function edges = edgeCalculator(start, binWidth, stop)
         edges = start:binWidth:stop - 1;  % Generate leading edges
     end
+    
+    % % Split spike data into bins (need to finish)
+    % function splitData = splitSpikeData(spikeTimes, binEdges)
+    %     if max(spikeTimes) > 0
+    %         if length(spikeTimes)-(edge(end)-1) < bin % if length of data is less than 1 bin more than final starting bin
+    %             lastbin = max(find(length(data)-(edge-1) >= bin));
+    %         else
+    %             lastbin = length(edge);
+    %         end
+    % 
+    % % split the data using the bins
+    %         splitdata = zeros(floor(bin),floor(lastbin)); % prealocate
+    %         start_edge = edge(1:lastbin);
+    %         end_edge = start_edge+bin-1; % add bin amount after subtracting first point
+    %         for i = 1:lastbin
+    %             splitdata(:,i) = data(floor(start_edge(i)):floor(end_edge(i))); % extract data
+    %         end
+    %     end
 
-    % Split spike data into bins
-    function splitData = splitSpikeData(spikeTimes, binEdges)
-        % Split spikeTimes according to binEdges
-        numBins = length(binEdges)-1; % Determine number of bins
-        splitData = cell(1, numBins); % Preallocate array to increase efficiency
-
-        % Loop through each bin and pull spike times
-        for i = 1:numBins
-            % Generate range of binEdges to look for spikes
-            binStart = binEdges(i);
-            binEnd = binEdges(i + 1);
-
-            % Extract spikes w/in this bin
-            splitData{i} = spikeTimes(spikeTimes >= binStart & spikeTimes < binEnd);
-        end
      % Debugging: Display spikes in each bin
      for i = 1:numBins
          fprintf('Bin %d: %d spikes\n', i, length(splitData{i}));
