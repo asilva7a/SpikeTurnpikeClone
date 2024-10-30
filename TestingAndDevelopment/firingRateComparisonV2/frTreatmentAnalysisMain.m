@@ -80,6 +80,11 @@ catch ME
     warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
 end
 
+% Plot line PSTHs
+try
+    plotPSTHsmooth(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) as Line Plots');  % Assuming plotPSTHRaw is available
+catch ME
+    warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+end
 
- 
 

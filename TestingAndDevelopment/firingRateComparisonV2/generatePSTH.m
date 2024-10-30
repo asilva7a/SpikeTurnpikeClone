@@ -135,4 +135,3 @@ function edges = edgeCalculator(start, binWidth, stop)
     disp(edges);
 end
 
-clear fullPSTH;

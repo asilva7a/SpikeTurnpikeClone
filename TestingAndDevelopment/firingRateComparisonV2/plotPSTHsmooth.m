@@ -42,7 +42,7 @@ function plotPSTHsmooth(binEdges, smoothPSTH, lineTime, figTitle)
     dateStr = datestr(now, 'yyyy-mm-dd_HH-MM');  % Format: YYYY-MM-DD_HH-MM
     
     % Construct the file name (save directory + name + extension)
-    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';  % Replace with desired directory
+    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestFigures';  % Replace with desired directory
     fileName = sprintf('smoothedPSTH-%s_%s.png', unitName, dateStr);  % e.g., 'PSTH-Smoothed-unit_001_2024-10-30_13-45.png'
     fullPath = fullfile(saveDir, fileName);
     
