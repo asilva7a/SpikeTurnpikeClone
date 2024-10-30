@@ -1,8 +1,4 @@
-function loadDataAndExtractUnits()
-    %% Default Values
-    defaultDataFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
-    defaultDataFile = 'all_data.mat';
-    defaultCellStructFile = 'cellDataStruct.mat';
+function [cellDataStruct] = loadDataAndExtractUnits(dataFilePath, all_data)
 
     % Prompts for User Input
     prompt = {'Enter Data Folder:', 'Enter Data File Name:'};
