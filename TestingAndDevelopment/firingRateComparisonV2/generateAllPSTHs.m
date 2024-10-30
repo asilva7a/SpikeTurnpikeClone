@@ -15,9 +15,9 @@ function [cellDataStruct] = generateAllPSTHs(cellDataStruct)
 
                 % Display the unit being processed for debugging
                 fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
-                    groupName, recordingName, unitID);
+                        groupName, recordingName, unitID);
 
-                % Try to generate PSTH for the current unit
+                % Extract the unit's data and generate PSTH
                 try
                     [fullPSTH, binEdges, splitData, cellDataStruct] = ...
                         generatePSTH(cellDataStruct, groupName, recordingName, unitID);
@@ -32,7 +32,7 @@ function [cellDataStruct] = generateAllPSTHs(cellDataStruct)
     % Save the updated struct to a file
     saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
     savePath = fullfile(saveDir, 'cellDataStruct.mat');
-
+    
     if isfile(savePath)
         disp('Overwriting existing file.');
         delete(savePath);  % Remove old file
@@ -44,7 +44,8 @@ function [cellDataStruct] = generateAllPSTHs(cellDataStruct)
         save(savePath, 'cellDataStruct', '-v7');
         disp('Struct saved successfully.');
     catch ME
-        warning('Error saving the file: %s', ME.message);
+        disp('Error saving the file:');
+        disp(ME.message);
     end
 end
 
@@ -56,25 +57,12 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
     unitData = cellDataStruct.(groupName).(recordingName).(unitID);
     fprintf('Extracted data for Unit: %s\n', unitID);
 
-    % Check if essential fields are missing
-    requiredFields = {'SpikeTimesall', 'SamplingFrequency', 'RecordingDuration', 'binWidth'};
-    for i = 1:length(requiredFields)
-        if ~isfield(unitData, requiredFields{i})
-            warning('Missing field "%s" for Unit: %s. Skipping unit.', requiredFields{i}, unitID);
-            return;  % Skip this unit if a required field is missing
-        end
-    end
-
     % Extract and normalize spike times
     spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
 
     % Check if spike times are empty
     if isempty(spikeTimes)
-        warning('Spike times are empty for Unit: %s. Skipping PSTH generation.', unitID);
-        fullPSTH = [];
-        binEdges = [];
-        splitData = [];
-        return;
+        warning('Spike times are empty for Unit: %s', unitID);
     end
 
     % Set binning parameters
@@ -83,11 +71,7 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
 
     % Validate bin width
     if binWidth <= 0 || binWidth > recordingLength
-        warning('Invalid bin width (%f) for Unit: %s. Skipping PSTH generation.', binWidth, unitID);
-        fullPSTH = [];
-        binEdges = [];
-        splitData = [];
-        return;
+        error('Invalid bin width for Unit: %s', unitID);
     end
 
     % Calculate bin edges
@@ -102,10 +86,6 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
         binEnd = binEdges(i + 1);
         splitData{i} = spikeTimes(spikeTimes >= binStart & spikeTimes < binEnd);
 
-        % Warning if no spikes in a bin
-        if isempty(splitData{i})
-            warning('No spikes in Bin %d for Unit: %s.', i, unitID);
-        end
     end
 
     % Calculate PSTH
@@ -116,6 +96,7 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
     cellDataStruct.(groupName).(recordingName).(unitID).psthRaw = fullPSTH;
     cellDataStruct.(groupName).(recordingName).(unitID).binEdges = binEdges;
     cellDataStruct.(groupName).(recordingName).(unitID).numBins = numBins;
+
 end
 
 %% Helper Function: Calculate Bin Edges
@@ -123,9 +104,4 @@ function edges = edgeCalculator(start, binWidth, stop)
     % Generate bin edges with the specified width
     edges = start:binWidth:stop;
 
-    % Check if edges are empty or invalid
-    if isempty(edges)
-        warning('Generated bin edges are empty. Check bin width or recording length.');
-    end
 end
-
