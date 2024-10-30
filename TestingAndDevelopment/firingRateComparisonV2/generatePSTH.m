@@ -84,7 +84,7 @@ function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
 
     % Save PSTH to struct
     try
-        cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314.psthRaw = fullPSTH;
+        cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw = fullPSTH;
         disp('PSTH successfully saved to struct.');
     catch ME
         warning('Failed to save PSTH to struct: %s', ME.message);
@@ -92,7 +92,7 @@ function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
 
     % Debugging: Check data saved to struct
     disp('Updated Cell Data Struct:');
-    disp(cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314);
+    disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0);
 
 end
 
