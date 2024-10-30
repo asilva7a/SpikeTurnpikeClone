@@ -82,9 +82,11 @@ end
 
 % Plot line PSTHs
 try
-    plotPSTHsmooth(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) as Line Plots');  % Assuming plotPSTHRaw is available
+    [smoothedPlot, rawPlot] = plotPSTHLines(cellDataStruct, 1860); % Set treatment period (2nd arg) to 1860s
 catch ME
-    warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+    % Handle any errors gracefully and display the error message
+    warning('%s: %s', ME.identifier, ME.message);
 end
+
 
 
