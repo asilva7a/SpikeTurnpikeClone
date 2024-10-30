@@ -3,8 +3,8 @@
 %   PSTH Plotting
 %       [x] Loading data and selecting directories
 %       [x] Extract data to struct
-%       [ ] Calculate raw PSTH for single unit
-%       [ ] Plot raw PSTH for single unit
+%       [x] Calculate raw PSTH for single unit
+%       [x] Plot raw PSTH for single unit
 %       [ ] Smoothing PSTH with boxcar smoothing
 %       [ ] Plot unit PSTH with smoothing
 %   Curve Plotting

@@ -52,7 +52,7 @@ function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
     fullPSTH = spikeCounts / binWidth;  % Convert to firing rate (spikes per second)
     
     % Plot PSTH
-    plotPSTH(binEdges, fullPSTH, 1860)
+    plotPSTHRaw(binEdges, fullPSTH, 1860)
 
     % Save PTSH to struct
     cellDataStruct.Pvalb.pvalb_hctztreat_0008_rec1.cid314.psthRaw = fullPSTH;
