@@ -7,62 +7,32 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
 
-%%  Main script for analysing the single unit data
+% Main script for analysing the single unit data
 
 disp('Starting main script...');
 
 %% Get User Input for Directories
 
 try
-    % Get user inputs for paths
-    [dataFilePath, figureFolder] = getUserPaths();
-
-    % Load the data file
-    load(dataFilePath, 'all_data.mat');  % Adjust the variable name if needed
-
-    % Display a confirmation message
+    [dataFilePath, figureFolder] = getUserPaths(); % Get user inputs for paths
+    load(dataFilePath, 'all_data.mat');  % Load the data file
     fprintf('Ready to save figures in: %s\n', figureFolder);
-
 catch ME
-    % If any error occurs, handle it gracefully
     fprintf('Failed to initialize paths: %s\n', ME.message);
 end
 
 %% Load the data into struct
 
-% Default directory and file name
-dataFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
-fileName = 'all_data.mat';
-filePath = fullfile(dataFolder, fileName);
-defaultValues = {defaultFolder, defaultFile};  % Default inputs
-
-% Get user input for directories
-prompt = {'Enter Data Folder:', 'Enter File Name:'};
-userInput = inputdlg(prompt, 'Select Data File', [1 50], defaultValues); 
-
-% Load the all_data file
-if isfile(filePath)
-    load(filePath, 'all_data');
-    disp('File loaded successfully!');
-else
-    error('File not found: %s', filePath);
-end
-
-% Define the Path for the Saved Struct
-cellDataStructPath = fullfile(dataFolder, 'cellDataStruct.mat');
-
-% Check if cellDataStruct Already Exists
-disp('Calling extractUnitData...');
-extractUnitData(all_data);  % Extract and save struct
-
-% Load and Display the Struct for Debugging
 try
-    load(cellDataStructPath, 'cellDataStruct');
-    disp('Loaded cellDataStruct.mat successfully!');
-    disp('Loaded cellDataStruct in detail:');
-    disp(struct2table(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1,"AsArray",true));  % Display as table
+    % Attempt to load data and extract units
+    loadDataAndExtractUnits();
+    disp('Data loaded and units extracted successfully!');
 catch ME
-    error('Error loading cellDataStruct.mat: %s', ME.message);
+    fprintf('An error occurred: %s\n', ME.message);
+    fprintf('Identifier: %s\n', ME.identifier);
+    for k = 1:length(ME.stack)
+        fprintf('In %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
+    end
 end
 
 %% Analysis
