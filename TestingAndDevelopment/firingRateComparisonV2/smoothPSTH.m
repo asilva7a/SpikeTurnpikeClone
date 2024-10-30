@@ -1,18 +1,33 @@
-function [smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct)
-%UNTITLED2 Summary of this function goes here
-%   Detailed explanation goes here
+function [smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct, windowSize)
+% smoothPSTH: Smooths the raw PSTH using a boxcar filter of given size.
+    % 
+    % Inputs:
+    %   - cellDataStruct: Input structure containing raw PSTH data
+    %   - windowSize: Size of the smoothing window (default is 5)
+    %
+    % Outputs:
+    %   - smoothedPSTH: The smoothed PSTH
+    %   - cellDataStruct: Updated structure with smoothed PSTH
 
+
+%% Load Data
     % Pull relevant data from struct
     load("TestData\cellDataStruct.mat","cellDataStruct");
     psthRough = cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw;
 
-    % Define Boxcar filter
-    boxcar = [1 1 1 1];
-    boxcar = boxcar/sum(boxcar);
+%% Apply smoothing
+    % Respond to user input
+    if nargin < 2
+        windowSize = 5;
+    end
+
+    % Define boxcar smoothing
+    boxcar = ones(1, windowSize)/windowSize;
 
     % Apply smoothing to rough PSTH
     smoothedPSTH = conv(psthRough, boxcar, 'same');
-    
+
+    %% Save smoothed PSTH
     % Save smoothed PSTH to struct
     try
         cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthSmoothed = smoothedPSTH;
@@ -44,11 +59,3 @@ function [smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct)
         disp(ME.message);
     end    
 end
-
-
-% To Do
-%   Need
-%       1. working function
-%   Want
-%       1. Input for additional arguments for addtional smoothing windows
-%   
