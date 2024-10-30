@@ -43,7 +43,7 @@ function plotPSTHsmooth(binEdges, smoothPSTH, lineTime, figTitle)
     
     % Construct the file name (save directory + name + extension)
     saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';  % Replace with desired directory
-    fileName = sprintf('PSTH-Smoothed-%s_%s.png', unitName, dateStr);  % e.g., 'PSTH-Smoothed-unit_001_2024-10-30_13-45.png'
+    fileName = sprintf('smoothedPSTH-%s_%s.png', unitName, dateStr);  % e.g., 'PSTH-Smoothed-unit_001_2024-10-30_13-45.png'
     fullPath = fullfile(saveDir, fileName);
     
     % Save the figure as a PNG with high resolution
