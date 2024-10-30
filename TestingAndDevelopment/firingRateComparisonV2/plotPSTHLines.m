@@ -18,7 +18,7 @@ function [smoothedPSTH_Lineplot, rawPSTH_Lineplot] = plotPSTHLines(cellDataStruc
     binCenters = binEdges(1:end-1) + diff(binEdges) / 2;
 
     % Create a new figure
-    figure;
+    f = figure;
     hold on;
 
     % Plot raw PSTH as a black line
@@ -28,7 +28,7 @@ function [smoothedPSTH_Lineplot, rawPSTH_Lineplot] = plotPSTHLines(cellDataStruc
     smoothedPSTH_Lineplot = plot(binCenters, smoothedPSTH, '-r', 'LineWidth', 2, 'DisplayName', 'Smoothed PSTH');
 
     % Add a vertical line at the user-specified treatment time
-    xline(treatmentTime, '--b', 'Treatment', 'LineWidth', 2, ...
+    xline(treatmentTime, '--b', 'LineWidth', 2, ...
         'LabelHorizontalAlignment', 'left', 'LabelVerticalAlignment', 'bottom');
 
     % Add labels, title, and legend
