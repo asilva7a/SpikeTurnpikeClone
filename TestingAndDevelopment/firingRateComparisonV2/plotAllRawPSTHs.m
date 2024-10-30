@@ -1,8 +1,6 @@
 function plotAllRawPSTHs(cellDataStruct, lineTime)
     % plotAllRawPSTHs: Plots and saves PSTHs for all units with metadata.
     
-    load('cellDataStruct');
-
     %% Set Default Arg values
     if nargin < 2 || isempty(lineTime)
         lineTime = 1860;
