@@ -55,8 +55,13 @@ catch ME
     error('Error loading cellDataStruct.mat: %s', ME.message);
 end
 
-
 %% Analysis (to do)
+generatePSTH(cellDataStruct);
+
+% Generate unit PSTH
+
+
+
 
 %% Plotting (to do)
 
