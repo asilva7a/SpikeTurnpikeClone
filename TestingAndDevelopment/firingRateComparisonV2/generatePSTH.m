@@ -4,8 +4,8 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     %   arg1
     %   arg2 
     %
-
-    % Extract Unit Data
+%% Extract unit data
+    % Pull from struct
     unitData = cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0;
     disp('Extracted Unit Data:');  % Debugging statement
     disp(unitData);
@@ -13,21 +13,21 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     % Extract spiketimes for whole recording and normalize to sample rate
     spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
 
-    % Debugging: Check spikeTimes
-    disp('Spike Times (in seconds):');
-    disp(spikeTimes);
+        % Debugging: Check spikeTimes
+        disp('Spike Times (in seconds):');
+        disp(spikeTimes);
 
-    % Debugging: Ensure spiketimes array isn't empty
-    if isempty(spikeTimes)
-        warning('Spike times are empty! Check input data.');
-    end
+        % Debugging: Ensure spiketimes array isn't empty
+        if isempty(spikeTimes)
+            warning('Spike times are empty! Check input data.');
+        end
 
     % Set Binning
     recordingLength = unitData.RecordingDuration;  % Recording length in seconds
     binWidth = unitData.binWidth;  % Bin width in seconds
 
-    % Debugging: Check the bin width and recording length
-    fprintf('Bin width: %.2f s, Recording length: %.2f s\n', binWidth, recordingLength);
+        % Debugging: Check the bin width and recording length
+        fprintf('Bin width: %.2f s, Recording length: %.2f s\n', binWidth, recordingLength);
 
     % Check if bin width is valid
     if binWidth <= 0 || binWidth > recordingLength
@@ -37,9 +37,9 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     % Calculate bin edges with helper function
     binEdges = edgeCalculator(0, binWidth, recordingLength);
 
-    % Debugging: Check bin edges
-    disp('Bin Edges:');
-    disp(binEdges);
+        % Debugging: Check bin edges
+        disp('Bin Edges:');
+        disp(binEdges);
 
     % Ensure binEdges are not empty
     if isempty(binEdges)
@@ -69,12 +69,13 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     spikeCounts = cellfun(@length, splitData);  % Spike counts per bin
     fullPSTH = spikeCounts / binWidth;  % Convert to firing rate (spikes per second)
 
-    % Debugging: Display spike counts and PSTH
-    disp('Spike Counts per Bin:');
-    disp(spikeCounts);
-    disp('Full PSTH (spikes per second):');
-    disp(fullPSTH);
-    
+        % Debugging: Display spike counts and PSTH
+        disp('Spike Counts per Bin:');
+        disp(spikeCounts);
+        disp('Full PSTH (spikes per second):');
+        disp(fullPSTH);
+
+    %% Save output to struct
     % Save PSTH to struct
     try
         cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw = fullPSTH;
@@ -83,10 +84,26 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
         warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
     end
     
+    % Save bin edges to struct
+    try
+        cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.binEdges = binEdges;
+        disp('PSTH successfully saved to struct.');
+    catch ME
+        warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+    end
+
+    % Save bin number to struct
+    try
+        cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.numBins = numBins;
+        disp('Bin Number successfully saved to struct.');
+    catch ME
+        warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
+    end
+
         % Debugging: Check data saved to struct
         disp('Updated Cell Data Struct:');
         disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw);
-
+    
     % Save Struct to file
     saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
     savePath = fullfile(saveDir, 'cellDataStruct.mat');
