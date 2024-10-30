@@ -74,13 +74,6 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     disp(spikeCounts);
     disp('Full PSTH (spikes per second):');
     disp(fullPSTH);
-
-    % Plot PSTH
-    try
-        plotPSTHRaw(binEdges, fullPSTH, 1860);  % Assuming plotPSTHRaw is available
-    catch ME
-        warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
-    end
     
     % Save PSTH to struct
     try
@@ -89,10 +82,29 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellData
     catch ME
         warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
     end
+    
+        % Debugging: Check data saved to struct
+        disp('Updated Cell Data Struct:');
+        disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw);
 
-    % Debugging: Check data saved to struct
-    disp('Updated Cell Data Struct:');
-    disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0);
+    % Save Struct to file
+    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
+    savePath = fullfile(saveDir, 'cellDataStruct.mat');
+
+    if isfile(savePath)
+        disp('Overwriting existing file.');
+        delete(savePath);  % Remove old file
+    else
+        disp('Saving new file.');
+    end
+
+    try
+        save(savePath, 'cellDataStruct', '-v7');
+        disp('Struct saved successfully.');
+    catch ME
+        disp('Error saving the file:');
+        disp(ME.message);
+    end    
 
 end
 
