@@ -10,10 +10,10 @@ function [cellDataStruct] = extractUnitData(all_data)
     group = groupName{2};  % Assuming 'Pvalb' is the second field
 
     recordingName = fieldnames(all_data.(group));  
-    recording = recordingName{2};  % Assuming 'pvalb_hctztreat_0008_rec1'
+    recording = recordingName{1};  % Assuming 'pvalb_hctztreat_0008_rec1'
 
     unitID = fieldnames(all_data.(group).(recording));  
-    unit = unitID{32};  % Assuming 'cid314' is the 32nd unit
+    unit = unitID{1};  % Assuming 'cid314' is the 32nd unit
 
     % Extract the unit data
     unitData = all_data.(group).(recording).(unit);
