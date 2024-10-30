@@ -28,8 +28,9 @@ function [smoothedPSTH_Lineplot, rawPSTH_Lineplot] = plotPSTHLines(cellDataStruc
     smoothedPSTH_Lineplot = plot(binCenters, smoothedPSTH, '-r', 'LineWidth', 2, 'DisplayName', 'Smoothed PSTH');
 
     % Add a vertical line at the user-specified treatment time
-    xline(treatmentTime, '--b', 'LineWidth', 2, ...
-        'LabelHorizontalAlignment', 'left', 'LabelVerticalAlignment', 'bottom');
+    treatmentLine = xline(treatmentTime, '--b', 'LineWidth', 2, ...
+        'LabelHorizontalAlignment', 'left', 'LabelVerticalAlignment', 'bottom', ...
+        'DisplayName', 'Treatment');
 
     % Add labels, title, and legend
     xlabel('Time (s)');
