@@ -11,11 +11,10 @@ function plotPSTH(binEdges, fullPSTH, lineTime, figTitle)
     %   plotPSTH(binEdges, fullPSTH, 1800, 'PSTH Example');
 
     % Create a new figure
-    figure;
+    f = figure;
 
     % Plot the PSTH with black bars and edges
     bar(binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
-
 
     % Add labels and title
     xlabel('Time (s)');

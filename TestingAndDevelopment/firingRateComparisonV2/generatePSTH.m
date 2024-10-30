@@ -1,4 +1,4 @@
-function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
+function [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellDataStruct)
     %% Generate PSTH for the entire recording
     %
     %   arg1
@@ -79,15 +79,15 @@ function [fullPSTH, binEdges, splitData] = generatePSTH(cellDataStruct)
     try
         plotPSTHRaw(binEdges, fullPSTH, 1860);  % Assuming plotPSTHRaw is available
     catch ME
-        warning('Failed to plot PSTH: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
     end
-
+    
     % Save PSTH to struct
     try
         cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0.psthRaw = fullPSTH;
         disp('PSTH successfully saved to struct.');
     catch ME
-        warning('Failed to save PSTH to struct: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
     end
 
     % Debugging: Check data saved to struct

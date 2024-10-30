@@ -58,7 +58,11 @@ end
 %% Analysis (to do)
 
 % Generate PTSH for single unit
-generatePSTH(cellDataStruct);
+[fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellDataStruct);
+
+
+disp(cellDataStruct.Pvalb.pvalb_hctztreat_0006_rec1.cid0);
+
 
 %% Plotting (to do)
 
