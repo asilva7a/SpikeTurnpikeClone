@@ -36,5 +36,18 @@ function plotPSTH(binEdges, fullPSTH, lineTime, figTitle)
     % Optional: Improve plot appearance
     grid off;
     set(gca, 'Box', 'off', 'TickDir', 'out');  % Clean up plot look
+
+    % Define the unit name and generate the current date string
+    unitName = 'cid0';  % Replace with the actual unit name
+    dateStr = datestr(now, 'yyyy-mm-dd_HH-MM');  % Format: YYYY-MM-DD_HH-MM
+    
+    % Construct the file name (save directory + name + extension)
+    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';  % Replace with desired directory
+    fileName = sprintf('%s_%s.png', unitName, dateStr);  % e.g., 'unit_001_2024-10-30_13-45.png'
+    fullPath = fullfile(saveDir, fileName);
+    
+    % Save the figure as a PNG with high resolution
+    exportgraphics(f, fullPath, 'Resolution', 300);  % Save with 300 DPI
+
 end
 
