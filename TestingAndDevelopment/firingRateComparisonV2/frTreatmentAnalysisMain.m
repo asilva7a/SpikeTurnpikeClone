@@ -75,7 +75,7 @@ end
 
 % Plot smooth PSTH
 try
-    plotPSTHRaw(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) with Boxcar smoothing');  % Assuming plotPSTHRaw is available
+    plotPSTHsmooth(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) with Boxcar Smoothing');  % Assuming plotPSTHRaw is available
 catch ME
     warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
 end
