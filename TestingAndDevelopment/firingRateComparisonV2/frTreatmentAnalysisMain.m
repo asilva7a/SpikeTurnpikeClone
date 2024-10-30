@@ -1,15 +1,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% To-Do
-%   PSTH Plotting
-%       [x] Loading data and selecting directories
-%       [x] Extract data to struct
-%       [x] Calculate raw PSTH for single unit
-%       [x] Plot raw PSTH for single unit
-%       [X] Fix data not being saved to struct
-%       [X] Smoothing PSTH with boxcar smoothing
-%       [X] Plot unit PSTH with smoothing
-%   Curve Plotting
-%       [ ] ...
+%   Scale up to do:
+%   [ ] Make main function a for loop
+%   [ ] Change function calls to flex for struct 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
@@ -37,13 +30,8 @@ end
 cellDataStructPath = fullfile(dataFolder, 'cellDataStruct.mat');
 
 % Check if cellDataStruct Already Exists
-if ~isfile(cellDataStructPath)
-    % Extract relevant fields from all_data struct and save them
-    disp('Calling extractUnitData...');
-    extractUnitData(all_data);  % Extract and save struct
-else
-    disp('Skipping extractUnitData. Struct already exists.');
-end
+disp('Calling extractUnitData...');
+extractUnitData(all_data);  % Extract and save struct
 
 % Load and Display the Struct for Debugging
 try
@@ -58,11 +46,10 @@ end
 %% Analysis
 
 % Generate PTSH for single unit
-[fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellDataStruct);
+[cellDataStruct] = generateAllPSTHs(cellDataStruct);
 
 % Generate PSTH with boxcar smoothing
-[smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct, 10);
-
+cellDataStruct = smoothAllPSTHs(cellDataStruct, 10);
 
 %% Plotting 
 
