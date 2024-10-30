@@ -11,12 +11,34 @@ clear; clc;
 
 disp('Starting main script...');
 
+%% Get User Input for Directories
+
+try
+    % Get user inputs for paths
+    [dataFilePath, figureFolder] = getUserPaths();
+
+    % Load the data file
+    load(dataFilePath, 'all_data.mat');  % Adjust the variable name if needed
+
+    % Display a confirmation message
+    fprintf('Ready to save figures in: %s\n', figureFolder);
+
+catch ME
+    % If any error occurs, handle it gracefully
+    fprintf('Failed to initialize paths: %s\n', ME.message);
+end
+
 %% Load the data into struct
 
-% Define the folder and file name for all_data
+% Default directory and file name
 dataFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
 fileName = 'all_data.mat';
 filePath = fullfile(dataFolder, fileName);
+defaultValues = {defaultFolder, defaultFile};  % Default inputs
+
+% Get user input for directories
+prompt = {'Enter Data Folder:', 'Enter File Name:'};
+userInput = inputdlg(prompt, 'Select Data File', [1 50], defaultValues); 
 
 % Load the all_data file
 if isfile(filePath)
