@@ -1,4 +1,5 @@
-function [cellDataStruct] = extractUnitData(all_data)
+function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
+
     % Debugging output
     disp('extractUnitData called');
 
@@ -66,27 +67,34 @@ function [cellDataStruct] = extractUnitData(all_data)
          end
     end
 
-    %% Handle Save Logic
-    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
-    savePath = fullfile(saveDir, 'cellDataStruct.mat');
-
-    % Check if the file already exists and delete if necessary
-    if isfile(savePath)
-        disp('Overwriting existing file.');
-        delete(savePath);  % Remove the old file
-    else
-        disp('Saving new file.');
-    end
-
-    % Save the final struct to a .mat file
+    % Handle saving logic with backup and error handling
     try
-        save(savePath, 'cellDataStruct', '-v7');
-        disp('Struct saved successfully.');
-    catch ME
-        % Handle and display any saving errors
-        disp('Error saving the file:');
-        disp(ME.message);
-    end
+        % Check if the file already exists
+        if isfile(cellDataStructPath)
+            % Create a backup of the existing file
+            backupPath = strrep(cellDataStructPath, '.mat', ['_backup_' datestr(now, 'yyyy-mm-dd_HH-MM-SS') '.mat']);
+            movefile(cellDataStructPath, backupPath);
+            fprintf('Existing file backed up as: %s\n', backupPath);
+        end
 
+        % Save the struct with optional compression (-v7.3 for large data)
+        save(cellDataStructPath, 'cellDataStruct', '-v7');
+        fprintf('Saved cellDataStruct to: %s\n', cellDataStructPath);
+
+        % Verify if the file was saved successfully
+        if ~isfile(cellDataStructPath)
+            error('SaveError:VerificationFailed', 'Failed to verify the saved file: %s', cellDataStructPath);
+        end
+
+    catch ME
+        % Handle and log any save-related errors
+        fprintf('Error occurred during saving: %s\n', ME.message);
+        fprintf('Identifier: %s\n', ME.identifier);
+        for k = 1:length(ME.stack)
+            fprintf('In %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
+        end
+        rethrow(ME);  % Rethrow the error after logging
+    end
 end
+
 
