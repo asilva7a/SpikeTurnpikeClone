@@ -1,4 +1,4 @@
-function [cellDataStruct] = generateAllPSTHs(cellDataStruct)
+function [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFilePath)
     % Loop over all groups, recordings, and units in the structure
     groupNames = fieldnames(cellDataStruct);  % Extract group names
 
@@ -29,23 +29,12 @@ function [cellDataStruct] = generateAllPSTHs(cellDataStruct)
         end
     end
 
-    % Save the updated struct to a file
-    saveDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
-    savePath = fullfile(saveDir, 'cellDataStruct.mat');
-    
-    if isfile(savePath)
-        disp('Overwriting existing file.');
-        delete(savePath);  % Remove old file
-    else
-        disp('Saving new file.');
-    end
-
+    % Save the updated struct to the specified data file path
     try
-        save(savePath, 'cellDataStruct', '-v7');
-        disp('Struct saved successfully.');
+        save(dataFilePath, 'cellDataStruct', '-v7');
+        fprintf('Struct saved successfully to: %s\n', dataFilePath);
     catch ME
-        disp('Error saving the file:');
-        disp(ME.message);
+        fprintf('Error saving the file: %s\n', ME.message);
     end
 end
 
