@@ -14,31 +14,22 @@ disp('Starting main script...');
 %% Get User Input for Directories
 
 try
-    [dataFilePath, figureFolder] = getUserPaths(); % Get user inputs for paths
-    load(dataFilePath, 'all_data.mat');  % Load the data file
-    fprintf('Ready to save figures in: %s\n', figureFolder);
-catch ME
-    fprintf('Failed to initialize paths: %s\n', ME.message);
-end
+    [dataFilePath, cellDataStructPath, figureFolder] = loadDataAndPreparePaths();
+    load(dataFilePath, 'all_data');
 
-%% Load the data into struct
+    % Call the extract function with the user-specified save path
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath);
 
-try
-    % Attempt to load data and extract units
-    loadDataAndExtractUnits();
-    disp('Data loaded and units extracted successfully!');
+    fprintf('Data loaded and saved successfully!\n');
 catch ME
     fprintf('An error occurred: %s\n', ME.message);
-    fprintf('Identifier: %s\n', ME.identifier);
-    for k = 1:length(ME.stack)
-        fprintf('In %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
-    end
 end
+
 
 %% Analysis
 
 % Generate PTSH for single unit
-[cellDataStruct] = generateAllPSTHs(cellDataStruct);
+[cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFilePath);
 
 % Generate PSTH with boxcar smoothing
 cellDataStruct = smoothAllPSTHs(cellDataStruct, 10);
