@@ -61,11 +61,10 @@ end
 [fullPSTH, binEdges, splitData, cellDataStruct] = generatePSTH(cellDataStruct);
 
 % Generate PSTH with boxcar smoothing
-[smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct);
+[smoothedPSTH, cellDataStruct]= smoothPSTH(cellDataStruct, windowSize);
 
 
-
-%% Plotting (to do)
+%% Plotting 
 
 % Plot raw PSTH
 try
