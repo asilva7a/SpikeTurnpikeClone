@@ -14,7 +14,8 @@ function plotPSTH(binEdges, fullPSTH, lineTime, figTitle)
     figure;
 
     % Plot the PSTH with black bars and edges
-    bar(binEdges(1:end-1), fullPSTH, 'histc', 'FaceColor', 'k', 'EdgeColor', 'k'); 
+    bar(binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
+
 
     % Add labels and title
     xlabel('Time (s)');
