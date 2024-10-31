@@ -1,4 +1,4 @@
-function [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFilePath)
+function [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFolder)
     % Loop over all groups, recordings, and units in the structure
     groupNames = fieldnames(cellDataStruct);  % Extract group names
 
@@ -31,8 +31,8 @@ function [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFilePath)
 
     % Save the updated struct to the specified data file path
     try
-        save(dataFilePath, 'cellDataStruct', '-v7');
-        fprintf('Struct saved successfully to: %s\n', dataFilePath);
+        save(dataFolder, 'cellDataStruct', '-v7');
+        fprintf('Struct saved successfully to: %s\n', dataFolder);
     catch ME
         fprintf('Error saving the file: %s\n', ME.message);
     end
