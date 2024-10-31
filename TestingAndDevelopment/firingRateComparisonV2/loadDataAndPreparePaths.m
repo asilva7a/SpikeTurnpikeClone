@@ -1,4 +1,4 @@
-function [dataFilePath, cellDataStructPath, figureFolder] = loadDataAndPreparePaths()
+function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths()
     % loadDataAndPreparePaths: Handles user input for paths and prepares file paths.
     
     % Default paths and filenames
@@ -42,7 +42,9 @@ function [dataFilePath, cellDataStructPath, figureFolder] = loadDataAndPreparePa
 
         % Display selected paths for confirmation
         fprintf('Data File: %s\n', dataFilePath);
+        fprintf('Data File Path: %s/n',dataFilePath)
         fprintf('Figure Folder: %s\n', figureFolder);
+        fprintf('')
 
     catch ME
         % Log errors and rethrow
