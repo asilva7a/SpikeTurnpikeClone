@@ -1,4 +1,4 @@
-function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFilePath, windowSize)
+function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFolder, windowSize)
     % smoothAllPSTHs: Smooths the raw PSTH for all units using a boxcar filter.
     %
     % Inputs:
@@ -54,8 +54,8 @@ function [cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFilePath, windowS
 
     % Save the updated struct to the specified data file path
     try
-        save(dataFilePath, 'cellDataStruct', '-v7');
-        fprintf('Struct saved successfully to: %s\n', dataFilePath);
+        save(dataFolder, 'cellDataStruct', '-v7');
+        fprintf('Struct saved successfully to: %s\n', dataFolder);
     catch ME
         fprintf('Error saving the file: %s\n', ME.message);
     end

@@ -29,10 +29,10 @@ end
 %% Analysis
 
 % Generate PTSH for single unit
-[cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFilePath);
+[cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, 10);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 
 %% Plotting 
 try
