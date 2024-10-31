@@ -1,10 +1,10 @@
 function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
-    % plotAllRawPSTHs: Plots and saves PSTHs for all units with metadata.
+    % plotAllRawPSTHs: Plots and saves raw PSTHs for all units with metadata.
     %
     % Inputs:
     %   - cellDataStruct: Struct containing the PSTH data.
     %   - lineTime: Time (in seconds) to draw a vertical line (optional).
-    %   - figureFolder: Folder where the figures will be saved.
+    %   - figureFolder: Base folder where figures will be saved.
 
     %% Set Default Arguments
     if nargin < 2 || isempty(lineTime)
@@ -12,17 +12,8 @@ function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
         fprintf('No treatment period specified. Defaulting to 1860s.\n');
     end
 
-    if nargin < 2 && isempty(figureFolder)
+    if nargin < 3 || isempty(figureFolder)
         error('Figure folder path is required. Please provide a valid folder path.');
-    end
-
-    % Define "Raw PSTHs" subdirectory path within the provided figure folder
-    rawPSTHFolder = fullfile(figureFolder, 'Raw PSTHs');
-
-    % Ensure the "Raw PSTHs" folder exists
-    if ~isfolder(rawPSTHFolder)
-        mkdir(rawPSTHFolder);
-        fprintf('Created "Raw PSTHs" folder: %s\n', rawPSTHFolder);
     end
 
     % Initialize counters to track results
@@ -41,11 +32,11 @@ function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
 
-            % Create a group/recording-specific subfolder inside the figure folder
-            saveDir = fullfile(figureFolder, groupName, recordingName);
+            % Define the directory for "Raw PSTHs" within each group and recording
+            saveDir = fullfile(figureFolder, groupName, recordingName, 'Raw PSTHs');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
-                fprintf('Created directory: %s\n', saveDir);
+                fprintf('Created directory for Raw PSTHs: %s\n', saveDir);
             end
 
             % Process each unit
@@ -98,6 +89,7 @@ function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
     fprintf('Successfully Processed: %d\n', successCount);
     fprintf('Errors Encountered: %d\n', errorCount);
 end
+
 
 %% Helper Function: Plot and Save a Single PSTH with Metadata
 function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metadataText)
