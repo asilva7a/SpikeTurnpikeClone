@@ -1,10 +1,22 @@
 function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
-    % plotAllRawPSTHs: Plots and saves raw PSTHs for all units with metadata.
+    %% plotAllRawPSTHs: Plots and saves raw PSTHs for all units with metadata.
     %
     % Inputs:
-    %   - cellDataStruct: Struct containing the PSTH data.
+    %   - cellDataStruct: Struct containing the smoothed PSTH data.
     %   - lineTime: Time (in seconds) to draw a vertical line (optional).
     %   - figureFolder: Base folder where figures will be saved.
+    %
+    %% Directory File Structure
+    % /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/
+    % └── GroupName
+    %     └── RecordingName
+    %         ├── Raw PSTHs
+    %         │   ├── RawPSTH-cid0_2024-10-30_13-45.png
+    %         │   └── ...
+    %         └── Smoothed PSTHs
+    %             ├── SmoothedPSTH-cid0_2024-10-30_13-45.png
+    %             └── ...
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     %% Set Default Arguments
     if nargin < 2 || isempty(lineTime)

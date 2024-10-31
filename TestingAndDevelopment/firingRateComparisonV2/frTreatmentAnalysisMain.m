@@ -4,6 +4,17 @@
 %   [ ] Make main function a for loop
 %   [ ] Change function calls to flex for struct 
 
+%% Directory Structure
+% /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/
+% └── GroupName
+%     └── RecordingName
+%         ├── Raw PSTHs
+%         │   ├── RawPSTH-cid0_2024-10-30_13-45.png
+%         │   └── ...
+%         └── Smoothed PSTHs
+%             ├── SmoothedPSTH-cid0_2024-10-30_13-45.png
+%             └── ...
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
 
@@ -41,11 +52,7 @@ cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
 
 % Plot smooth PSTH
-try
-    plotPSTHsmooth(binEdges, smoothedPSTH, 1860, 'Peri-Stimulus Time Histogram (PSTH) with Boxcar Smoothing');  % Assuming plotPSTHRaw is available
-catch ME
-    warning('%s: %s', ME.identifier, ME.message);  % Include format specifier
-end
+plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot line PSTHs
 try
