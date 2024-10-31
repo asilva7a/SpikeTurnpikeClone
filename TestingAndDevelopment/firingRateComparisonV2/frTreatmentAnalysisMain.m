@@ -14,7 +14,7 @@ disp('Starting main script...');
 %% Get User Input for Directories
 
 try
-    [dataFilePath, cellDataStructPath, figureFolder] = loadDataAndPreparePaths();
+    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths();
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
