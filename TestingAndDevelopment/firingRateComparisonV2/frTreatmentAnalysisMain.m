@@ -44,7 +44,10 @@ clear all_data;
 [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
+[cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
+
+% Determine Unit Response
+
 
 %% Plotting 
 
@@ -57,8 +60,6 @@ plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assumi
 % Plot line PSTHs
 plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
-% Plot z-Score HeatMap
-plotZScoredPSTH(cellDataStruct, 1860, figureFolder);
-
+% 
 
 
