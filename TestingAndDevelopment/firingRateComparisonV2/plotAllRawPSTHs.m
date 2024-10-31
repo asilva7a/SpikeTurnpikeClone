@@ -16,11 +16,21 @@ function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
         error('Figure folder path is required. Please provide a valid folder path.');
     end
 
+    % Define "Raw PSTHs" subdirectory path within the provided figure folder
+    rawPSTHFolder = fullfile(figureFolder, 'Raw PSTHs');
+
+    % Ensure the "Raw PSTHs" folder exists
+    if ~isfolder(rawPSTHFolder)
+        mkdir(rawPSTHFolder);
+        fprintf('Created "Raw PSTHs" folder: %s\n', rawPSTHFolder);
+    end
+
     % Initialize counters to track results
     totalUnits = 0;
     successCount = 0;
     errorCount = 0;
 
+    %% Start Figure Plotting Loop
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
