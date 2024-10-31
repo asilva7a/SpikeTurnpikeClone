@@ -93,14 +93,19 @@ end
 function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metadataText)
     % Create a new figure
     f = figure;
+    ax = axes('Parent', f);
 
     % Plot the PSTH as black bars
-    bar(binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
+    bar(ax,binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
 
     % Add labels and title
     xlabel('Time (s)');
     ylabel('Firing Rate (spikes/s)');
     title(figTitle);
+    
+    % Adjust bottom margin to make space for metadata
+    ax.Position(2) = ax.Position(2) + 0.05;  % Shift axis upwards slightly
+    ax.Position(4) = ax.Position(4) - 0.05;  % Adjust height to fit
 
     % Add a vertical line at the treatment moment, if provided
     if ~isempty(lineTime)
@@ -109,7 +114,7 @@ function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metad
     end
 
     % Add metadata annotation at the bottom of the plot
-    annotation('textbox', [0.1, 0.01, 0.8, 0.05], ...
+    annotation('textbox', [0.1, 0.02, 0.8, 0.05], ... % Adjusted position
                'String', metadataText, ...
                'EdgeColor', 'none', ...
                'HorizontalAlignment', 'center', ...
