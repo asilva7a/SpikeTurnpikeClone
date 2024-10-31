@@ -4,7 +4,7 @@ function plotAllSmoothedPSTHs(cellDataStruct, lineTime, figureFolder)
     % Inputs:
     %   - cellDataStruct: Struct containing the PSTH data.
     %   - lineTime: Time (in seconds) to draw a vertical line (optional).
-    %   - figureFolder: Folder where the figures will be saved.
+    %   - figureFolder: Base folder where the raw figures are saved.
 
     %% Set Default Arguments
     if nargin < 2 || isempty(lineTime)
@@ -14,15 +14,6 @@ function plotAllSmoothedPSTHs(cellDataStruct, lineTime, figureFolder)
 
     if nargin < 3 || isempty(figureFolder)
         error('Figure folder path is required. Please provide a valid folder path.');
-    end
-
-    % Define "Smoothed PSTHs" subdirectory within the provided figure folder
-    smoothedPSTHFolder = fullfile(figureFolder, 'Smoothed PSTHs');
-
-    % Ensure the "Smoothed PSTHs" folder exists
-    if ~isfolder(smoothedPSTHFolder)
-        mkdir(smoothedPSTHFolder);
-        fprintf('Created "Smoothed PSTHs" folder: %s\n', smoothedPSTHFolder);
     end
 
     % Initialize counters for tracking processing results
@@ -40,11 +31,11 @@ function plotAllSmoothedPSTHs(cellDataStruct, lineTime, figureFolder)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
 
-            % Create a subdirectory for each group and recording within "Smoothed PSTHs"
-            saveDir = fullfile(smoothedPSTHFolder, groupName, recordingName);
+            % Define the directory for smoothed PSTHs within the existing raw PSTH directory
+            saveDir = fullfile(figureFolder, groupName, recordingName, 'Smoothed PSTHs');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
-                fprintf('Created directory: %s\n', saveDir);
+                fprintf('Created directory for smoothed PSTHs: %s\n', saveDir);
             end
 
             % Process each unit
@@ -67,7 +58,14 @@ function plotAllSmoothedPSTHs(cellDataStruct, lineTime, figureFolder)
                     end
 
                     % Prepare metadata for the plot
-                    metadataText = generateMetadataText(unitData, unitID);
+                    cellType = unitData.CellType;
+                    templateChannel = unitData.TemplateChannel;
+                    singleUnitStatus = "Single Unit";
+                    if unitData.IsSingleUnit == 0
+                        singleUnitStatus = "Not Single Unit";
+                    end
+                    metadataText = sprintf('Cell Type: %s | Channel: %d | %s | Unit ID: %s', ...
+                                           cellType, templateChannel, singleUnitStatus, unitID);
 
                     % Generate plot title and save path
                     figTitle = sprintf('Smoothed PSTH: %s - %s - %s', groupName, recordingName, unitID);
@@ -76,7 +74,7 @@ function plotAllSmoothedPSTHs(cellDataStruct, lineTime, figureFolder)
                     fullPath = fullfile(saveDir, fileName);
 
                     % Plot and save the smoothed PSTH with metadata
-                    plotPSTHsmooth(binEdges, smoothPSTH, lineTime, figTitle, saveDir, unitID);
+                    plotAndSavePSTH(binEdges, smoothPSTH, lineTime, figTitle, fullPath, metadataText);
                     fprintf('Successfully saved: %s\n', fullPath);
                     successCount = successCount + 1;
 
