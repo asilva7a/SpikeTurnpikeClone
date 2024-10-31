@@ -25,6 +25,7 @@ catch ME
     fprintf('An error occurred: %s\n', ME.message);
 end
 
+clear all_data;
 
 %% Analysis
 
@@ -35,29 +36,9 @@ end
 cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 
 %% Plotting 
-try
-    % Ensure the input structure is not empty
-    if isempty(cellDataStruct) || ~isstruct(cellDataStruct)
-        error('PlotError:InvalidInput', 'Input cellDataStruct is empty or not a valid structure.');
-    end
 
-    % Ensure the required data is present in the structure
-    validatePSTHData(cellDataStruct);
-
-    % Call the function to plot all raw PSTHs with the specified treatment line
-    plotAllRawPSTHs(cellDataStruct, 1860);
-    fprintf('All raw PSTHs plotted successfully.\n');
-
-catch ME
-    % Log detailed error information including stack trace
-    fprintf('Error in plotAllRawPSTHs:\nIdentifier: %s\nMessage: %s\n', ...
-            ME.identifier, ME.message);
-
-    % Print the error stack for more context
-    for k = 1:length(ME.stack)
-        fprintf('In %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
-    end
-end
+% Plot raw PSTH
+plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
 
 % Plot smooth PSTH
 try
