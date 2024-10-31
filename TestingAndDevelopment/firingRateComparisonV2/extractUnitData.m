@@ -59,6 +59,8 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
                 newUnitStruct.responseType = [];
                 newUnitStruct.recording = recordingName;
                 newUnitStruct.binWidth = 0.1;
+                newUnitStruct.binEdges = [];
+                newUnitStruct.numBins = [];
 
                 % Store the new struct in the final output
                 cellDataStruct.(groupName).(recordingName).(unitID) = newUnitStruct;

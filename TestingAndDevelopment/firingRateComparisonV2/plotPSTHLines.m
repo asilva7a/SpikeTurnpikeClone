@@ -107,9 +107,21 @@ function createStyledPSTHFigure(binCenters, rawPSTH, smoothedPSTH, treatmentTime
     title(figTitle, 'FontSize', 14, 'FontWeight', 'bold');
     legend('Location', 'best');
 
+    % Ensure that rawPSTH and smoothedPSTH contain valid data for y-axis limits
+    maxRaw = max(rawPSTH(~isnan(rawPSTH)));  % Ignore NaNs in max calculation
+    maxSmooth = max(smoothedPSTH(~isnan(smoothedPSTH)));
+    maxY = max([maxRaw, maxSmooth]);
+
+    % Set y-axis limits if maxY is valid
+    if isempty(maxY) || isnan(maxY) || maxY <= 0
+        warning('No valid data in rawPSTH or smoothedPSTH. Setting y-axis limits to [0, 1].');
+        ylim([0, 1]);
+    else
+        ylim([0, maxY * 1.1]);  % Scale up by 10% for readability
+    end
+
     % Set axis limits and aesthetics
     xlim([min(binCenters), max(binCenters)]);
-    ylim([0, max([rawPSTH, smoothedPSTH]) * 1.1]);
     set(gca, 'Box', 'off', 'TickDir', 'out', 'FontSize', 10, 'LineWidth', 1.2);
 
     % Add metadata at the bottom of the figure

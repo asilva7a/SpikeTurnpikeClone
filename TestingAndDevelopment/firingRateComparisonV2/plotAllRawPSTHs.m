@@ -102,21 +102,20 @@ function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
     fprintf('Errors Encountered: %d\n', errorCount);
 end
 
-
 %% Helper Function: Plot and Save a Single PSTH with Metadata
 function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metadataText)
     % Create a new figure
-    f = figure;
+    f = figure('Visible', 'off');  % Set 'Visible' to 'off' for faster processing
     ax = axes('Parent', f);
 
     % Plot the PSTH as black bars
-    bar(ax,binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
+    bar(ax, binEdges(1:end-1), fullPSTH, 'FaceColor', 'k', 'EdgeColor', 'k');
 
     % Add labels and title
     xlabel('Time (s)');
     ylabel('Firing Rate (spikes/s)');
     title(figTitle);
-    
+
     % Adjust bottom margin to make space for metadata
     ax.Position(2) = ax.Position(2) + 0.05;  % Shift axis upwards slightly
     ax.Position(4) = ax.Position(4) - 0.05;  % Adjust height to fit
@@ -127,6 +126,22 @@ function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metad
         xline(lineTime, 'r--', 'LineWidth', 2);  % Red dashed line
     end
 
+    % Calculate y-axis limits based on valid fullPSTH data
+    maxY = max(fullPSTH(~isnan(fullPSTH)));  % Ignore NaNs in max calculation
+
+    % Set y-axis limits if maxY is valid
+    if isempty(maxY) || isnan(maxY) || maxY <= 0
+        warning('No valid data in fullPSTH. Setting y-axis limits to [0, 1].');
+        ylim([0, 1]);
+    else
+        ylim([0, maxY * 1.1]);  % Scale up by 10% for readability
+    end
+
+    % Set x-axis limits based on bin edges
+    binWidth = binEdges(2) - binEdges(1);
+    xlim([min(binEdges), max(binEdges) + binWidth]);
+    set(gca, 'Box', 'off', 'TickDir', 'out', 'FontSize', 10, 'LineWidth', 1.2);
+
     % Add metadata annotation at the bottom of the plot
     annotation('textbox', [0.1, 0.02, 0.8, 0.05], ... % Adjusted position
                'String', metadataText, ...
@@ -134,10 +149,6 @@ function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metad
                'HorizontalAlignment', 'center', ...
                'FontSize', 10, ...
                'Interpreter', 'none');
-
-    % Improve plot appearance
-    grid off;
-    set(gca, 'Box', 'off', 'TickDir', 'out');
 
     % Save the figure as a PNG with high resolution
     exportgraphics(f, fullPath, 'Resolution', 300);

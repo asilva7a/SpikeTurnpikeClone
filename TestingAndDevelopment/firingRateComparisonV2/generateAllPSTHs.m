@@ -56,7 +56,7 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
 
     % Set binning parameters
     recordingLength = unitData.RecordingDuration;
-    binWidth = unitData.binWidth;
+    binWidth = unitData.binWidth;    
 
     % Validate bin width
     if binWidth <= 0 || binWidth > recordingLength
@@ -64,7 +64,7 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
     end
 
     % Calculate bin edges
-    binEdges = edgeCalculator(0, binWidth, recordingLength);
+    binEdges = edgeCalculator(spikeTimes, binWidth);
 
     % Split spike data into bins
     numBins = length(binEdges) - 1;
@@ -89,8 +89,16 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
 end
 
 %% Helper Function: Calculate Bin Edges
-function edges = edgeCalculator(start, binWidth, stop)
-    % Generate bin edges with the specified width
-    edges = start:binWidth:stop;
+function edges = edgeCalculator(spikeTimes, binWidth)
+    % Define the start and stop times based on the actual range of spike times
+    start = min(spikeTimes);
+    stop = max(spikeTimes);
+
+    % Calculate bin edges from start to stop with the specified bin width
+    edges = start:binWidth:(stop + binWidth);  % Add extra bin width to include final spike
+
+    % Optional: Display binning range for debugging
+    fprintf('Generated bin edges from %.2f s to %.2f s with bin width %.2f s.\n', ...
+            start, stop, binWidth);
 
 end
