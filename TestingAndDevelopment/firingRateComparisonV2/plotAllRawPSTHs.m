@@ -1,26 +1,27 @@
-function plotAllRawPSTHs(cellDataStruct, lineTime)
+function plotAllRawPSTHs(cellDataStruct, lineTime, figureFolder)
     % plotAllRawPSTHs: Plots and saves PSTHs for all units with metadata.
-    
-    %% Set Default Arg values
+    %
+    % Inputs:
+    %   - cellDataStruct: Struct containing the PSTH data.
+    %   - lineTime: Time (in seconds) to draw a vertical line (optional).
+    %   - figureFolder: Folder where the figures will be saved.
+
+    %% Set Default Arguments
     if nargin < 2 || isempty(lineTime)
-        lineTime = 1860;
+        lineTime = 1860;  % Default treatment moment
         fprintf('No treatment period specified. Defaulting to 1860s.\n');
     end
 
-    % Set up the base save directory for figures
-    baseDir = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestFigures';
-
-    if ~isfolder(baseDir)
-        mkdir(baseDir);  % Create the directory if it doesn't exist
-        fprintf('Created new directory: %s\n', baseDir);
+    if nargin < 2 && isempty(figureFolder)
+        error('Figure folder path is required. Please provide a valid folder path.');
     end
 
-    % Initialize counters for tracking processing results
+    % Initialize counters to track results
     totalUnits = 0;
     successCount = 0;
     errorCount = 0;
 
-    % Loop through all groups, recordings, and units
+    % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
@@ -30,10 +31,10 @@ function plotAllRawPSTHs(cellDataStruct, lineTime)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
 
-            % Create the group/recording-specific save directory
-            saveDir = fullfile(baseDir, groupName, recordingName);
+            % Create a group/recording-specific subfolder inside the figure folder
+            saveDir = fullfile(figureFolder, groupName, recordingName);
             if ~isfolder(saveDir)
-                mkdir(saveDir);  % Create directory if needed
+                mkdir(saveDir);
                 fprintf('Created directory: %s\n', saveDir);
             end
 
@@ -42,39 +43,29 @@ function plotAllRawPSTHs(cellDataStruct, lineTime)
                 unitID = units{u};
                 totalUnits = totalUnits + 1;
 
-                % Display status message for tracking progress
                 fprintf('Processing: Group: %s | Recording: %s | Unit: %s\n', ...
                         groupName, recordingName, unitID);
 
                 try
-                    % Extract data and metadata for the current unit
+                    % Extract data and validate required fields
                     unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                     binEdges = unitData.binEdges;
                     fullPSTH = unitData.psthRaw;
 
-                    % Validate the existence of required data
                     if isempty(binEdges) || isempty(fullPSTH)
-                        warning('Skipping Unit %s: Missing data (PSTH or bin edges).\n', unitID);
+                        warning('Skipping Unit %s: Missing PSTH or bin edges.\n', unitID);
                         continue;
                     end
 
-                    % Prepare metadata for annotation
-                    cellType = unitData.CellType;
-                    templateChannel = unitData.TemplateChannel;
-                    if unitData.IsSingleUnit == 1 % Set Single Unit Status
-                        singleUnitStatus = "Single Unit";
-                    else
-                        singleUnitStatus = "Not Single Unit";
-                    end
+                    % Prepare metadata for the plot
+                    metadataText = generateMetadataText(unitData, unitID);
 
-                    % Format metadata for display on the plot
-                    metadataText = sprintf('Cell Type: %s | Channel: %d | %s | Unit ID: %s', ...
-                                           cellType, templateChannel, singleUnitStatus, unitID);
-
-                    % Generate plot title and save path
+                    % Generate plot title
                     figTitle = sprintf('PSTH: %s - %s - %s', groupName, recordingName, unitID);
-                    dateStr = datestr(now, 'yyyy-mm-dd_HH-MM');
-                    fileName = sprintf('RawPSTH-%s_%s.png', unitID, dateStr);
+                    timestamp = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
+
+                    % Generate save path
+                    fileName = sprintf('RawPSTH-%s_%s.png', unitID, char(timestamp));
                     fullPath = fullfile(saveDir, fileName);
 
                     % Plot and save the PSTH with metadata
@@ -85,13 +76,13 @@ function plotAllRawPSTHs(cellDataStruct, lineTime)
                 catch ME
                     % Handle errors gracefully and continue processing
                     errorCount = errorCount + 1;
-                    warning('Error processing Unit %s: %s', unitID, ME.message);
+                    warning('Error processing Unit %s: %s\n', unitID, ME.message);
                 end
             end
         end
     end
 
-    % Display summary of processing results
+    % Display a summary of results
     fprintf('\nProcessing completed.\n');
     fprintf('Total Units Processed: %d\n', totalUnits);
     fprintf('Successfully Processed: %d\n', successCount);
@@ -111,13 +102,13 @@ function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metad
     ylabel('Firing Rate (spikes/s)');
     title(figTitle);
 
-    % Add a vertical line if lineTime is provided
+    % Add a vertical line at the treatment moment, if provided
     if ~isempty(lineTime)
         hold on;
-        xline(lineTime, 'r--', 'LineWidth', 2);
+        xline(lineTime, 'r--', 'LineWidth', 2);  % Red dashed line
     end
 
-    % Add metadata as text annotation at the bottom of the plot
+    % Add metadata annotation at the bottom of the plot
     annotation('textbox', [0.1, 0.01, 0.8, 0.05], ...
                'String', metadataText, ...
                'EdgeColor', 'none', ...
@@ -135,3 +126,24 @@ function plotAndSavePSTH(binEdges, fullPSTH, lineTime, figTitle, fullPath, metad
     % Close the figure to free memory
     close(f);
 end
+
+%% Helper Function: Generate Metadata Text for a Unit
+function metadataText = generateMetadataText(unitData, unitID)
+    % Generate a formatted string with metadata for the given unit.
+
+    cellType = unitData.CellType;
+    templateChannel = unitData.TemplateChannel;
+
+    % Determine Single Unit Status
+    if unitData.IsSingleUnit == 1
+        singleUnitStatus = "Single Unit";
+    else
+        singleUnitStatus = "Not Single Unit";
+    end
+
+    % Format the metadata text
+    metadataText = sprintf('Cell Type: %s | Channel: %d | %s | Unit ID: %s', ...
+                           cellType, templateChannel, singleUnitStatus, unitID);
+end
+
+
