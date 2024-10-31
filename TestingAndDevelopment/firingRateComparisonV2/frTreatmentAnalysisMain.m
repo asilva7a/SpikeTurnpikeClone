@@ -57,6 +57,8 @@ plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assumi
 % Plot line PSTHs
 plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
+% Plot z-Score HeatMap
+plotZScoredPSTH(cellDataStruct, 1860, figureFolder);
 
 
 
