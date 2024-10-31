@@ -55,12 +55,8 @@ plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
 plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot line PSTHs
-try
-    [smoothedPlot, rawPlot] = plotPSTHLines(cellDataStruct, 1860); % Set treatment period (2nd arg) to 1860s
-catch ME
-    % Handle any errors gracefully and display the error message
-    warning('%s: %s', ME.identifier, ME.message);
-end
+plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
+
 
 
 
