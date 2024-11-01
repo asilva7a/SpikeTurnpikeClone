@@ -51,8 +51,6 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
                 end
 
                 % Add additional fields manually as needed
-                newUnitStruct.firingRate = [];
-                newUnitStruct.treatmentMoment = [];
                 newUnitStruct.psthRaw = [];
                 newUnitStruct.psthSmoothed = [];
                 newUnitStruct.pValue = [];
@@ -61,6 +59,8 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
                 newUnitStruct.binWidth = 0.1;
                 newUnitStruct.binEdges = [];
                 newUnitStruct.numBins = [];
+                newUnitStruct.frBaselineAvg = [];
+                newUnitStruct.frTreatmentAvg = [];
 
                 % Store the new struct in the final output
                 cellDataStruct.(groupName).(recordingName).(unitID) = newUnitStruct;
