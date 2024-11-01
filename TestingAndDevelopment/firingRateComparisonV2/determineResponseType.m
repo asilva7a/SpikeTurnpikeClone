@@ -1,4 +1,4 @@
-function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth)
+function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth, dataFolder)
     % determineResponseType: Calculates pre- and post-treatment responses for units in cellDataStruct.
     % Determines whether each unit shows an "Increased", "Decreased", or "No Change" response.
     %
@@ -114,4 +114,13 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
             end
         end
     end
+
+    % Save the updated struct to the specified data file path
+    try
+        save(dataFolder, 'cellDataStruct', '-v7');
+        fprintf('Struct saved successfully to: %s\n', dataFolder);
+    catch ME
+        fprintf('Error saving the file: %s\n', ME.message);
+    end
 end
+

@@ -1,106 +1,118 @@
-function [pValue, responseType, bootResults] = bootstrapFiringRates(cellDataStruct, treatmentTime, preWindow, postWindow, numBootstrap, numTrials, param)
-    % bootstrapFiringRateComparison: Compares firing rates pre- and post-treatment for two units using hierarchical bootstrapping.
-    %
-    % Inputs:
-    %   - unit1Data, unit2Data: Structures containing PSTH data for two units.
-    %   - treatmentTime: Time in seconds when treatment was administered.
-    %   - preWindow, postWindow: Duration in seconds for pre- and post-treatment windows.
-    %   - numBootstrap: Number of bootstrap samples.
-    %   - numTrials: Number of resamples for each bootstrap iteration.
-    %   - param: Statistic to calculate ('mean' or 'median').
-    %
-    % Outputs:
-    %   - pValue: Bootstrap p-value for post-treatment >= pre-treatment.
-    %   - responseType: Label indicating 'Increased', 'Decreased', or 'Unchanged'.
-    %   - bootResults: Struct containing the bootstrapped distributions and summary statistics.
-    
-    % Set defaults if necessary
-    if nargin < 3 || isempty(treatmentTime), treatmentTime = 1860; end
-    if nargin < 4 || isempty(preWindow), preWindow = 1000; end
-    if nargin < 5 || isempty(postWindow), postWindow = 3000; end
-    if nargin < 6 || isempty(numBootstrap), numBootstrap = 10000; end
-    if nargin < 7 || isempty(numTrials), numTrials = 50; end
-    if nargin < 8 || isempty(param), param = 'mean'; end
+function [bootstats] = get_bootstrapped_equalsamples(data, nruns, num_trials, param)
+    % Perform bootstrapping n_runs times with an equal sample size of num_trials at the lower level.
 
-    % Select Units for analysis
-    
+    bootstats = NaN(nruns,1);  % Preallocate an array to store bootstrap statistics for each run.
 
-    % Extract PSTH data and bin width for both units
-    binWidth = unit1Data.binWidth;  % Assume both units have the same bin width
-    timeVector = (0:numel(unit1Data.psthSmoothed) - 1) * binWidth;
+    for i = 1:nruns  % Loop over each bootstrap iteration.
+        a = size(data);  % Get the size of the input data matrix.
+        num_lev1 = a(1);  % Determine the number of level-1 units (rows in the data matrix).
 
-    % Define pre- and post-treatment indices
-    preIndices = timeVector >= (treatmentTime - preWindow) & timeVector < treatmentTime;
-    postIndices = timeVector >= treatmentTime & timeVector < (treatmentTime + postWindow);
+        temp = NaN(num_lev1, num_trials);  % Preallocate a temporary matrix to store resampled data.
+        rand_lev1 = randi(num_lev1, num_lev1, 1);  % Randomly sample level-1 units with replacement.
 
-    % Extract pre- and post-treatment data for both units
-    preData1 = unit1Data.psthSmoothed(preIndices);
-    postData1 = unit1Data.psthSmoothed(postIndices);
-    preData2 = unit2Data.psthSmoothed(preIndices);
-    postData2 = unit2Data.psthSmoothed(postIndices);
+        for j = 1:length(rand_lev1)  % Loop over each sampled level-1 unit.
+            num_lev2 = find(~isnan(data(rand_lev1(j), :)), 1, 'last');  % Find the number of non-NaN trials in the sampled row.
 
-    % Perform hierarchical bootstrapping for pre- and post-treatment data
-    [bootPre, bootPost] = hierarchicalBootstrapTwoUnits(preData1, postData1, preData2, postData2, numBootstrap, numTrials, param);
+            % Randomly sample num_trials from the non-NaN trials of the selected unit.
+            rand_lev2 = randi(num_lev2, 1, num_trials);  
 
-    % Calculate p-value and determine response type
-    pValue = mean(bootPost >= bootPre);
-    responseType = 'Unchanged';
-    if pValue < 0.05
-        if mean(bootPost) > mean(bootPre)
-            responseType = 'Increased';
-        else
-            responseType = 'Decreased';
+            % Store the resampled trials in the temporary matrix.
+            temp(j, :) = data(rand_lev1(j), rand_lev2);  
         end
+
+        % Calculate the specified statistic (mean or median) over all resampled values.
+        if strcmp(param, 'mean')
+            bootstats(i) = mean(temp(:));  % Flatten `temp` and calculate mean.
+        elseif strcmp(param, 'median')
+            bootstats(i) = median(temp(:));  % Flatten `temp` and calculate median.
+        else
+            disp('Unknown parameter. Use mean or median or write a new one.');  % Display error message for invalid parameter.
+            return  % Exit the function if an unknown parameter is provided.
+        end
+
+        % Display the progress of the bootstrapping process.
+        disp(['Sample ' num2str(i) ' completed.']);
     end
-
-    % Package bootstrap results for output
-    bootResults = struct('bootPre', bootPre, 'bootPost', bootPost, ...
-                         'meanPre', mean(bootPre), 'meanPost', mean(bootPost), ...
-                         'semPre', std(bootPre), 'semPost', std(bootPost), ...
-                         'pValue', pValue, 'responseType', responseType);
-
-    % Optional plot for sanity check
-    figure;
-    hold on;
-    histogram(bootPre, 50, 'FaceColor', 'b', 'EdgeColor', 'k', 'DisplayName', 'Pre-Treatment');
-    histogram(bootPost, 50, 'FaceColor', 'r', 'EdgeColor', 'k', 'DisplayName', 'Post-Treatment');
-    title('Bootstrap Distributions: Pre- vs Post-Treatment');
-    xlabel('Firing Rate');
-    ylabel('Frequency');
-    legend;
-    hold off;
 end
 
-%% Helper Function: Hierarchical Bootstrapping for Two Units
-function [bootPre, bootPost] = hierarchicalBootstrapTwoUnits(preData1, postData1, preData2, postData2, numBootstrap, numTrials, param)
-    % hierarchicalBootstrapTwoUnits: Resamples at both unit and bin level to perform hierarchical bootstrapping.
+function [p_boot, bootstats, bootstats_center, bootstats_sem] = get_bootstrap_results_equalsamples(data1, data2, n_runs, num_trials, param)
+    % Perform hierarchical bootstrapping on a 2-level dataset with two groups to be compared,
+    % following the method described in Saravanan et al. 2019.
+    %
+    % Inputs:
+    %   - data1, data2: Data matrices for each group to compare, where rows represent level 1
+    %     units and columns represent level 2 units (may contain NaNs if units have different
+    %     numbers of level 2 data points, with NaNs expected at the end of rows).
+    %   - n_runs: Number of bootstrap samples to draw.
+    %   - num_trials: Number of samples to draw per bootstrap iteration at the lower level.
+    %   - param: Statistic to calculate for each bootstrap ('mean' or 'median').
     %
     % Outputs:
-    %   - bootPre, bootPost: Bootstrap distributions for pre- and post-treatment.
+    %   - p_boot: Probability that the mean/median of data2 >= mean/median of data1.
+    %   - bootstats: Bootstrap distributions for data1 and data2.
+    %   - bootstats_center: Mean of the bootstrapped distributions for data1 and data2.
+    %   - bootstats_sem: Standard error of the mean of the bootstrapped distributions.
 
-    bootPre = NaN(numBootstrap, 1);
-    bootPost = NaN(numBootstrap, 1);
+    bootstats = NaN(2, n_runs);  % Preallocate for bootstrap results from data1 and data2.
 
-    for i = 1:numBootstrap
-        % Resample units at the first level
-        sampledUnit = randi(2);  % Randomly select unit 1 or unit 2
-        if sampledUnit == 1
-            preBins = datasample(preData1, numTrials, 'Replace', true);
-            postBins = datasample(postData1, numTrials, 'Replace', true);
-        else
-            preBins = datasample(preData2, numTrials, 'Replace', true);
-            postBins = datasample(postData2, numTrials, 'Replace', true);
-        end
+    % Calculate bootstrapped samples for data1 and data2 using the helper function.
+    bootstats(1, :) = get_bootstrapped_equalsamples(data1, n_runs, num_trials, param);  % For group 1
+    bootstats(2, :) = get_bootstrapped_equalsamples(data2, n_runs, num_trials, param);  % For group 2
 
-        % Calculate the bootstrap statistic
-        if strcmp(param, 'mean')
-            bootPre(i) = mean(preBins);
-            bootPost(i) = mean(postBins);
-        elseif strcmp(param, 'median')
-            bootPre(i) = median(preBins);
-            bootPost(i) = median(postBins);
-        else
-            error('Unknown parameter. Use "mean" or "median".');
-        end
+    % Calculate the probability that bootstrap statistics of data2 >= data1.
+    p_boot = get_direct_prob(bootstats(1, :), bootstats(2, :));
+
+    % Calculate the mean and SEM of the bootstrapped distributions.
+    bootstats_sem = std(bootstats, '', 2);  % Standard error of the mean for each group.
+    bootstats_center = mean(bootstats, 2);  % Mean of bootstrap distributions for each group.
+
+    % Check for NaNs in bootstats_center to detect sampling issues
+    % and alert if encountered.
+    if isnan(bootstats_center(1)) || isnan(bootstats_center(2))
+        disp('NaN values are messing up sampling - check matrices and try again.');
     end
+end
+
+% Helper Function: Perform bootstrapping at a single hierarchical level.
+function [bootstats] = get_bootstrapped_equalsamples(data, n_runs, num_trials, param)
+    % Perform bootstrapping n_runs times with an equal sample size of num_trials at the lower level.
+
+    bootstats = NaN(n_runs, 1);  % Preallocate array to store bootstrap statistics for each run.
+
+    for i = 1:n_runs  % Loop over each bootstrap iteration.
+        a = size(data);  % Get the size of the input data matrix.
+        num_lev1 = a(1);  % Number of level-1 units (rows in the data matrix).
+
+        temp = NaN(num_lev1, num_trials);  % Preallocate temporary matrix for resampled data.
+        rand_lev1 = randi(num_lev1, num_lev1, 1);  % Randomly sample level-1 units with replacement.
+
+        for j = 1:length(rand_lev1)  % Loop over each sampled level-1 unit.
+            num_lev2 = find(~isnan(data(rand_lev1(j), :)), 1, 'last');  % Find non-NaN data points in the row.
+            
+            % Randomly sample num_trials from the non-NaN trials of each selected unit.
+            rand_lev2 = randi(num_lev2, 1, num_trials); 
+            
+            % Store the resampled trials in the temporary matrix.
+            temp(j, :) = data(rand_lev1(j), rand_lev2);
+        end
+
+        % Calculate the specified statistic (mean or median) across all resampled values.
+        if strcmp(param, 'mean')
+            bootstats(i) = mean(temp(:));  % Flatten temp and calculate mean.
+        elseif strcmp(param, 'median')
+            bootstats(i) = median(temp(:));  % Flatten temp and calculate median.
+        else
+            disp('Unknown parameter. Use "mean" or "median".');  % Alert if param is not mean or median.
+            return
+        end
+
+        % Display progress of the bootstrapping process.
+        disp(['Sample ' num2str(i) ' completed.']);
+    end
+end
+
+% Helper Function: Calculate the probability that values in dist2 are greater than or equal to dist1.
+function p = get_direct_prob(dist1, dist2)
+    % Calculate the probability that dist2 >= dist1 in bootstrap samples.
+    p = mean(dist2 >= dist1);
 end
