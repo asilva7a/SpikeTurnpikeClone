@@ -1,7 +1,18 @@
-function [cellDataStruct] = determineResponseType(cellDataStruct)
-    % Iteratively determines response type (Increased, Decreased, No Change) 
-    % for each unit in cellDataStruct based on baseline and treatment firing rates.
-    % Stores p-value, response type, and test quality metrics in the structure.
+function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth)
+    % determineResponseType: Calculates pre- and post-treatment responses for units in cellDataStruct.
+    % Determines whether each unit shows an "Increased", "Decreased", or "No Change" response.
+    %
+    % Inputs:
+    %   - cellDataStruct: Data structure containing unit data with firing rates.
+    %   - treatmentTime: Time in seconds when treatment was administered.
+    %   - binWidth: Width of each bin in seconds.
+
+
+     % Set default value for treatmentTime if not provided
+    if nargin < 2 || isempty(treatmentTime)
+        treatmentTime = 1860;  % Default treatment time in seconds
+        fprintf('No treatment time specified. Using default: %d seconds.\n', treatmentTime);
+    end
 
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
@@ -17,72 +28,88 @@ function [cellDataStruct] = determineResponseType(cellDataStruct)
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                
+                % If binWidth not provided as an argument, use the binWidth from the data structure
+                if nargin < 3 || isempty(binWidth)
+                    binWidth = unitData.binWidth;
+                    fprintf('Using bin width from data structure: %.2f seconds.\n', binWidth);
+                end
 
-                % Get baseline and treatment firing rate data
-                frBaselineAvg = unitData.frBaselineAvg;
-                frTreatmentAvg = unitData.frTreatmentAvg;
-                frBaselineStdDev = unitData.frBaselineStdDev;
-                frTreatmentStdDev = unitData.frTreatmentStdDev;
+                % Extract the PSTH data and bin width
+                psthData = unitData.psthSmoothed;  % Assumes `psthSmoothed` contains binned firing rate data
+                binEdges = unitData.binEdges;
+                
+                % Calculate time vector for PSTH data
+                timeVector = binEdges(1:end-1) + binWidth / 2;  % Bin centers
 
-                % Ensure that firing rates are non-empty and valid
-                if isempty(frBaselineAvg) || isempty(frTreatmentAvg)
-                    warning('Missing firing rate data for Unit %s. Skipping this unit.', unitID);
+                % Define pre- and post-treatment periods
+                preIndices = timeVector < treatmentTime;
+                postIndices = timeVector >= treatmentTime;
+
+                % Get firing rates for pre- and post-treatment periods
+                FR_before = psthData(preIndices);
+                FR_after = psthData(postIndices);
+
+                % Ensure we have sufficient data in both pre- and post-periods
+                if isempty(FR_before) || isempty(FR_after)
+                    warning('Insufficient data for Unit %s. Skipping statistical test.', unitID);
                     unitData.responseType = 'Data Missing';
                     continue;
                 end
 
-                % Perform Wilcoxon signed-rank test and store test quality metrics
-                try
-                    % Simulate pre- and post-treatment data for the test
-                    FR_before = repmat(frBaselineAvg, 1, 10);  % Simulated baseline data
-                    FR_after = repmat(frTreatmentAvg, 1, 10);  % Simulated post-treatment data
-                    [p, ~, stats] = ranksum(FR_before, FR_after);
+                % Perform Wilcoxon signed-rank test
+                [p, ~] = ranksum(FR_before, FR_after);
 
-                    % Determine response type based on p-value and mean change
-                    if p < 0.05
-                        if mean(FR_after) > mean(FR_before)
-                            responseType = 'Increased';
-                        else
-                            responseType = 'Decreased';
-                        end
+                % Determine response type based on p-value and mean change
+                if p < 0.05
+                    if mean(FR_after) > mean(FR_before)
+                        responseType = 'Increased';
                     else
-                        responseType = 'No Change';
+                        responseType = 'Decreased';
                     end
-
-                    % Calculate effect size (Cohen's d)
-                    effectSize = (frTreatmentAvg - frBaselineAvg) / mean([frBaselineStdDev, frTreatmentStdDev]);
-
-                    % Confidence interval for difference in means (assuming normality)
-                    meanDiff = frTreatmentAvg - frBaselineAvg;
-                    ciLow = meanDiff - 1.96 * sqrt((frBaselineStdDev^2 + frTreatmentStdDev^2) / 10); % Adjust 10 to actual sample size
-                    ciHigh = meanDiff + 1.96 * sqrt((frBaselineStdDev^2 + frTreatmentStdDev^2) / 10);
-
-                    % Store p-value, response type, and additional metrics in unit data
-                    unitData.pValue = p;
-                    unitData.responseType = responseType;
-
-                    % Store test meta data as a struct within the unit data
-                    unitData.testMetaData = struct( ...
-                        'MeanPre', frBaselineAvg, ...
-                        'MeanPost', frTreatmentAvg, ...
-                        'StdDevPre', frBaselineStdDev, ...
-                        'StdDevPost', frTreatmentStdDev, ...
-                        'EffectSize', effectSize, ...
-                        'MeanDifference', meanDiff, ...
-                        'ConfidenceInterval', [ciLow, ciHigh], ...
-                        'TestStats', stats);
-
-                    % Display debugging information
-                    fprintf('Unit %s | p-value: %.3f | Response: %s\n', unitID, p, responseType);
-
-                catch ME
-                    % Error handling for failed statistical test
-                    warning('Error processing Unit %s: %s', unitID, ME.message);
-                    unitData.responseType = 'Error';
-                    unitData.testMetaData = struct(); % Store empty struct if error
+                else
+                    responseType = 'No Change';
                 end
 
-                % Save updated unitData back to the structure
+                % Calculate additional quality metrics
+                frBaselineAvg = mean(FR_before);
+                frTreatmentAvg = mean(FR_after);
+                frBaselineStdDev = std(FR_before);
+                frTreatmentStdDev = std(FR_after);
+                frBaselineVariance = var(FR_before);
+                frTreatmentVariance = var(FR_after);
+                frBaselineSpikeCount = sum(FR_before) * binWidth;
+                frTreatmentSpikeCount = sum(FR_after) * binWidth;
+                meanDiff = frTreatmentAvg - frBaselineAvg;
+                
+                % Effect size (Cohen's d)
+                pooledStdDev = mean([frBaselineStdDev, frTreatmentStdDev]);
+                effectSize = meanDiff / pooledStdDev;
+                
+                % Confidence interval (assuming normality for simplicity)
+                ciLow = meanDiff - 1.96 * pooledStdDev / sqrt(length(FR_before));
+                ciHigh = meanDiff + 1.96 * pooledStdDev / sqrt(length(FR_before));
+
+                % Store p-value, response type, and additional metrics
+                unitData.pValue = p;
+                unitData.responseType = responseType;
+                unitData.testMetaData = struct( ...
+                    'MeanPre', frBaselineAvg, ...
+                    'MeanPost', frTreatmentAvg, ...
+                    'StdDevPre', frBaselineStdDev, ...
+                    'StdDevPost', frTreatmentStdDev, ...
+                    'VariancePre', frBaselineVariance, ...
+                    'VariancePost', frTreatmentVariance, ...
+                    'SpikeCountPre', frBaselineSpikeCount, ...
+                    'SpikeCountPost', frTreatmentSpikeCount, ...
+                    'EffectSize', effectSize, ...
+                    'MeanDifference', meanDiff, ...
+                    'ConfidenceInterval', [ciLow, ciHigh]);
+
+                % Display debugging information
+                fprintf('Unit %s | p-value: %.3f | Response: %s\n', unitID, p, responseType);
+
+                % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
             end
         end

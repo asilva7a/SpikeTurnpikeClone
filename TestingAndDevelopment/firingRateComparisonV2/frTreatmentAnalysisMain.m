@@ -46,7 +46,11 @@ clear all_data;
 % Generate PSTH with boxcar smoothing
 [cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 
-% Determine Unit Response
+% Calculate pre- and post-treatment firing rate
+[cellDataStruct] = calculateFiringRate(cellDataStruct);
+
+% Determine Unit response
+[cellDataStruct] = determineResponseType(cellDataStruct);
 
 
 %% Plotting 
