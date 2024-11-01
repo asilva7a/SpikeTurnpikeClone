@@ -56,14 +56,13 @@ clear all_data;
 %% Plotting 
 
 % Plot raw PSTH
-plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
+%plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
 
 % Plot smooth PSTH
-plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
+%plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot line PSTHs
-plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
+%plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
-% 
-
-
+% Optional:
+plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
