@@ -1,6 +1,6 @@
-function [cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFolder)
+function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
     % Loop over all groups, recordings, and units in the structure
-    groupNames = fieldnames(cellDataStruct);  % Extract group names
+    groupNames = fieldnames(cellDataStruct);
 
     for g = 1:length(groupNames)
         groupName = groupNames{g};
@@ -55,7 +55,7 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
     end
 
     % Set binning parameters
-    recordingLength = unitData.RecordingDuration;
+    recordingLength = 5400; % Fixed recording duration in seconds
     binWidth = unitData.binWidth;    
 
     % Validate bin width
@@ -63,8 +63,8 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
         error('Invalid bin width for Unit: %s', unitID);
     end
 
-    % Calculate bin edges
-    binEdges = edgeCalculator(spikeTimes, binWidth);
+    % Calculate bin edges based on fixed recording duration
+    binEdges = edgeCalculator(recordingLength, binWidth);
 
     % Split spike data into bins
     numBins = length(binEdges) - 1;
@@ -74,7 +74,6 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
         binStart = binEdges(i);
         binEnd = binEdges(i + 1);
         splitData{i} = spikeTimes(spikeTimes >= binStart & spikeTimes < binEnd);
-
     end
 
     % Calculate PSTH
@@ -89,16 +88,12 @@ function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
 end
 
 %% Helper Function: Calculate Bin Edges
-function edges = edgeCalculator(spikeTimes, binWidth)
-    % Define the start and stop times based on the actual range of spike times
-    start = min(spikeTimes);
-    stop = max(spikeTimes);
-
-    % Calculate bin edges from start to stop with the specified bin width
-    edges = start:binWidth:(stop + binWidth);  % Add extra bin width to include final spike
+function edges = edgeCalculator(recordingLength, binWidth)
+    % Generate bin edges based on a fixed recording duration
+    edges = 0:binWidth:recordingLength;  % Start at 0, end at fixed recording duration with specified bin width
 
     % Optional: Display binning range for debugging
-    fprintf('Generated bin edges from %.2f s to %.2f s with bin width %.2f s.\n', ...
-            start, stop, binWidth);
-
+    fprintf('Generated bin edges from 0 to %.2f s with bin width %.2f s.\n', ...
+            recordingLength, binWidth);
 end
+

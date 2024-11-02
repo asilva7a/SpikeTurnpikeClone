@@ -56,14 +56,16 @@ clear all_data;
 %% Plotting 
 
 % Plot raw PSTH
-plotAllRawPSTHs(cellDataStruct, 1860, figureFolder, dataFolder);
+%plotAllRawPSTHs(cellDataStruct, 1860, figureFolder, dataFolder);
 
 % Plot smooth PSTH
-plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
+%plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot line PSTHs
-plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
+%plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
+% Plot averag PSTHs with individual response
+plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
