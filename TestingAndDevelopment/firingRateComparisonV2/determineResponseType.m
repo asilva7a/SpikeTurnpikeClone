@@ -137,15 +137,21 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
             end
+        
         end
+    
     end
-
+    
     % Save the updated struct to the specified data file path
-    try
-        save(dataFolder, 'cellDataStruct', '-v7');
-        fprintf('Struct saved successfully to: %s\n', dataFolder);
-    catch ME
-        fprintf('Error saving the file: %s\n', ME.message);
-    end
+        if nargin >= 4 && ~isempty(dataFolder)
+            try
+                save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
+                fprintf('Struct saved successfully to: %s\n', dataFolder);
+            catch ME
+                fprintf('Error saving the file: %s\n', ME.message);
+            end
+        else
+            fprintf('Data folder not specified; struct not saved to disk.\n');
+        end
 end
 
