@@ -41,6 +41,14 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 
                 % Calculate time vector for PSTH data
                 timeVector = binEdges(1:end-1) + binWidth / 2;  % Bin centers
+                
+                % Debugging: Determine array sizes
+                fprintf('Size of timeVector: [%d, %d]\n', size(timeVector));
+                fprintf('Size of treatmentTime: [%d, %d]\n', size(treatmentTime));
+
+                if ~isscalar(treatmentTime)
+                    error('Expected treatmentTime to be a scalar, but it has size [%d, %d].', size(treatmentTime));
+                end
 
                 % Define pre- and post-treatment periods
                 preIndices = timeVector < treatmentTime;

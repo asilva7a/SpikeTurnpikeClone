@@ -50,19 +50,20 @@ clear all_data;
 [cellDataStruct] = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
-[cellDataStruct] = determineResponseType(cellDataStruct);
+[cellDataStruct] = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 
 
 %% Plotting 
 
 % Plot raw PSTH
-plotAllRawPSTHs(cellDataStruct, 1860, figureFolder);
+plotAllRawPSTHs(cellDataStruct, 1860, figureFolder, dataFolder);
 
 % Plot smooth PSTH
 plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot line PSTHs
-plotPSTHLines(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
+plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
+
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
