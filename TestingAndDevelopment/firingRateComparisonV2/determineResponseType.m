@@ -49,7 +49,24 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 % Get firing rates for pre- and post-treatment periods
                 FR_before = psthData(preIndices);
                 FR_after = psthData(postIndices);
-
+                
+                % Debug output to confirm extraction
+                fprintf('Number of bins before treatment: %d\n', sum(preIndices));
+                fprintf('Number of bins after treatment: %d\n', sum(postIndices));
+                
+                % Display sample data to verify
+                if ~isempty(FR_before)
+                    fprintf('FR_before (mean): %f\n', mean(FR_before));
+                else
+                    warning('FR_before is empty. Check treatment time and pre-treatment period.');
+                end
+                
+                if ~isempty(FR_after)
+                    fprintf('FR_after (mean): %f\n', mean(FR_after));
+                else
+                    warning('FR_after is empty. Check treatment time and post-treatment period.');
+                end
+                
                 % Ensure we have sufficient data in both pre- and post-periods
                 if isempty(FR_before) || isempty(FR_after)
                     warning('Insufficient data for Unit %s. Skipping statistical test.', unitID);

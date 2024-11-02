@@ -5,6 +5,16 @@ function plotResponseTypeSanityChecks(cellDataStruct, figureFolder)
     %   - cellDataStruct: Data structure containing response types and metrics.
     %   - figureFolder: Path to the folder where figures will be saved.
     
+    % Check if figureFolder exists, create if not
+    if ~isfolder(figureFolder)
+        try
+            mkdir(figureFolder);
+            fprintf('Created figure folder: %s\n', figureFolder);
+        catch ME
+            error('Error creating figure folder: %s\n%s', figureFolder, ME.message);
+        end
+    end
+    
     % Loop over groups and recordings to plot each set separately
     groupNames = fieldnames(cellDataStruct);
 
@@ -23,33 +33,52 @@ function plotResponseTypeSanityChecks(cellDataStruct, figureFolder)
             
             for u = 1:numel(units)
                 unitID = units{u};
-                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                
+                try
+                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
 
-                % Retrieve metrics for plotting
-                preRates(u) = unitData.testMetaData.MeanPre;
-                postRates(u) = unitData.testMetaData.MeanPost;
-                responseTypes{u} = unitData.responseType;
+                    % Retrieve metrics for plotting
+                    preRates(u) = unitData.testMetaData.MeanPre;
+                    postRates(u) = unitData.testMetaData.MeanPost;
+                    responseTypes{u} = unitData.responseType;
+
+                catch ME
+                    % Catch any errors related to accessing unit data
+                    warning('Error processing unit %s in %s - %s: %s', unitID, groupName, recordingName, ME.message);
+                    responseTypes{u} = 'Data Missing';
+                    continue;
+                end
             end
 
             % Define color coding for response types
             colors = cellfun(@(x) getColorByResponseType(x), responseTypes, 'UniformOutput', false);
 
-            % Create ladder plot for pre- and post-treatment firing rates
-            figure;
-            hold on;
-            for u = 1:numel(units)
-                plot([1, 2], [preRates(u), postRates(u)], '-o', 'Color', colors{u}, 'LineWidth', 1.5);
-            end
-            xticks([1 2]);
-            xticklabels({'Pre-Treatment', 'Post-Treatment'});
-            ylabel('Firing Rate (spikes/s)');
-            title(sprintf('Ladder Plot of Firing Rates\n%s - %s', groupName, recordingName));
-            legend({'Increased', 'Decreased', 'No Change'}, 'Location', 'Best');
-            hold off;
+            try
+                % Create ladder plot for pre- and post-treatment firing rates
+                f = figure('Visible', 'off');  % Set 'Visible' to 'off' to avoid displaying during processing
+                hold on;
+                for u = 1:numel(units)
+                    if ~isnan(preRates(u)) && ~isnan(postRates(u))
+                        plot([1, 2], [preRates(u), postRates(u)], '-o', 'Color', colors{u}, 'LineWidth', 1.5);
+                    end
+                end
+                xticks([1 2]);
+                xticklabels({'Pre-Treatment', 'Post-Treatment'});
+                ylabel('Firing Rate (spikes/s)');
+                title(sprintf('Ladder Plot of Firing Rates\n%s - %s', groupName, recordingName));
+                legend({'Increased', 'Decreased', 'No Change'}, 'Location', 'Best');
+                hold off;
 
-            % Save figure
-            saveas(gcf, fullfile(figureFolder, sprintf('%s_%s_FiringRateLadderPlot.png', groupName, recordingName)));
-            close(gcf);  % Close figure to free up memory
+                % Save figure
+                savePath = fullfile(figureFolder, sprintf('%s_%s_FiringRateLadderPlot.png', groupName, recordingName));
+                saveas(f, savePath);
+                fprintf('Saved figure: %s\n', savePath);
+                close(f);  % Close figure to free up memory
+
+            catch ME
+                % Catch any errors related to plotting or saving figures
+                warning('Error creating or saving figure for %s - %s: %s', groupName, recordingName, ME.message);
+            end
         end
     end
 end
