@@ -4,9 +4,13 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
     %   - cellDataStruct: Data structure containing all group, recording, and unit data.
     %   - figureFolder: Root folder where figures will be saved.
 
-    % Define color mapping for each response type
+    % Define color mapping for each response type with higher opacity
     colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
-                              {[1, 0, 0, 0.3], [0, 0, 1, 0.3], [0.5, 0.5, 0.5, 0.3]}); % RGBA format with transparency
+                              {[1, 0, 0, 0.6], [0, 0, 1, 0.6], [0.5, 0.5, 0.5, 0.6]});
+
+    % Set treatment time and x-axis limit
+    treatmentTime = 1860;
+    xLimit = 5400;
 
     % Loop through each group to accumulate and plot PSTH data
     groupNames = fieldnames(cellDataStruct);
@@ -64,10 +68,10 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
                     if isKey(colorMap, responseType)
                         colorVal = colorMap(responseType);
                         lineColor = colorVal(1:3);  % Extract RGB
-                        alphaVal = colorVal(4);     % Extract alpha (transparency)
+                        alphaVal = colorVal(4);     % Set higher alpha for more opacity
                         
-                        % Plot individual unit's PSTH with transparency
-                        plot(timeVector, psth, 'Color', [lineColor, alphaVal], 'LineWidth', 0.5);
+                        % Plot each PSTH line with increased opacity
+                        plot(timeVector, psth, 'Color', [lineColor, alphaVal], 'LineWidth', 0.8);
                     end
                 end
             end
@@ -77,20 +81,29 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
 
             % Calculate and plot the group-averaged PSTH across all units
             avgPSTH = mean(allGroupPSTHs, 1, 'omitnan');
+            stdPSTH = std(allGroupPSTHs, [], 1, 'omitnan');  % Calculate std for error bands
             
-            % Fill area for the average PSTH with semi-transparent black
-            fill([timeVector, fliplr(timeVector)], [avgPSTH, zeros(size(avgPSTH))], ...
-                'k', 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+            % Plot the average PSTH on top with a thick black line
+            plot(timeVector, avgPSTH, 'k', 'LineWidth', 2.5, 'DisplayName', 'Average PSTH');
+
+            % Plot error band (1 standard deviation)
+            fill([timeVector, fliplr(timeVector)], [avgPSTH + stdPSTH, fliplr(avgPSTH - stdPSTH)], ...
+                'k', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+            % Add treatment line in green
+            xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+            xlim([0, xLimit]); % Set x-axis limit
 
             % Add labels, title, and legend
             xlabel('Time (s)');
             ylabel('Firing Rate (spikes/s)');
             title(sprintf('Group Average Smoothed PSTH with Individual Responses\n%s', groupName));
-            legend([plot(NaN, NaN, 'k-', 'LineWidth', 2), ...
-                    plot(NaN, NaN, '-', 'Color', [1, 0, 0, 0.3]), ...
-                    plot(NaN, NaN, '-', 'Color', [0, 0, 1, 0.3]), ...
-                    plot(NaN, NaN, '-', 'Color', [0.5, 0.5, 0.5, 0.3])], ...
-                   {'Average PSTH', 'Increased', 'Decreased', 'No Change'}, ...
+            legend([plot(NaN, NaN, 'k-', 'LineWidth', 2.5), ...
+                    plot(NaN, NaN, '-', 'Color', [1, 0, 0, 0.6]), ...
+                    plot(NaN, NaN, '-', 'Color', [0, 0, 1, 0.6]), ...
+                    plot(NaN, NaN, '-', 'Color', [0.5, 0.5, 0.5, 0.6]), ...
+                    plot(NaN, NaN, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5)], ...
+                   {'Average PSTH', 'Increased', 'Decreased', 'No Change', 'Treatment Time'}, ...
                    'Location', 'Best');
 
             hold off;
@@ -112,4 +125,3 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
         end
     end
 end
-

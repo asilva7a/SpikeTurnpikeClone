@@ -1,8 +1,13 @@
-function plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
+function plotAveragePSTHWithResponse(cellDataStruct, figureFolder, treatmentTime)
     % plotAveragePSTHWithResponse: Generates plots of average smoothed PSTHs with individual units.
     % Inputs:
     %   - cellDataStruct: Data structure containing all group, recording, and unit data.
     %   - figureFolder: Root folder where figures will be saved.
+    %   - treatmentTime: Time in seconds where treatment was administered.
+
+    if nargin < 3
+        treatmentTime = 1860;  % Default treatment time in seconds
+    end
 
     % Define color mapping for each response type
     colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
@@ -26,8 +31,8 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
             % Preallocate array for all PSTHs
             allPSTHs = NaN(numUnits, psthLength);  
 
-            % Prepare figure
-            figure;
+            % Prepare figure with expanded size for metadata
+            figure('Position', [100, 100, 1200, 800]);
             hold on;
 
             % Create dummy plots for each response type to include in the legend
@@ -85,6 +90,9 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
             avgPSTH = mean(allPSTHs, 1, 'omitnan');  % Calculate average ignoring NaNs
             plot(timeVector, avgPSTH, 'k-', 'LineWidth', 2); % Plot with solid black line
 
+            % Plot treatment line in green
+            xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+
             % Add labels, title, and legend
             xlabel('Time (s)');
             ylabel('Firing Rate (spikes/s)');
@@ -92,6 +100,11 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
             legend([plot(NaN, NaN, 'k-', 'LineWidth', 2), legendHandles], ...
                    {'Average PSTH', 'Increased', 'Decreased', 'No Change'}, ...
                    'Location', 'Best');
+
+            % Display metadata information along the bottom within valid range
+            statsText = composeStatsText(cellDataStruct, groupName, recordingName, units);
+            annotation('textbox', [0.1, 0.02, 0.8, 0.1], 'String', statsText, ...
+                       'EdgeColor', 'none', 'HorizontalAlignment', 'left', 'FontSize', 10);
 
             % Define save path following the directory structure
             saveDir = fullfile(figureFolder, groupName, recordingName, 'Smoothed PSTHs');
@@ -112,5 +125,23 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
     end
 end
 
+%% Helper function to compose stats text
+function statsText = composeStatsText(cellDataStruct, groupName, recordingName, units)
+    % Initialize text string for stats summary
+    statsText = "";
 
-
+    for u = 1:numel(units)
+        unitID = units{u};
+        unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+        
+        % Check if metadata fields exist and concatenate statistics for each unit
+        if isfield(unitData, 'testMetaData') && isstruct(unitData.testMetaData)
+            testMetaData = unitData.testMetaData;
+            responseType = unitData.responseType;
+            
+            % Concatenate metadata details
+            statsText = statsText + sprintf('Unit %s - %s: Mean Diff: %.2f, p-value: %.3f, CI: [%.2f, %.2f]\n', ...
+                unitID, responseType, testMetaData.MeanDifference, unitData.pValue, testMetaData.ConfidenceInterval(1), testMetaData.ConfidenceInterval(2));
+        end
+    end
+end

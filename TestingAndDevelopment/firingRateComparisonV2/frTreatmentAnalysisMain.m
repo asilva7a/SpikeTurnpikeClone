@@ -41,16 +41,16 @@ clear all_data;
 %% Analysis
 
 % Generate PTSH for single unit
-[cellDataStruct] = generateAllPSTHs(cellDataStruct, dataFolder);
+cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-[cellDataStruct] = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 
 % Calculate pre- and post-treatment firing rate
-[cellDataStruct] = calculateFiringRate(cellDataStruct);
+cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
-[cellDataStruct] = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
+cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 
 
 %% Plotting 
@@ -64,8 +64,11 @@ clear all_data;
 % Plot line PSTHs
 %plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
-% Plot averag PSTHs with individual response
-plotAveragePSTHWithResponse(cellDataStruct, figureFolder)
+% Plot average PSTHs with individual response
+plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
+
+% Plot group PSTHs with individual responses
+plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
