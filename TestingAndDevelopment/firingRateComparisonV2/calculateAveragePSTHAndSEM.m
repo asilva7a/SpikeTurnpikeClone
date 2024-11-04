@@ -1,3 +1,4 @@
+
 function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
     % calculateAveragePSTHAndSEM: Computes average and SEM of PSTHs for each recording.
     % Adds the mean and SEM PSTH to cellDataStruct and saves the updated struct.
@@ -21,10 +22,14 @@ function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
+        fprintf('Processing Group: %s\n', groupName);  % Debug statement
+
         recordings = fieldnames(cellDataStruct.(groupName));
 
         for r = 1:length(recordings)
             recordingName = recordings{r};
+            fprintf('  Processing Recording: %s\n', recordingName);  % Debug statement
+
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
             numUnits = numel(units);  % Number of units for preallocation
 
@@ -36,13 +41,18 @@ function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
             for u = 1:numUnits
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+
                 if isfield(unitData, 'psthSmoothed')
                     psth = unitData.psthSmoothed;
+                    
                     if length(psth) == psthLength  % Ensure consistent length
                         allPSTHs(u, :) = psth;
+                        fprintf('    Processed Unit: %s\n', unitID);  % Debug statement
                     else
-                        warning('PSTH length mismatch for Unit %s. Skipping this unit.', unitID);
+                        warning('PSTH length mismatch for Unit %s in Recording %s. Skipping this unit.', unitID, recordingName);
                     end
+                else
+                    warning('No psthSmoothed field found for Unit %s in Recording %s. Skipping this unit.', unitID, recordingName);
                 end
             end
 
@@ -53,6 +63,7 @@ function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
             % Store average and SEM PSTH in the struct
             cellDataStruct.(groupName).(recordingName).avgPSTH = avgPSTH;
             cellDataStruct.(groupName).(recordingName).semPSTH = semPSTH;
+            fprintf('  Calculated avgPSTH and semPSTH for Recording: %s\n', recordingName);  % Debug statement
         end
     end
 
@@ -77,5 +88,3 @@ function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
         rethrow(ME);  % Rethrow the error after logging
     end
 end
-
-

@@ -2,9 +2,9 @@ function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadData
     % loadDataAndPreparePaths: Handles user input for paths and prepares file paths.
     
     % Default paths and filenames
-    defaultDataFolder = '/home/silva7a-local/Documents/MATLAB/Data/eb_recordings/SpikeStuff';
+    defaultDataFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
     defaultDataFile = 'all_data.mat';
-    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/Data/eb_recording_plots';
+    defaultFigureFolder = 'C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData';
     defaultCellStructFile = 'cellDataStruct.mat';
 
     % Define user input prompts

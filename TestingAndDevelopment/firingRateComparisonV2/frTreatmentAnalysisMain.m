@@ -1,8 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% To-Do
-%   Scale up to do:
-%   [ ] Make main function a for loop
-%   [ ] Change function calls to flex for struct 
+%
 
 %% Directory Structure
 % /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/
@@ -52,8 +50,8 @@ cellDataStruct = calculateFiringRate(cellDataStruct);
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 
-% Calculate Average and SEM PTSH
-cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
+% Calculate Recording Average and SEM PTSH
+cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder);
 
 
 %% Plotting 
@@ -68,10 +66,10 @@ cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
 %plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot average PSTHs with individual response
-plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
+%plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Plot group PSTHs with individual responses
-plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder);
+%plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
