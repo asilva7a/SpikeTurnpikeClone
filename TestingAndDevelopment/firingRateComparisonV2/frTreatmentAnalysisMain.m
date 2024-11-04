@@ -52,6 +52,9 @@ cellDataStruct = calculateFiringRate(cellDataStruct);
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 
+% Calculate Average and SEM PTSH
+cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
+
 
 %% Plotting 
 
