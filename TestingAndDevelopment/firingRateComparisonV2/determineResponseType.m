@@ -86,7 +86,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 [p, ~] = ranksum(FR_before, FR_after);
 
                 % Determine response type based on p-value and mean change
-                if p < 0.05
+                if p < 0.01
                     if mean(FR_after) > mean(FR_before)
                         responseType = 'Increased';
                     else
