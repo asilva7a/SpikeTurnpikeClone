@@ -70,10 +70,18 @@ cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder);
 %plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot average PSTHs with individual response
-%plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
+% plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Plot group PSTHs with individual responses
 % plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder);
+
+% Plot average PSTHs regardless of response
+
+
+
+
+
+
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
