@@ -1,4 +1,8 @@
 function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
+
+    % Define treatment time
+    treatmentTime = 1860; % time of treatment in seconds; come back later to accept flexible input
+
     % Define color mapping for each response type
     colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
                               {[1, 0, 0, 0.3], [0, 0, 1, 0.3], [0.5, 0.5, 0.5, 0.3]});
@@ -82,6 +86,9 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
 
             fprintf('Group %s, Recording %s: %d units plotted.\n', groupName, recordingName, unitCount);
 
+            % Add treatment time line in green
+            xline(treatmentTime, '--g', 'LineWidth', 1.5);
+            
             % Calculate and plot the group-averaged PSTH across all units
             avgPSTH = mean(allGroupPSTHs, 1, 'omitnan');
             fill([timeVector, fliplr(timeVector)], [avgPSTH, zeros(size(avgPSTH))], ...
@@ -98,18 +105,23 @@ function plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder)
                    'Location', 'Best');
             hold off;
 
+            % Save figure
             saveDir = fullfile(figureFolder, groupName, 'Group PSTHs');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
                 fprintf('Created directory: %s\n', saveDir);
             end
-
-            timestamp = datestr(now, 'yyyy-mm-dd_HH-MM');
+        
+            % Get the current timestamp in the specified format
+            timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
             fileName = sprintf('GroupAveragePSTH_%s_%s.png', groupName, timestamp);
+            
+            % Save the figure
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
 
-            close(gcf);
+            
+            close(gcf);  % Close the figure to free up memory
         end
     end
 end
