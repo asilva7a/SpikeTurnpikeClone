@@ -53,6 +53,10 @@ cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 % Calculate Recording Average and SEM PTSH
 cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder);
 
+% Calculate Group Average SEM and PSTH
+cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder);
+
+
 
 %% Plotting 
 
@@ -69,7 +73,7 @@ cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder);
 %plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Plot group PSTHs with individual responses
-%plotGroupAveragePSTHWithResponse(cellDataStruct, figureFolder);
+% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder);
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
