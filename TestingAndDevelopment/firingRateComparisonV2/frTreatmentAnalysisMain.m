@@ -16,9 +16,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
 
-% Main script for analysing the single unit data
+%% Main script for analysing the single unit data
 
 disp('Starting main script...');
+
+% Check for GPU availability
+useGPU = false;  % Default is not to use GPU
+if gpuDeviceCount > 0
+    disp('GPU detected! Enabling GPU acceleration for compatible functions.');
+    gpuDevice(1);  % Initialize the first GPU device
+    useGPU = true;
+else
+    disp('No GPU detected. Proceeding with CPU computation.');
+end
+
 
 %% Get User Input for Directories
 
