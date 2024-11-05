@@ -17,10 +17,26 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
                 fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
                         groupName, recordingName, unitID);
 
-                % Extract the unit's data and generate PSTH
+                % Extract the unit's data and generate PSTH with split data
                 try
-                    [fullPSTH, binEdges, splitData, cellDataStruct] = ...
-                        generatePSTH(cellDataStruct, groupName, recordingName, unitID);
+                    % Use a local copy of the unit's struct for efficiency
+                    localUnitData = cellDataStruct.(groupName).(recordingName).(unitID);
+
+                    % Generate PSTH and split data for the unit
+                    [fullPSTH, binEdges, splitData] = generatePSTH(localUnitData);
+
+                    % Save results to localUnitData and update the struct
+                    localUnitData.psthRaw = single(fullPSTH);         % Convert to single precision to save memory
+                    localUnitData.binEdges = single(binEdges);        % Convert to single precision
+                    localUnitData.splitData = splitData;              % Store split spike times if needed
+                    localUnitData.numBins = length(binEdges) - 1;     % Store number of bins
+
+                    % Update main struct with local data
+                    cellDataStruct.(groupName).(recordingName).(unitID) = localUnitData;
+
+                    % Clear temporary variables to free memory
+                    clear localUnitData fullPSTH binEdges splitData;
+
                 catch ME
                     % Handle any errors gracefully
                     warning('Error processing %s: %s', unitID, ME.message);
@@ -39,61 +55,37 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
 end
 
 %% Helper Function: Generate PSTH for a Single Unit
-function [fullPSTH, binEdges, splitData, cellDataStruct] = ...
-    generatePSTH(cellDataStruct, groupName, recordingName, unitID)
-
-    % Extract unit data
-    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-    fprintf('Extracted data for Unit: %s\n', unitID);
-
-    % Extract and normalize spike times
+function [fullPSTH, binEdges, splitData] = generatePSTH(unitData)
+    % Extract spike times and convert to seconds
     spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
-
-    % Check if spike times are empty
-    if isempty(spikeTimes)
-        warning('Spike times are empty for Unit: %s', unitID);
-    end
 
     % Set binning parameters
     recordingLength = 5400; % Fixed recording duration in seconds
-    binWidth = unitData.binWidth;    
+    binWidth = unitData.binWidth;
 
     % Validate bin width
     if binWidth <= 0 || binWidth > recordingLength
-        error('Invalid bin width for Unit: %s', unitID);
+        error('Invalid bin width for Unit.');
     end
 
-    % Calculate bin edges based on fixed recording duration
-    binEdges = edgeCalculator(recordingLength, binWidth);
+    % Calculate bin edges
+    binEdges = single(0:binWidth:recordingLength);  % Convert to single precision
 
     % Split spike data into bins
     numBins = length(binEdges) - 1;
-    splitData = cell(1, numBins);  % Preallocate cell array
+    splitData = cell(1, numBins);
 
     for i = 1:numBins
         binStart = binEdges(i);
         binEnd = binEdges(i + 1);
+        % Assign spikes to the current bin
         splitData{i} = spikeTimes(spikeTimes >= binStart & spikeTimes < binEnd);
     end
 
-    % Calculate PSTH
+    % Calculate spike count and convert to firing rate (PSTH)
     spikeCounts = cellfun(@length, splitData);
     fullPSTH = spikeCounts / binWidth;  % Convert to firing rate
 
-    % Save results to the unit's struct
-    cellDataStruct.(groupName).(recordingName).(unitID).psthRaw = fullPSTH;
-    cellDataStruct.(groupName).(recordingName).(unitID).binEdges = binEdges;
-    cellDataStruct.(groupName).(recordingName).(unitID).numBins = numBins;
-
+    % Clear temporary variables to optimize memory usage
+    clear spikeTimes spikeCounts;
 end
-
-%% Helper Function: Calculate Bin Edges
-function edges = edgeCalculator(recordingLength, binWidth)
-    % Generate bin edges based on a fixed recording duration
-    edges = 0:binWidth:recordingLength;  % Start at 0, end at fixed recording duration with specified bin width
-
-    % Optional: Display binning range for debugging
-    fprintf('Generated bin edges from 0 to %.2f s with bin width %.2f s.\n', ...
-            recordingLength, binWidth);
-end
-
