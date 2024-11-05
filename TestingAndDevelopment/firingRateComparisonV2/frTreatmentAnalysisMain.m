@@ -20,15 +20,15 @@ clear; clc;
 
 disp('Starting main script...');
 
-% Check for GPU availability
-useGPU = false;  % Default is not to use GPU
-if gpuDeviceCount > 0
-    disp('GPU detected! Enabling GPU acceleration for compatible functions.');
-    gpuDevice(1);  % Initialize the first GPU device
-    useGPU = true;
-else
-    disp('No GPU detected. Proceeding with CPU computation.');
-end
+% % Check for GPU availability
+% useGPU = false;  % Default is not to use GPU
+% if gpuDeviceCount > 0
+%     disp('GPU detected! Enabling GPU acceleration for compatible functions.');
+%     gpuDevice(1);  % Initialize the first GPU device
+%     useGPU = true;
+% else
+%     disp('No GPU detected. Proceeding with CPU computation.');
+% end
 
 
 %% Get User Input for Directories
@@ -81,12 +81,13 @@ cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder);
 %plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot average PSTHs with individual response
-% plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
+plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Plot group PSTHs with individual responses
 % plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder);
 
-% Plot average PSTHs regardless of response
+% Generate main figure with output of other plots
+
 
 
 
