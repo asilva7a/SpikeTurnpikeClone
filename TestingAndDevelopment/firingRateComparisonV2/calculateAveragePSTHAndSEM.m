@@ -1,14 +1,13 @@
-
 function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
     % calculateAveragePSTHAndSEM: Computes average and SEM of PSTHs for each recording.
-    % Adds the mean and SEM PSTH to cellDataStruct and saves the updated struct.
+    % Adds the mean and SEM PSTH to cellDataStruct under the 'recordingData' field at the recording level.
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing group, recording, and unit data.
     %   - dataFolder: Directory where the updated cellDataStruct will be saved.
     %
     % Outputs:
-    %   - cellDataStruct: Updated structure with mean and SEM PSTH stored for each recording.
+    %   - cellDataStruct: Updated structure with mean and SEM PSTH stored under 'recordingData' for each recording.
 
     % Verify the data folder path
     if nargin < 2 || isempty(dataFolder)
@@ -60,9 +59,9 @@ function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
             avgPSTH = mean(allPSTHs, 1, 'omitnan');
             semPSTH = std(allPSTHs, 0, 1, 'omitnan') / sqrt(numUnits);
 
-            % Store average and SEM PSTH in the struct
-            cellDataStruct.(groupName).(recordingName).avgPSTH = avgPSTH;
-            cellDataStruct.(groupName).(recordingName).semPSTH = semPSTH;
+            % Store average and SEM PSTH under 'recordingData' in the struct
+            cellDataStruct.(groupName).(recordingName).recordingData.avgPSTH = avgPSTH;
+            cellDataStruct.(groupName).(recordingName).recordingData.semPSTH = semPSTH;
             fprintf('  Calculated avgPSTH and semPSTH for Recording: %s\n', recordingName);  % Debug statement
         end
     end
