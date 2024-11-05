@@ -71,9 +71,14 @@ function cellDataStruct = calculatePercentChangePSTH(cellDataStruct, treatmentTi
                     end
 
                 catch ME
-                    % Display warning with error details for this specific unit
-                    warning('Error processing Unit %s in %s - %s. Error: %s', ...
-                            unitID, groupName, recordingName, ME.message);
+                    % Detailed error message with stack trace
+                    errorMsg = sprintf('Error processing Unit %s in %s - %s: %s\n', ...
+                                        unitID, groupName, recordingName, ME.message);
+                    for k = 1:length(ME.stack)
+                        errorMsg = sprintf('%s In %s (line %d)\n', ...
+                            errorMsg, ME.stack(k).file, ME.stack(k).line);
+                    end
+                    warning(errorMsg);
                 end
             end
         end
@@ -134,9 +139,15 @@ function [percentChange, percentChangeStats] = calculatePercentChangeStats(unitD
 
     catch ME
         % Handle errors within the helper function
-        warning('Error calculating percent change stats: %s', ME.message);
+        errorMsg = sprintf('Error calculating percent change stats: %s\n', ME.message);
+        for k = 1:length(ME.stack)
+            errorMsg = sprintf('%s In %s (line %d)\n', errorMsg, ME.stack(k).file, ME.stack(k).line);
+        end
+        warning(errorMsg);
+        
         percentChange = NaN;  % Return NaN for percent change on error
         percentChangeStats = struct();  % Return an empty struct on error
     end
 end
+
 
