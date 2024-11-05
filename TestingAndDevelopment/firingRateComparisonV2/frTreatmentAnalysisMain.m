@@ -16,7 +16,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
 
-%% Main script for analysing the single unit data
+%%  Main script for analysing the single unit data
 
 disp('Starting main script...');
 
