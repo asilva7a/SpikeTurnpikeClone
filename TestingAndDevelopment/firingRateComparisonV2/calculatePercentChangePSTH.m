@@ -16,7 +16,7 @@ function calculatePercentChangePSTH(cellDataStruct, treatmentTime, preWindow, po
         treatmentTime = 1860;
     end
     if nargin < 3 || isempty(preWindow)
-        preWindow = 1000;
+        preWindow = 300;
     end
     if nargin < 4 || isempty(postWindow)
         postWindow = 3000;
