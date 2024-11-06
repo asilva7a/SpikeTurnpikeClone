@@ -8,6 +8,15 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
 
+    %% Debugging: Load test data
+    % Load the data
+    files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
+             'dataFolder.mat', 'figureFolder.mat'};
+    for i = 1:length(files)
+        load(fullfile('/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testVariables', files{i}));
+    end
+    
+    %% Resolve Default Args
     % Set default for plotType if not provided
     if nargin < 4
         plotType = 'mean+sem'; % Default to mean + SEM
@@ -23,7 +32,8 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                     'Decreased', [0, 0, 1, 0.3], ...   % Blue with transparency
                     'NoChange', [0.5, 0.5, 0.5, 0.3], ... % Grey with transparency
                     'Mean', [0, 0, 0]);                % Black for mean PSTH
-
+    
+    %% Loop through struct and collect data
     % Loop through each group and recording
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
@@ -62,7 +72,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                     end
                 end
             end
-
+            %% Generate subplots
             % Create a figure with three subplots arranged in a 1x3 layout
             figure('Position', [100, 100, 1600, 500]);
             
@@ -79,7 +89,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             else
                 title('Increased (No Data)');
             end
-
+            
             % Plot 2: Negatively Modulated Units (Decreased)
             subplot(1, 3, 2);
             if ~isempty(decreasedPSTHs)
@@ -101,7 +111,8 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             else
                 title('No Change (No Data)');
             end
-
+            
+            %% Save figure to figure directory
             % Save figure
             saveDir = fullfile(figureFolder, 'ModulatedPlots');
             if ~isfolder(saveDir)
