@@ -1,13 +1,25 @@
-function [grandAveragePSTH] = calculateGrandPSTH(cellDataStruct)
-% Calculate Grand PSTH: calculates average PSTH for all units recorded
-%   Input:
-%       * cellDataStruct: struct containing unit data
-% 
-%   Output: 
-%       * grandAveragePSTH - an average PSTH of all raw unit data
-% 
-%   Purpose: provide average PSTH for subPlotting
+function [grandAveragePSTH, timeVector] = calculateGrandPSTH(cellDataStruct)
+% calculateGrandPSTH: Computes the grand average PSTH and corresponding time vector 
+%                     across all units in the given cellDataStruct.
+%
+%   Dependencies:
+%       * This function is designed for use within higher-level plotting functions, 
+%         such as subPlotAllPSTHsRawWithMean, which use the average PSTH to represent 
+%         overall unit activity across all groups and recordings.
+%
+%   Inputs:
+%       - cellDataStruct: Struct containing smoothed PSTH data for multiple units.
+%                         Each unit should have fields 'psthSmoothed' and 'binEdges'.
+%
+%   Outputs:
+%       - grandAveragePSTH: Grand average of all smoothed PSTHs from individual units.
+%       - timeVector: Time vector corresponding to the bin centers of the PSTH.
+%
+%   Purpose: Provides an average PSTH across all units in the structure, allowing for 
+%            a single, representative PSTH plot in overarching functions.
 
+
+%% Collect Data
     % Determine total units and PSTH length
     totalUnits = 0;
     psthLength = 0;
@@ -97,6 +109,7 @@ function [grandAveragePSTH] = calculateGrandPSTH(cellDataStruct)
         end
     end
 
+    %% Calculate grand average
     % Calculate the overall average PSTH, ignoring NaNs
     try
         grandAveragePSTH = mean(allPSTHs, 1, 'omitnan');
