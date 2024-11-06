@@ -15,13 +15,13 @@ load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\c
     ax1 = subplot(1, 3, 1);
     subPlotAllPSTHsRawWithMean(cellDataStruct, 1860, ax1);
     
-    % Panel 2 - All Units (smoothed) with Recording Average, 
+    % Panel 2 - All Units (smoothed) with Recording Average 
     ax2 = subplot(1, 3, 2);
     subPlotAveragePSTHWithResponse(cellDataStruct, ax2);
 
-    % 
-    % ax3 = nexttile(t);
-    % plot3 = plotThirdSubplot(ax3, dataStruct); % Call subplot function 3
+    % Panel 3 - Experimental vs Control
+    ax3 = subplot(1,3,3);
+    subPlotExperimentalvsControl(cellDataStruct, ax3);
 
     % Additional formatting or combined annotations can go here
     title(t, 'Combined Figure with Subplots');
