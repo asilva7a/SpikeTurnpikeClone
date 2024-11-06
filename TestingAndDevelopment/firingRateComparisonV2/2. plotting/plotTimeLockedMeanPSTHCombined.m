@@ -8,14 +8,14 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
     
-    %% Debugging: Preload data for testing
-    % Load the data
-    files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
-             'dataFolder.mat', 'figureFolder.mat'};
-    for i = 1:length(files)
-        load(fullfile(['/home/silva7a-local/Documents/MATLAB/' ...
-            'SpikeTurnpikeClone/TestData/testVariables'], files{i}));
-    end
+    % %% Debugging: Preload data for testing
+    % % Load the data
+    % files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
+    %          'dataFolder.mat', 'figureFolder.mat'};
+    % for i = 1:length(files)
+    %     load(fullfile(['/home/silva7a-local/Documents/MATLAB/' ...
+    %         'SpikeTurnpikeClone/TestData/testVariables'], files{i}));
+    % end
     
     %% Main function
     % Set default for plotType if not provided
@@ -112,11 +112,11 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Save figure
-            saveDir = fullfile(figureFolder, 'ModulatedPlots');
+            saveDir = fullfile(figureFolder, 'SmoothedPSTHs');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
-            fileName = sprintf('%s_%s_ModulatedPSTH.mat', groupName, recordingName);
+            fileName = sprintf('%s_%s_%s_smoothedPSTH.fig', groupName, recordingName,plotType);
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
 
