@@ -38,7 +38,7 @@ function subPlotExperimentalvsControl(cellDataStruct, ax)
 
     % Plot treatment line in green
     treatmentTime = 1860; % time of the treatment in seconds; adjust later to accept user input
-    xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+    xline(ax, treatmentTime, '--', 'Color', [0, 0, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
 
     % Add labels, title, and legend
     xlabel(ax, 'Time (s)');
