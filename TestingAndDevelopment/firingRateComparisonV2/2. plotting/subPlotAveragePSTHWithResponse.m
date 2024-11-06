@@ -55,6 +55,16 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
         error('Could not find binEdges or binWidth in the first unit of recording "%s".', recordingName);
     end
 
+    % Prepare dummy handles for legend entries for each response type
+    legendHandles = [];
+    responseTypes = {'Increased', 'Decreased', 'No Change'};
+    for i = 1:numel(responseTypes)
+        responseType = responseTypes{i};
+        colorVal = colorMap(responseType);
+        h = plot(ax, NaN, NaN, 'Color', colorVal, 'LineWidth', 0.5, 'DisplayName', responseType); % Dummy line
+        legendHandles = [legendHandles, h]; %#ok<AGROW>
+    end
+
     % Plot individual unit PSTHs with transparency based on response type
     for u = 1:numel(units)
         unitID = units{u};
@@ -107,9 +117,11 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
          'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 
     % Create the legend using specific plot handles to ensure proper labeling
-    legend(ax, [hAvgPSTH, hSEM, hTreatment], {'Recording Mean PSTH', 'SEM', 'Treatment Time'}, ...
+    legend(ax, [legendHandles, hAvgPSTH, hSEM, hTreatment], ...
+           {'Increased', 'Decreased', 'No Change', 'Recording Mean PSTH', 'SEM', 'Treatment Time'}, ...
            'Location', 'best');
 
     hold(ax, 'off');
 end
+
 
