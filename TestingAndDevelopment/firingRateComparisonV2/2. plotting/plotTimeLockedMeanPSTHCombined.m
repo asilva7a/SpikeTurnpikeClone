@@ -8,14 +8,16 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
     
-     % Load the data
+    %% Debugging: Preload data for testing
+    % Load the data
     files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
              'dataFolder.mat', 'figureFolder.mat'};
     for i = 1:length(files)
         load(fullfile(['/home/silva7a-local/Documents/MATLAB/' ...
             'SpikeTurnpikeClone/TestData/testVariables'], files{i}));
     end
-
+    
+    %% Main function
     % Set default for plotType if not provided
     if nargin < 4
         plotType = 'mean+sem'; % Default to mean + SEM
