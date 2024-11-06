@@ -99,7 +99,7 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
     % Add labels and title
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
-    title(ax, sprintf('Average Smoothed PSTH with SEM');
+    title(ax, sprintf('Average Smoothed PSTH with SEM'));
 
     % Add group and recording name annotation in the top-right corner of the plot
     text(ax, 0.98, 0.98, sprintf('%s - %s', groupName, recordingName), ...
