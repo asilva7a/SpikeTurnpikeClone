@@ -74,7 +74,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             figure('Position', [100, 100, 1600, 500]);
             
             % Add the main title with group and recording names
-            sgtitle(sprintf('%s - %s', groupName, recordingName));
+            sgtitle(sprintf('%s - %s - %s', groupName, recordingName, plotType));
 
             % Plot 1: Positively Modulated Units (Increased)
             subplot(1, 3, 1);
