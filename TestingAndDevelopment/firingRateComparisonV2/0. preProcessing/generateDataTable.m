@@ -79,6 +79,9 @@ for g = 1:numFields
     dataTable.testMetaData{g} = unit.testMetaData;                     % Stores Wilcox-Ranksum test performed on smoothed PSTH data
 end
 
+disp(dataTable);
+
 %% Save the table as a .mat file in the specified directory
 save(fullfile(dataFolder, 'dataTable.mat'), 'dataTable');
+
 end
