@@ -1,12 +1,16 @@
-function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime)
+function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType)
     % plotTimeLockedMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
     % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
+    %
+    % Inputs:
+    %   - cellDataStruct: Data structure containing group, recording, and unit data.
+    %   - figureFolder: Directory where the plots will be saved.
+    %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
+    %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
 
-    % Load the data
-    files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
-             'dataFolder.mat', 'figureFolder.mat'};
-    for i = 1:length(files)
-        load(fullfile('/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testVariables', files{i}));
+    % Set default for plotType if not provided
+    if nargin < 4
+        plotType = 'mean+sem'; % Default to mean + SEM
     end
     
     % Default treatment time if not provided
@@ -71,7 +75,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 meanIncreasedPSTH = mean(increasedPSTHs, 1, 'omitnan');
                 semIncreasedPSTH = std(increasedPSTHs, 0, 1, 'omitnan') / sqrt(size(increasedPSTHs, 1));
                 plotPSTHWithOverlaySubplot(timeVector, meanIncreasedPSTH, semIncreasedPSTH, ...
-                    increasedPSTHs, colors.Increased, colors.Mean, 'Increased', treatmentTime);
+                    increasedPSTHs, colors.Increased, colors.Mean, 'Increased', treatmentTime, plotType);
             else
                 title('Increased (No Data)');
             end
@@ -82,7 +86,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 meanDecreasedPSTH = mean(decreasedPSTHs, 1, 'omitnan');
                 semDecreasedPSTH = std(decreasedPSTHs, 0, 1, 'omitnan') / sqrt(size(decreasedPSTHs, 1));
                 plotPSTHWithOverlaySubplot(timeVector, meanDecreasedPSTH, semDecreasedPSTH, ...
-                    decreasedPSTHs, colors.Decreased, colors.Mean, 'Decreased', treatmentTime);
+                    decreasedPSTHs, colors.Decreased, colors.Mean, 'Decreased', treatmentTime, plotType);
             else
                 title('Decreased (No Data)');
             end
@@ -93,7 +97,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 meanNoChangePSTH = mean(noChangePSTHs, 1, 'omitnan');
                 semNoChangePSTH = std(noChangePSTHs, 0, 1, 'omitnan') / sqrt(size(noChangePSTHs, 1));
                 plotPSTHWithOverlaySubplot(timeVector, meanNoChangePSTH, semNoChangePSTH, ...
-                    noChangePSTHs, colors.NoChange, colors.Mean, 'No Change', treatmentTime);
+                    noChangePSTHs, colors.NoChange, colors.Mean, 'No Change', treatmentTime, plotType);
             else
                 title('No Change (No Data)');
             end
@@ -112,9 +116,9 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     end
 end
 
-%% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar
-function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, color, avgColor, plotTitle, treatmentTime)
-    % plotPSTHWithOverlaySubplot: Helper function to plot mean PSTH with SEM and overlay individual traces in a subplot.
+%% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
+function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, color, avgColor, plotTitle, treatmentTime, plotType)
+    % plotPSTHWithOverlaySubplot: Helper function to plot mean PSTH with SEM or individual traces.
     %
     % Inputs:
     %   - timeVector: Vector of time points for the PSTH
@@ -124,16 +128,23 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
     %   - avgColor: Color for the mean PSTH line
     %   - plotTitle: Title for the subplot
     %   - treatmentTime: Time in seconds for the vertical line
+    %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
 
     hold on;
 
-    % Plot individual PSTHs with color and transparency for each type
-    for i = 1:size(individualPSTHs, 1)
-        plot(timeVector, individualPSTHs(i, :), 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
+    if strcmp(plotType, 'mean+sem')
+        % Plot mean PSTH with SEM using shadedErrorBar
+        shadedErrorBar(timeVector, meanPSTH, semPSTH, 'lineprops', {'Color', avgColor, 'LineWidth', 2});
+    elseif strcmp(plotType, 'mean+individual')
+        % Plot individual PSTHs with color and transparency
+        for i = 1:size(individualPSTHs, 1)
+            plot(timeVector, individualPSTHs(i, :), 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
+        end
+        % Plot mean PSTH on top
+        plot(timeVector, meanPSTH, 'Color', avgColor, 'LineWidth', 2);
+    else
+        error("plotType must be either 'mean+sem' or 'mean+individual'");
     end
-
-    % Plot mean PSTH with SEM using shadedErrorBar
-    shadedErrorBar(timeVector, meanPSTH, semPSTH, 'lineprops', {'Color', avgColor, 'LineWidth', 2});
 
     % Plot treatment line
     xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5);
@@ -149,6 +160,7 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     hold off;
 end
+
 
 
 
