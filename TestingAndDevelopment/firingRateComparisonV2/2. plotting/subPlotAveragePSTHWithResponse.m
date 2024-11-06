@@ -92,6 +92,10 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
     % Plot treatment line in green
     xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
 
+    % Set axis limits
+    ylim(ax, [0 inf]);  % Set y-axis lower limit to 0 and let the upper limit auto-adjust
+    xlim(ax, [0 5400]); % Set x-axis upper limit to 5400 seconds
+
     % Add labels and title
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
