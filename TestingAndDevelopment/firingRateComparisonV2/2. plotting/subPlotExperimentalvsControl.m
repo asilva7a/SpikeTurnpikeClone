@@ -37,8 +37,9 @@ function subPlotExperimentalvsControl(cellDataStruct, ax)
     hExp = plot(ax, timeVector, expAvgPSTH, 'Color', experimentalColor, 'LineWidth', 2, 'DisplayName', 'Experimental Avg PSTH');
 
     % Plot treatment line in green
+    treatmentTime = 1860; % time of the treatment in seconds; adjust later to accept user input
     xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
-    
+
     % Add labels, title, and legend
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
