@@ -1,4 +1,4 @@
-function subPlotAveragePSTHWithResponse(ax, cellDataStruct, groupName, recordingName, treatmentTime)
+function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recordingName, treatmentTime)
     % subPlotAveragePSTHWithResponse: Plots the average smoothed PSTH with individual units and SEM.
     % Inputs:
     %   - ax: Axis handle where the subplot will be plotted.

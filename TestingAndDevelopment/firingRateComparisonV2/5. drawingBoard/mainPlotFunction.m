@@ -17,7 +17,7 @@ function mainPlotFunction(cellDataStruct, figureFolder)
     
     % Panel 2 - All Units (smoothed) with Recording Average, 
     ax2 = subplot(1, 3, 2);
-    plotAveragePSTHWithResponse(ax2, cellDataStruct, 1860);
+    subPlotAveragePSTHWithResponse(cellDataStruct, ax2);
 
     % 
     % ax3 = nexttile(t);
