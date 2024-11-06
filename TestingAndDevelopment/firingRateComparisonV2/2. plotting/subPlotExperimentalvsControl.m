@@ -36,17 +36,17 @@ function subPlotExperimentalvsControl(cellDataStruct, ax)
     % Plot the average PSTH for the experimental group (purple line)
     hExp = plot(ax, timeVector, expAvgPSTH, 'Color', experimentalColor, 'LineWidth', 2, 'DisplayName', 'Experimental Avg PSTH');
 
-    % Plot treatment line in green
+    % Plot treatment line and store handle for legend
     treatmentTime = 1860; % time of the treatment in seconds; adjust later to accept user input
-    xline(ax, treatmentTime, '--', 'Color', [0, 0, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+    hTreatment = xline(ax, treatmentTime, '--', 'Color', [0, 0, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
 
     % Add labels, title, and legend
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
     title(ax, 'Control vs Experimental Average PSTH with SEM');
 
-    % Explicitly specify legend entries to ensure they match the correct colors
-    legend(ax, [hExp, hControl], {'Experimental Avg PSTH', 'Control Avg PSTH'}, 'Location', 'best');
+    % Create legend with explicit handles to ensure proper labeling
+    legend(ax, [hExp, hControl, hTreatment], {'Experimental Avg PSTH', 'Control Avg PSTH', 'Treatment Time'}, 'Location', 'best');
 
     % Set axis limits
     ylim(ax, [0 inf]);  % Start y-axis at 0 and let it auto-adjust
@@ -54,5 +54,6 @@ function subPlotExperimentalvsControl(cellDataStruct, ax)
 
     hold(ax, 'off');
 end
+
 
 
