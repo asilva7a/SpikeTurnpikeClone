@@ -1,4 +1,4 @@
-function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
+function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, ax)
     % subPlotAllPSTHsRawWithMean: Plots all raw PSTHs with group average in a given subplot axis.
     %
     % Inputs:
@@ -6,9 +6,8 @@ function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
     %   - treatmentTime: Time (in seconds) to indicate the treatment moment.
     %   - ax: Axes handle for plotting the subplot in an existing figure.
 
-    if nargin < 2 || isempty(treatmentTime)
-        treatmentTime = 1860;  % Default treatment time in seconds
-    end
+   % Set treatment time
+   treatmentTime = 1860; % Manually set treatment time
 
     % Define color mapping for each response type
     colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
