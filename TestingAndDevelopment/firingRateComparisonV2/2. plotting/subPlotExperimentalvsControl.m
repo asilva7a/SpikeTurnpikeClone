@@ -36,6 +36,9 @@ function subPlotExperimentalvsControl(cellDataStruct, ax)
     % Plot the average PSTH for the experimental group (purple line)
     hExp = plot(ax, timeVector, expAvgPSTH, 'Color', experimentalColor, 'LineWidth', 2, 'DisplayName', 'Experimental Avg PSTH');
 
+    % Plot treatment line in green
+    xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+    
     % Add labels, title, and legend
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
