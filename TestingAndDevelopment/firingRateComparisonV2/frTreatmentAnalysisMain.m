@@ -72,6 +72,9 @@ plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual');
 
+%% End of Script
+print('Script finished...');
+printSuccessMessage;
 
 %% Optional Plots
 
