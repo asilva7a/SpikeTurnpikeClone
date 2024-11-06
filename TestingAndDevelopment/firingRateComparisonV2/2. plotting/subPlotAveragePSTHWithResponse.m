@@ -1,15 +1,28 @@
 function subPlotAveragePSTHWithResponse(ax, cellDataStruct, groupName, recordingName, treatmentTime)
-    % plotAveragePSTHWithResponse: Plots the average smoothed PSTH with individual units and SEM for a specific recording.
+    % subPlotAveragePSTHWithResponse: Plots the average smoothed PSTH with individual units and SEM.
     % Inputs:
     %   - ax: Axis handle where the subplot will be plotted.
     %   - cellDataStruct: Data structure containing all group, recording, and unit data.
-    %   - groupName: Name of the group to be plotted (e.g., 'Control').
-    %   - recordingName: Name of the specific recording within the group (e.g., 'pvalb_notreat_0005_rec1').
+    %   - groupName (optional): Name of the group to be plotted. Defaults to the first group.
+    %   - recordingName (optional): Name of the recording. Defaults to the first recording in the group.
     %   - treatmentTime: Time in seconds where treatment was administered.
 
     % Set default treatment time if not provided
     if nargin < 5
         treatmentTime = 1860;  % Default treatment time in seconds
+    end
+
+    % Default to first group if groupName is not specified
+    if nargin < 3 || isempty(groupName)
+        groupNames = fieldnames(cellDataStruct);
+        groupName = groupNames{1};
+    end
+
+    % Default to first recording if recordingName is not specified
+    if nargin < 4 || isempty(recordingName)
+        recordingNames = fieldnames(cellDataStruct.(groupName));
+        recordingNames(strcmp(recordingNames, 'groupData')) = [];  % Exclude `groupData`
+        recordingName = recordingNames{1};
     end
 
     % Define color mapping for each response type
@@ -24,15 +37,8 @@ function subPlotAveragePSTHWithResponse(ax, cellDataStruct, groupName, recording
     try
         avgPSTH = cellDataStruct.(groupName).(recordingName).recordingData.avgPSTH;
         semPSTH = cellDataStruct.(groupName).(recordingName).recordingData.semPSTH;
-    catch missingFieldError
-        % Check specifically which field is missing
-        if ~isfield(cellDataStruct.(groupName).(recordingName).recordingData, 'avgPSTH')
-            error('The average PSTH (avgPSTH) for recording "%s" is missing.', recordingName);
-        elseif ~isfield(cellDataStruct.(groupName).(recordingName).recordingData, 'semPSTH')
-            error('The SEM (semPSTH) for recording "%s" is missing.', recordingName);
-        else
-            rethrow(missingFieldError);
-        end
+    catch
+        error('Could not find avgPSTH or semPSTH in the specified recording path: %s.%s', groupName, recordingName);
     end
 
     % Get the list of units in the specified recording
