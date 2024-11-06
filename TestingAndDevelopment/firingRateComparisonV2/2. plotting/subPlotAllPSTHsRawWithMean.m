@@ -1,4 +1,4 @@
-function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
+function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
     % subPlotAllPSTHsRawWithMean: Plots all raw PSTHs with group average in a given subplot axis.
     %
     % Inputs:
