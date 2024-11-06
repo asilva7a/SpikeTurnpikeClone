@@ -101,13 +101,18 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
     ylabel(ax, 'Firing Rate (spikes/s)');
     title(ax, sprintf('Average Smoothed PSTH with SEM for Recording: %s', recordingName));
 
-    % Add legend for the average PSTH, SEM, and treatment line
-    legend(ax, 'Recording Mean PSTH', 'SEM', 'Treatment Time', 'Location', 'Best');
-
     % Add group and recording name annotation in the top-right corner of the plot
     text(ax, 0.98, 0.98, sprintf('%s - %s', groupName, recordingName), ...
          'Units', 'normalized', 'FontSize', 12, ...
          'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
+
+    % Create the legend outside the plot area, in the figure's top-right corner
+    legendHandle = legend(ax, 'Recording Mean PSTH', 'SEM', 'Treatment Time');
+    %legendHandle.Box = 'off';  % Optional: Remove the box around the legend for a cleaner look
+
+    % Position the legend to the right of the axis in the top-right corner of the figure
+    set(legendHandle, 'Units', 'normalized');
+    set(legendHandle, 'Position', [0.92, 0.8, 0.05, 0.1]);  % Adjust values for fine-tuning
 
     hold(ax, 'off');
 end
