@@ -9,7 +9,7 @@ load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\cellDataStruct_
 % Main function to create combined figure with subplots
 
     figure;
-    t = tiledlayout(2, 2, 'Padding', 'compact', 'TileSpacing', 'compact'); % Adjust as needed
+    t = tiledlayout(1, 3, 'Padding', 'compact', 'TileSpacing', 'compact'); % Adjust as needed
 
     % Panel 1 - All Units with Grand Average PSTH
     ax1 = subplot(1, 3, 1);
