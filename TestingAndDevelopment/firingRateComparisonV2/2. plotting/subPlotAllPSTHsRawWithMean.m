@@ -1,26 +1,25 @@
-function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, ax)
-    % subPlotAllPSTHsRawWithMean: Plots all raw PSTHs with group average in a given subplot axis.
+function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
+    % subPlotAllPSTHsRawWithMean: Plots all raw PSTHs with grand average in a given subplot axis.
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing all group, recording, and unit PSTH data.
     %   - treatmentTime: Time (in seconds) to indicate the treatment moment.
     %   - ax: Axes handle for plotting the subplot in an existing figure.
 
-   % Set treatment time
-   treatmentTime = 1860; % Manually set treatment time
+    if nargin < 2 || isempty(treatmentTime)
+        treatmentTime = 1860;  % Default treatment time in seconds
+    end
 
     % Define color mapping for each response type
     colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
                               {[1, 0, 0, 0.3], [0, 0, 1, 0.3], [0.5, 0.5, 0.5, 0.3]}); % RGBA format with transparency
 
-    % Prepare array for collecting all unit PSTHs
-    allPSTHs = [];
-    timeVector = [];
-    totalUnits = 0;
-
-    % Loop through groups, recordings, and units to gather PSTHs
-    groupNames = fieldnames(cellDataStruct);
+    % Call calculateGrandPSTH to get grand average and time vector
+    [grandAveragePSTH, timeVector] = calculateGrandPSTH(cellDataStruct);
+    
+    % Plot individual unit PSTHs with color coding based on response type
     hold(ax, 'on'); % Hold on for overlaying plots in the specified axes
+    groupNames = fieldnames(cellDataStruct);
 
     for g = 1:length(groupNames)
         groupName = groupNames{g};
@@ -37,16 +36,6 @@ function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, ax)
                 % Check for required fields
                 if isfield(unitData, 'psthRaw') && isfield(unitData, 'responseType')
                     psth = unitData.psthRaw;
-                    binEdges = unitData.binEdges;
-                    binWidth = unitData.binWidth;
-                    timeVector = binEdges(1:end-1) + binWidth / 2;
-
-                    % Store PSTH data for averaging
-                    if isempty(allPSTHs)
-                        allPSTHs = NaN(numel(units), length(psth));
-                    end
-                    allPSTHs(totalUnits + 1, :) = psth;
-                    totalUnits = totalUnits + 1;
 
                     % Set color based on response type
                     responseType = unitData.responseType;
@@ -59,8 +48,7 @@ function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, ax)
         end
     end
 
-    % Calculate the grand average PSTH across all units and plot it
-    grandAveragePSTH = mean(allPSTHs, 1, 'omitnan');
+    % Plot the grand average PSTH
     plot(ax, timeVector, grandAveragePSTH, 'k-', 'LineWidth', 2);
 
     % Add treatment line, labels, and title
@@ -71,4 +59,3 @@ function [subPlot1] = subPlotAllPSTHsRawWithMean(cellDataStruct, ax)
     legend(ax, 'Average PSTH', 'Location', 'Best');
     hold(ax, 'off');
 end
-
