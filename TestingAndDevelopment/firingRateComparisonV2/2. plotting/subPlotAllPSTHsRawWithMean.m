@@ -56,6 +56,6 @@ function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
     title(ax, 'All Units with Grand Average PSTH');
-    legend(ax, 'Average PSTH', 'Location', 'Best');
+    xlim(ax, [0, 5400]); % Set the x-axis limit to 5400 seconds
     hold(ax, 'off');
 end
