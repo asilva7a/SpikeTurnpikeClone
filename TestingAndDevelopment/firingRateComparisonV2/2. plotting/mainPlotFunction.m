@@ -12,8 +12,8 @@ load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\c
     t = tiledlayout(1, 3, 'Padding', 'compact', 'TileSpacing', 'compact'); % Adjust as needed
 
     % Panel 1 - All Units with Grand Average PSTH
-    %ax1 = subplot(1, 3, 1);
-    %subPlotAllPSTHsRawWithMean(cellDataStruct, 1860, ax1);
+    ax1 = subplot(1, 3, 1);
+    subPlotAllPSTHsRawWithMean(cellDataStruct, 1860, ax1);
     
     % Panel 2 - All Units (smoothed) with Recording Average, 
     ax2 = subplot(1, 3, 2);
