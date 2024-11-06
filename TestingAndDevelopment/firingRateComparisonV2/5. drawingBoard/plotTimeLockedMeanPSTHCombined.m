@@ -1,12 +1,21 @@
 function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime)
     % plotTimeLockedMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
-    % Each subplot shows either responsive, non-responsive, or all units combined.
+    % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing group, recording, and unit data.
     %   - figureFolder: Directory where the plots will be saved.
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
 
+    % Debugging input
+    % Load the data, can be omitted for full deploy
+    files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
+             'dataFolder.mat', 'figureFolder.mat'};
+    for i = 1:length(files)
+        load(fullfile('/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testVariables', files{i}));
+    end
+
+    % Default args
     if nargin < 3
         treatmentTime = 1860; % Default treatment time in seconds
     end
@@ -57,47 +66,51 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 end
             end
 
-            % Create a figure with three subplots
-            figure('Position', [100, 100, 1400, 800]);
+            % Create a figure with three subplots arranged in a 1x3 layout
+            figure('Position', [100, 100, 1600, 500]);
 
-            % Plot 1: Responsive Units (Increased and Decreased)
-            subplot(3, 1, 1);
-            responsivePSTHs = [increasedPSTHs; decreasedPSTHs];
-            if ~isempty(responsivePSTHs)
-                meanResponsivePSTH = mean(responsivePSTHs, 1, 'omitnan');
-                semResponsivePSTH = std(responsivePSTHs, 0, 1, 'omitnan') / sqrt(size(responsivePSTHs, 1));
-                plotPSTHWithOverlaySubplot(timeVector, meanResponsivePSTH, semResponsivePSTH, ...
-                    increasedPSTHs, decreasedPSTHs, colors, colors.Mean, ...
-                    sprintf('%s - %s - Responsive Units', groupName, recordingName), treatmentTime);
+            % Plot 1: Positively Modulated Units (Increased)
+            subplot(1, 3, 1);
+            if ~isempty(increasedPSTHs)
+                meanIncreasedPSTH = mean(increasedPSTHs, 1, 'omitnan');
+                semIncreasedPSTH = std(increasedPSTHs, 0, 1, 'omitnan') / sqrt(size(increasedPSTHs, 1));
+                plotPSTHWithOverlaySubplot(timeVector, meanIncreasedPSTH, semIncreasedPSTH, ...
+                    increasedPSTHs, [], colors.Increased, colors.Mean, ...
+                    sprintf('%s - %s - Positively Modulated Units', groupName, recordingName), treatmentTime);
+            else
+                title(sprintf('%s - %s - Positively Modulated Units (No Data)', groupName, recordingName));
             end
 
-            % Plot 2: Non-Responsive Units (No Change)
-            subplot(3, 1, 2);
+            % Plot 2: Negatively Modulated Units (Decreased)
+            subplot(1, 3, 2);
+            if ~isempty(decreasedPSTHs)
+                meanDecreasedPSTH = mean(decreasedPSTHs, 1, 'omitnan');
+                semDecreasedPSTH = std(decreasedPSTHs, 0, 1, 'omitnan') / sqrt(size(decreasedPSTHs, 1));
+                plotPSTHWithOverlaySubplot(timeVector, meanDecreasedPSTH, semDecreasedPSTH, ...
+                    decreasedPSTHs, [], colors.Decreased, colors.Mean, ...
+                    sprintf('%s - %s - Negatively Modulated Units', groupName, recordingName), treatmentTime);
+            else
+                title(sprintf('%s - %s - Negatively Modulated Units (No Data)', groupName, recordingName));
+            end
+
+            % Plot 3: Non-Responsive Units (No Change)
+            subplot(1, 3, 3);
             if ~isempty(noChangePSTHs)
                 meanNoChangePSTH = mean(noChangePSTHs, 1, 'omitnan');
                 semNoChangePSTH = std(noChangePSTHs, 0, 1, 'omitnan') / sqrt(size(noChangePSTHs, 1));
                 plotPSTHWithOverlaySubplot(timeVector, meanNoChangePSTH, semNoChangePSTH, ...
-                    noChangePSTHs, [], colors, colors.Mean, ...
+                    noChangePSTHs, [], colors.NoChange, colors.Mean, ...
                     sprintf('%s - %s - Non-Responsive Units', groupName, recordingName), treatmentTime);
-            end
-
-            % Plot 3: All Units Combined
-            subplot(3, 1, 3);
-            allPSTHs = [increasedPSTHs; decreasedPSTHs; noChangePSTHs];
-            if ~isempty(allPSTHs)
-                meanAllPSTH = mean(allPSTHs, 1, 'omitnan');
-                semAllPSTH = std(allPSTHs, 0, 1, 'omitnan') / sqrt(size(allPSTHs, 1));
-                plotPSTHWithOverlaySubplot(timeVector, meanAllPSTH, semAllPSTH, ...
-                    increasedPSTHs, decreasedPSTHs, colors, colors.Mean, ...
-                    sprintf('%s - %s - All Units Combined', groupName, recordingName), treatmentTime);
+            else
+                title(sprintf('%s - %s - Non-Responsive Units (No Data)', groupName, recordingName));
             end
 
             % Save figure
-            saveDir = fullfile(figureFolder, 'CombinedPlots');
+            saveDir = fullfile(figureFolder, 'ModulatedPlots');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
-            fileName = sprintf('%s_%s_CombinedPSTH.png', groupName, recordingName);
+            fileName = sprintf('%s_%s_ModulatedPSTH.png', groupName, recordingName);
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
 
@@ -107,14 +120,14 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
 end
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot
-function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, increasedPSTHs, decreasedPSTHs, colors, avgColor, plotTitle, treatmentTime)
+function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, ~, color, avgColor, plotTitle, treatmentTime)
     % plotPSTHWithOverlaySubplot: Helper function to plot mean PSTH with SEM and overlay individual traces in a subplot.
     %
     % Inputs:
     %   - timeVector: Vector of time points for the PSTH
     %   - meanPSTH, semPSTH: Mean and SEM of the PSTH
-    %   - increasedPSTHs, decreasedPSTHs: Matrices of individual PSTHs for responsive units
-    %   - colors: Struct with colors for Increased, Decreased, No Change, and Mean
+    %   - individualPSTHs: Matrix of individual PSTHs for the current response type
+    %   - color: Color for individual traces
     %   - avgColor: Color for the mean PSTH line
     %   - plotTitle: Title for the subplot
     %   - treatmentTime: Time in seconds for the vertical line
@@ -122,11 +135,8 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, increasedPSTH
     hold on;
 
     % Plot individual PSTHs with color and transparency for each type
-    for i = 1:size(increasedPSTHs, 1)
-        plot(timeVector, increasedPSTHs(i, :), 'Color', colors.Increased(1:3), 'LineWidth', 0.5, 'Color', [colors.Increased(1:3), colors.Increased(4)]);
-    end
-    for i = 1:size(decreasedPSTHs, 1)
-        plot(timeVector, decreasedPSTHs(i, :), 'Color', colors.Decreased(1:3), 'LineWidth', 0.5, 'Color', [colors.Decreased(1:3), colors.Decreased(4)]);
+    for i = 1:size(individualPSTHs, 1)
+        plot(timeVector, individualPSTHs(i, :), 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
     end
 
     % Plot mean PSTH with SEM as a shaded area
@@ -144,7 +154,11 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, increasedPSTH
     xlabel('Time (s)');
     ylabel('Firing Rate (spikes/s)');
     title(plotTitle);
-    xlim([timeVector(1), timeVector(end)]);
+
+    % Set axis limits
+    ylim([0 inf]);  % Start y-axis at 0 and let it auto-adjust
+    xlim([0 5400]); % Set x-axis limit to maximum time
 
     hold off;
 end
+
