@@ -61,12 +61,10 @@ cellDataStruct = calculateFiringRate(cellDataStruct);
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
 
-% Calculate Recording Average and SEM PTSH
-cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder);
-
-% Calculate Group Average SEM and PSTH
-cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder);
-
+% Calculate Average and SEM PTSH
+cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder); % Recording Lvl
+cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder); % Group Lvl
+cellDataStruct = poolResponsiveUnitsAndCalculatePSTH(cellDataStruct, dataFolder); % Experimental vs. Control
 
 
 %% Plotting 
@@ -81,19 +79,13 @@ cellDataStruct = calculateGroupAveragePSTHAndSEM(cellDataStruct, dataFolder);
 %plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
 
 % Plot average PSTHs with individual response
-plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
+%plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
 
 % Plot group PSTHs with individual responses
 % plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder);
 
 % Generate main figure with output of other plots
-
-
-
-
-
-
-
+mainPlotFunction(cellDataStruct, figureFolder);
 
 % Optional:
 %plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
