@@ -81,16 +81,16 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
         end
     end
 
-    % Plot the SEM shading around the recording-level average PSTH
-    fill(ax, [timeVector, fliplr(timeVector)], ...
-         [avgPSTH + semPSTH, fliplr(avgPSTH - semPSTH)], ...
-         [0.7, 0.7, 0.7], 'FaceAlpha', 0.3, 'EdgeColor', 'none');  % Gray shading for SEM
+    % Plot the SEM shading around the recording-level average PSTH and save the handle
+    hSEM = fill(ax, [timeVector, fliplr(timeVector)], ...
+                [avgPSTH + semPSTH, fliplr(avgPSTH - semPSTH)], ...
+                [0.7, 0.7, 0.7], 'FaceAlpha', 0.3, 'EdgeColor', 'none');  % Gray shading for SEM
 
-    % Plot the recording-level average PSTH with a solid black line
-    plot(ax, timeVector, avgPSTH, 'k-', 'LineWidth', 2);
+    % Plot the recording-level average PSTH with a solid black line and save the handle
+    hAvgPSTH = plot(ax, timeVector, avgPSTH, 'k-', 'LineWidth', 2, 'DisplayName', 'Recording Mean PSTH');
 
-    % Plot treatment line in green
-    xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+    % Plot treatment line in green and save the handle
+    hTreatment = xline(ax, treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
 
     % Set axis limits
     ylim(ax, [0 inf]);  % Set y-axis lower limit to 0 and let the upper limit auto-adjust
@@ -106,13 +106,10 @@ function subPlotAveragePSTHWithResponse(cellDataStruct, ax, groupName, recording
          'Units', 'normalized', 'FontSize', 12, ...
          'HorizontalAlignment', 'right', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
 
-    % Create the legend outside the plot area, in the figure's top-right corner
-    legendHandle = legend(ax, 'Recording Mean PSTH', 'SEM', 'Treatment Time');
-    %legendHandle.Box = 'off';  % Optional: Remove the box around the legend for a cleaner look
-
-    % Position the legend to the right of the axis in the top-right corner of the figure
-    set(legendHandle, 'Units', 'normalized');
-    set(legendHandle, 'Position', [0.92, 0.8, 0.05, 0.1]);  % Adjust values for fine-tuning
+    % Create the legend using specific plot handles to ensure proper labeling
+    legend(ax, [hAvgPSTH, hSEM, hTreatment], {'Recording Mean PSTH', 'SEM', 'Treatment Time'}, ...
+           'Location', 'best');
 
     hold(ax, 'off');
 end
+
