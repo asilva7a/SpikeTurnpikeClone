@@ -11,6 +11,7 @@ function [dataTable] = generateDataTable(cellDataStruct, dataFilePath)
 %                   'psthSmoothed', 'testMetaData'.
 
 %% Debugging: Preload data dir for function
+
 %  Load the data
 files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
          'dataFolder.mat', 'figureFolder.mat'};
@@ -47,6 +48,8 @@ end
 allFields = fieldnames(recordingID);
 cidFields = allFields(contains(allFields, 'cid'));  % Filter for 'cid' fields only
 numFields = numel(cidFields);
+
+clear allFields 
 
 % Display result
 fprintf('Number of units in recording: %d\n', numFields);
