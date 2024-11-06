@@ -17,10 +17,23 @@ function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
     % Call calculateGrandPSTH to get grand average and time vector
     [grandAveragePSTH, timeVector] = calculateGrandPSTH(cellDataStruct);
     
-    % Plot individual unit PSTHs with color coding based on response type
-    hold(ax, 'on'); % Hold on for overlaying plots in the specified axes
-    groupNames = fieldnames(cellDataStruct);
+    % Hold on for overlaying plots in the specified axes
+    hold(ax, 'on'); 
 
+    % Prepare dummy handles for the legend
+    legendHandles = [];
+    legendLabels = {'Increased', 'Decreased', 'No Change'};
+
+    % Plot dummy lines for each response type to add to the legend
+    for k = 1:numel(legendLabels)
+        responseType = legendLabels{k};
+        colorVal = colorMap(responseType);
+        h = plot(ax, NaN, NaN, '-', 'Color', colorVal, 'LineWidth', 0.5); % Dummy line
+        legendHandles = [legendHandles, h]; %#ok<AGROW>
+    end
+
+    % Loop through each group and recording to plot individual unit PSTHs
+    groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordings = fieldnames(cellDataStruct.(groupName));
@@ -48,14 +61,22 @@ function subPlotAllPSTHsRawWithMean(cellDataStruct, treatmentTime, ax)
         end
     end
 
-    % Plot the grand average PSTH
-    plot(ax, timeVector, grandAveragePSTH, 'k-', 'LineWidth', 2);
+    % Plot the grand average PSTH and save the handle
+    hGrandAvg = plot(ax, timeVector, grandAveragePSTH, 'k-', 'LineWidth', 2, 'DisplayName', 'Grand Average PSTH');
 
-    % Add treatment line, labels, and title
-    xline(ax, treatmentTime, '--g', 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+    % Plot the treatment line and save the handle
+    hTreatment = xline(ax, treatmentTime, '--g', 'LineWidth', 1.5, 'DisplayName', 'Treatment Time');
+
+    % Add labels, title, and axis limits
     xlabel(ax, 'Time (s)');
     ylabel(ax, 'Firing Rate (spikes/s)');
     title(ax, 'All Units with Grand Average PSTH');
     xlim(ax, [0, 5400]); % Set the x-axis limit to 5400 seconds
+
+    % Create the legend
+    legend([legendHandles, hGrandAvg, hTreatment], {'Increased', 'Decreased', 'No Change', 'Grand Average PSTH', 'Treatment Time'}, ...
+           'Location', 'best');
+
+    % Release the hold on the axis
     hold(ax, 'off');
 end
