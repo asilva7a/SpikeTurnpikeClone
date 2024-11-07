@@ -38,7 +38,7 @@ try
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath);
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);
 
     fprintf('Data loaded and saved successfully!\n');
 catch ME
@@ -74,7 +74,7 @@ plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 
 %% End of Script
 print('Script finished...');
-printSuccessMessage;
+
 
 %% Optional Plots
 
