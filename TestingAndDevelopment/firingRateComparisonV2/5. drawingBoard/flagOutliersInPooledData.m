@@ -1,16 +1,22 @@
-function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter)
-    % flagOutliersInPooledData: Identifies and flags outlier units in the data structure.
-    % Outliers are defined as units with maximum firing rates > mean + 2*std.
+function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, plotOutliers)
+    % flagOutliersInPooledData: Identifies and flags outlier units on both experimental and recording levels.
+    % Outliers are defined as units with maximum firing rates > mean + 2*std on either level.
+    % Optionally plots outlier PSTHs with a summary table.
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing all units and response data.
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
+    %   - plotOutliers: Boolean indicating whether to plot PSTHs and table for flagged outliers.
 
-    % Initialize arrays to store unit IDs by response type
+    if nargin < 3
+        plotOutliers = false; % Default: do not plot
+    end
+
+    % Initialize arrays to store PSTHs and unit info by response type across the experimental groups
     decreasedUnitIDs = {};
     decreasedPSTHs = [];
 
-    % Loop through 'Emx' and 'Pvalb' groups and gather all 'Decreased' units
+    % Loop through 'Emx' and 'Pvalb' groups to gather all 'Decreased' units for pooled analysis
     experimentGroups = {'Emx', 'Pvalb'};
     for g = 1:length(experimentGroups)
         groupName = experimentGroups{g};
@@ -35,12 +41,13 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter)
                     continue; % Skip unit if it doesn't match the filter
                 end
 
-                % Collect 'Decreased' units
+                % Collect 'Decreased' units for both experimental and recording levels
                 if isfield(unitData, 'psthSmoothed') && strcmp(unitData.responseType, 'Decreased')
                     decreasedPSTHs = [decreasedPSTHs; unitData.psthSmoothed];
                     decreasedUnitIDs{end+1} = struct('group', groupName, ...
                                                      'recording', recordingName, ...
-                                                     'id', unitID);
+                                                     'id', unitID, ...
+                                                     'psthRaw', unitData.psthRaw);
                 end
             end
         end
@@ -48,14 +55,19 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter)
 
     % Identify outliers among 'Decreased' units
     if ~isempty(decreasedPSTHs)
-        maxFiringRates = max(decreasedPSTHs, [], 2);  % Maximum firing rate per unit
-        outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
-        isOutlier = maxFiringRates > outlierThreshold;
+        maxFiringRatesExp = max(decreasedPSTHs, [], 2);  % Maximum firing rate per unit
+        outlierThresholdExp = mean(maxFiringRatesExp) + 2 * std(maxFiringRatesExp);
+        isOutlierExp = maxFiringRatesExp > outlierThresholdExp;
 
         % Tag outliers in cellDataStruct
-        for i = find(isOutlier)'
+        for i = find(isOutlierExp)'
             unitInfo = decreasedUnitIDs{i};
-            cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlier = true;
+            cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = true;
+        end
+
+        % Optional: Plot outlier PSTHs and table if plotOutliers is true
+        if plotOutliers
+            plotOutlierPSTHs(cellDataStruct, decreasedUnitIDs(isOutlierExp), maxFiringRatesExp(isOutlierExp));
         end
     end
 
@@ -63,8 +75,54 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter)
     displayFlaggedOutliers(cellDataStruct);
 end
 
+function plotOutlierPSTHs(cellDataStruct, outlierUnits, maxFiringRates)
+    % plotOutlierPSTHs: Plots the raw and smoothed PSTHs of outliers, with a summary table below.
+    %
+    % Inputs:
+    %   - cellDataStruct: Main data structure containing unit data.
+    %   - outlierUnits: Array of outlier unit information structs.
+    %   - maxFiringRates: Array of maximum firing rates for each outlier.
+
+    numOutliers = length(outlierUnits);
+    figure('Position', [100, 100, 1200, 300 + 200 * numOutliers]); % Dynamically adjust figure size
+
+    % Loop through each outlier and plot their PSTHs
+    for i = 1:numOutliers
+        unitInfo = outlierUnits{i};
+        groupName = unitInfo.group;
+        recordingName = unitInfo.recording;
+        unitID = unitInfo.id;
+        unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+        
+        % Plot raw PSTH
+        subplot(numOutliers, 2, (i-1)*2 + 1);
+        plot(unitData.binEdges(1:end-1), unitData.psthRaw, 'Color', [0.7, 0.7, 0.7]);
+        title(sprintf('Raw PSTH - Unit %s (%s/%s)', unitID, groupName, recordingName));
+        xlabel('Time (s)');
+        ylabel('Firing Rate (spikes/s)');
+
+        % Plot smoothed PSTH
+        subplot(numOutliers, 2, (i-1)*2 + 2);
+        plot(unitData.binEdges(1:end-1), unitData.psthSmoothed, 'r', 'LineWidth', 1.5);
+        title(sprintf('Smoothed PSTH - Unit %s (%s/%s)', unitID, groupName, recordingName));
+        xlabel('Time (s)');
+        ylabel('Firing Rate (spikes/s)');
+    end
+
+    % Add table below the plots summarizing each outlier’s firing rate and std deviation
+    firingRates = maxFiringRates;
+    stdDevs = cellfun(@(u) std(cellDataStruct.(u.group).(u.recording).(u.id).psthSmoothed), outlierUnits);
+
+    % Position table
+    uitable('Data', [extractfield(outlierUnits, 'id')', extractfield(outlierUnits, 'group')', ...
+                     extractfield(outlierUnits, 'recording')', num2cell(firingRates'), num2cell(stdDevs')], ...
+            'ColumnName', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'}, ...
+            'RowName', [], ...
+            'Units', 'normalized', 'Position', [0.05 0.02 0.9 0.2]);
+end
+
 function displayFlaggedOutliers(cellDataStruct)
-    % Display flagged outliers in table format
+    % Display flagged outliers in table format with experimental and recording-level flags.
 
     % Initialize table variables
     flaggedUnits = [];
@@ -72,6 +130,7 @@ function displayFlaggedOutliers(cellDataStruct)
     flaggedRecording = [];
     flaggedFiringRate = [];
     flaggedStdDev = [];
+    flaggedOutlierType = [];
 
     % Gather outlier information
     groupNames = fieldnames(cellDataStruct);
@@ -84,21 +143,30 @@ function displayFlaggedOutliers(cellDataStruct)
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                if isfield(unitData, 'isOutlier') && unitData.isOutlier
-                    flaggedUnits = [flaggedUnits; {unitID}];
-                    flaggedGroup = [flaggedGroup; {groupName}];
-                    flaggedRecording = [flaggedRecording; {recordingName}];
-                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
-                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                
+                % Check for recording-level and experimental-level outliers
+                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+                    outlierType = 'Experimental';
+                elseif isfield(unitData, 'isOutlierRecording') && unitData.isOutlierRecording
+                    outlierType = 'Recording';
+                else
+                    continue; % Skip if not flagged as an outlier
                 end
+
+                % Append outlier information
+                flaggedUnits = [flaggedUnits; {unitID}];
+                flaggedGroup = [flaggedGroup; {groupName}];
+                flaggedRecording = [flaggedRecording; {recordingName}];
+                flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                flaggedOutlierType = [flaggedOutlierType; {outlierType}];
             end
         end
     end
 
     % Display table
-    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
-        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
+    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, flaggedOutlierType, ...
+        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.', 'Outlier Type'});
     disp('Flagged Outlier Units:');
     disp(flaggedTable);
 end
-
