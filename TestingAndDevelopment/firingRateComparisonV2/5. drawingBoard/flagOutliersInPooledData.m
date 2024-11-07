@@ -7,17 +7,27 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
     %   - plotOutliers: Boolean indicating whether to plot PSTHs and table for flagged outliers.
     
-    % Set default input values for debugging
+    % Default input setup for debugging
     if nargin < 3
-        plotOutliers = true;
+        plotOutliers = true; % Enable plotting for debugging
     end
     if nargin < 2
-        unitFilter = 'both';
+        unitFilter = 'both'; % Include both single and multi-units
     end
-    
+    if nargin < 1
+        % Load or initialize a sample cellDataStruct if not provided
+        try
+            load('/home/silva7a-local/Documents/MATLAB/Data/eb_recordings/SpikeStuff/cellDataStruct.mat'); % Replace with your sample file path
+            fprintf('Debug: Loaded default cellDataStruct from file.\n');
+        catch
+            error('cellDataStruct not provided and no default file found. Please provide a cellDataStruct.');
+        end
+    end
+
+    % Define response types outside of any conditional block to ensure availability
     responseTypes = {'Increased', 'Decreased', 'NoChange'}; % Update 'No Change' to 'NoChange' to match variable names
     
-    % Initialize structures to collect PSTH data and unit info
+    % Initialize structures for storing PSTH data and unit info
     psthDataRecording = struct();
     unitInfoRecording = struct();
     psthDataGroup = struct();
@@ -162,38 +172,8 @@ function displayFlaggedOutliers(cellDataStruct, level)
     % Display table
     flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
         'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
-    fprintf('Flagged Outlier Units (%s Level):\n', level);
+    disp(['Flagged Outlier Units (' level ' Level):']);
     disp(flaggedTable);
 end
 
-function plotOutlierPSTHs(cellDataStruct, psthData, unitInfo)
-    % plotOutlierPSTHs: Optionally plots the PSTHs for outlier units alongside a summary table.
-
-    figure;
-    t = tiledlayout(2, 1);
-    title(t, 'Outlier PSTHs and Summary Table');
-
-    % Plot smoothed PSTHs for each response type
-    ax1 = nexttile(t, 1);
-    hold(ax1, 'on');
-    responseTypes = fieldnames(psthData);
-    colors = struct('Increased', [1, 0, 0], 'Decreased', [0, 0, 1], 'NoChange', [0.5, 0.5, 0.5]);
-    
-    for rType = responseTypes'
-        responseType = rType{1};
-        if ~isempty(psthData.(responseType))
-            for i = 1:size(psthData.(responseType), 1)
-                plot(ax1, psthData.(responseType)(i, :), 'Color', colors.(responseType), 'LineWidth', 0.5);
-            end
-        end
-    end
-    title(ax1, 'Outlier PSTHs by Response Type');
-    legend(ax1, responseTypes);
-
-    % Display summary table in the second tile
-    ax2 = nexttile(t, 2);
-    set(ax2, 'Visible', 'off');
-    displayFlaggedOutliers(cellDataStruct, 'Recording');
-    displayFlaggedOutliers(cellDataStruct, 'Experimental');
-end
-
+ 
