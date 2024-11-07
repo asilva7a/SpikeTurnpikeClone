@@ -196,3 +196,31 @@ function cellDataStruct = plotPooledMeanPSTHCombined(cellDataStruct, figureFolde
 
     close(gcf); % Close to free memory
 end
+
+%% Helper Function: Mark a unit as an outlier
+function cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID)
+    % This helper function finds the specified unit in the structure and tags it as an outlier.
+    %
+    % Inputs:
+    %   - cellDataStruct: The main data structure containing all units.
+    %   - unitID: The ID of the unit to mark as an outlier.
+    %
+    % Outputs:
+    %   - cellDataStruct: Updated structure with the unit marked as an outlier.
+
+    % Loop through all groups and recordings to locate the unit
+    groupNames = fieldnames(cellDataStruct);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordings = fieldnames(cellDataStruct.(groupName));
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            % Check if the unit exists within this recording
+            if isfield(cellDataStruct.(groupName).(recordingName), unitID)
+                % Mark the unit as an outlier by adding a field `isOutlier`
+                cellDataStruct.(groupName).(recordingName).(unitID).isOutlier = true;
+                return;  % Exit the function once the unit is found and tagged
+            end
+        end
+    end
+end
