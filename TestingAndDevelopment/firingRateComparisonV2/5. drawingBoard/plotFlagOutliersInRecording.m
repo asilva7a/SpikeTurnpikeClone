@@ -1,4 +1,4 @@
-function plotFlagOutliersInRecording(cellDataStruct, unitInfoGroup)
+function plotFlagOutliersInRecording(cellDataStruct,psthDataRecording, unitInfoGroup)
     % plotOutlierPSTHs: Plots the smoothed PSTHs for flagged outliers across response types 
     % and displays a summary table with outlier information in a separate figure.
     %
