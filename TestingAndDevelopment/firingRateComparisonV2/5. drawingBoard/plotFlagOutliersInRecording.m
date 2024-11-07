@@ -53,7 +53,7 @@ function summaryTable = createFlaggedOutlierTable(cellDataStruct, unitInfo)
     % Inputs:
     %   - cellDataStruct: Main data structure with unit data.
     %   - unitInfo: Unit information for the specific response type.
-
+    
     % Initialize table variables
     flaggedUnits = [];
     flaggedGroup = [];
@@ -61,23 +61,53 @@ function summaryTable = createFlaggedOutlierTable(cellDataStruct, unitInfo)
     flaggedFiringRate = [];
     flaggedStdDev = [];
 
+    % Debugging: Track loop entry
+    fprintf('Debug: Entering loop with %d units in unitInfo\n', length(unitInfo));
+    
     % Gather outlier information from cellDataStruct using unitInfo
     for i = 1:length(unitInfo)
         unit = unitInfo{i};
-        unitData = cellDataStruct.(unit.group).(unit.recording).(unit.id);
+        
+        % Check for the required fields in unit before proceeding
+        if isfield(unit, 'group') && isfield(unit, 'recording') && isfield(unit, 'id')
+            try
+                % Try to access the data in cellDataStruct
+                unitData = cellDataStruct.(unit.group).(unit.recording).(unit.id);
 
-        if isfield(unitData, 'isOutlier') && unitData.isOutlier
-            flaggedUnits = [flaggedUnits; {unit.id}];
-            flaggedGroup = [flaggedGroup; {unit.group}];
-            flaggedRecording = [flaggedRecording; {unit.recording}];
-            flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
-            flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                % Debugging: Display accessed unit fields
+                fprintf('Debug: Accessing unit %s in group %s, recording %s\n', ...
+                    unit.id, unit.group, unit.recording);
+                
+                % Check for either outlier flag and add to table if flagged
+                if (isfield(unitData, 'isOutlierRecording') && unitData.isOutlierRecording) || ...
+                   (isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental)
+                    
+                    % Add unit details to table variables
+                    flaggedUnits = [flaggedUnits; {unit.id}];
+                    flaggedGroup = [flaggedGroup; {unit.group}];
+                    flaggedRecording = [flaggedRecording; {unit.recording}];
+                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                end
+
+            catch ME
+                % Handle case where unit reference might be invalid
+                fprintf('Warning: Could not access data for unit %s in group %s, recording %s. Skipping.\n', ...
+                    unit.id, unit.group, unit.recording);
+                disp(getReport(ME, 'basic'));
+            end
+        else
+            % Debugging: Display if unit is missing required fields
+            fprintf('Warning: unitInfo entry %d is missing required fields (group, recording, id). Skipping.\n', i);
         end
     end
     
     % Create the summary table
     summaryTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
         'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
+    
+    % Debugging: Confirm table creation
+    fprintf('Debug: Summary table created with %d entries.\n', height(summaryTable));
 end
 
 function displayTableAsText(ax, summaryTable)

@@ -24,8 +24,8 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
         end
     end
 
-    % Define response types outside of any conditional block to ensure availability
-    responseTypes = {'Increased', 'Decreased', 'NoChange'}; % Update 'No Change' to 'NoChange' to match variable names
+    % Define response types
+    responseTypes = {'Increased', 'Decreased', 'NoChange'}; 
     
     % Initialize structures for storing PSTH data and unit info
     psthDataRecording = struct();
@@ -125,8 +125,53 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
     
     % Optional: Plot outlier PSTHs after tables are populated
     if plotOutliers
-        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, ...
-            unitInfoGroup);
+        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup);
     end
 end
 
+function displayFlaggedOutliers(cellDataStruct, level)
+    % Display flagged outliers in table format for a specific level (Recording or Experimental)
+
+    % Initialize table variables
+    flaggedUnits = [];
+    flaggedGroup = [];
+    flaggedRecording = [];
+    flaggedFiringRate = [];
+    flaggedStdDev = [];
+
+    % Gather outlier information
+    groupNames = fieldnames(cellDataStruct);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordings = fieldnames(cellDataStruct.(groupName));
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(cellDataStruct.(groupName).(recordingName));
+            for u = 1:length(units)
+                unitID = units{u};
+                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                
+                % Check for level-specific outliers
+                if strcmp(level, 'Recording') && isfield(unitData, 'isOutlierRecording') && unitData.isOutlierRecording
+                    flaggedUnits = [flaggedUnits; {unitID}];
+                    flaggedGroup = [flaggedGroup; {groupName}];
+                    flaggedRecording = [flaggedRecording; {recordingName}];
+                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                elseif strcmp(level, 'Experimental') && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+                    flaggedUnits = [flaggedUnits; {unitID}];
+                    flaggedGroup = [flaggedGroup; {groupName}];
+                    flaggedRecording = [flaggedRecording; {recordingName}];
+                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                end
+            end
+        end
+    end
+
+    % Display table
+    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
+        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
+    disp(['Flagged Outlier Units (' level ' Level):']);
+    disp(flaggedTable);
+end
