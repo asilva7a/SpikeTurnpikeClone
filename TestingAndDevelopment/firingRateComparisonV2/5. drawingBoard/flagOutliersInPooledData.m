@@ -8,8 +8,17 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
     %   - plotOutliers: Boolean indicating whether to plot PSTHs and table for flagged outliers.
 
+    % Default input setup for debugging
     if nargin < 3
-        plotOutliers = false; % Default: do not plot
+        plotOutliers = true; % Enable plotting for debugging
+    end
+    if nargin < 2
+        unitFilter = 'both'; % Include both single and multi-units
+    end
+    if nargin < 1
+        % Load or initialize a sample cellDataStruct if not provided
+        load('/path/to/sample/cellDataStruct.mat'); % Replace with your sample file path
+        fprintf('Debug: Loaded default cellDataStruct from file.\n');
     end
 
     % Initialize dictionaries for storing PSTHs and unit info by response type
@@ -23,7 +32,7 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
         unitIDs.(rType{1}) = {};
     end
 
-    % Collect units by response type across 'Emx' and 'Pvalb' groups
+    % Loop through 'Emx' and 'Pvalb' groups and gather PSTHs for each response type
     experimentGroups = {'Emx', 'Pvalb'};
     for g = 1:length(experimentGroups)
         groupName = experimentGroups{g};
@@ -48,95 +57,48 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
                     continue; % Skip unit if it doesn't match the filter
                 end
 
-                % Collect PSTH data for each response type
-                if isfield(unitData, 'psthSmoothed') && isfield(unitData, 'responseType')
-                    responseType = unitData.responseType;
+                % Handle responseType with space as 'NoChange'
+                responseType = strrep(unitData.responseType, ' ', ''); % Remove spaces from responseType
+
+                % Collect PSTH data based on response type
+                if isfield(unitData, 'psthSmoothed')
                     psthData.(responseType) = [psthData.(responseType); unitData.psthSmoothed];
                     unitIDs.(responseType){end+1} = struct('group', groupName, ...
                                                            'recording', recordingName, ...
-                                                           'id', unitID, ...
-                                                           'psthRaw', unitData.psthRaw);
+                                                           'id', unitID);
                 end
             end
         end
     end
 
-    % Identify and flag outliers for each response type
+    % Identify outliers for each response type
     for rType = responseTypes
-        rTypeName = rType{1};
-        psths = psthData.(rTypeName);
-
-        if ~isempty(psths)
-            maxFiringRates = max(psths, [], 2);  % Maximum firing rate per unit
+        responseType = rType{1};
+        if ~isempty(psthData.(responseType))
+            maxFiringRates = max(psthData.(responseType), [], 2);  % Max firing rate per unit
             outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
             isOutlier = maxFiringRates > outlierThreshold;
 
             % Tag outliers in cellDataStruct
             for i = find(isOutlier)'
-                unitInfo = unitIDs.(rTypeName){i};
-                cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).(['isOutlier_', rTypeName]) = true;
-            end
-
-            % Optional: Plot outlier PSTHs and table if plotOutliers is true
-            if plotOutliers && any(isOutlier)
-                plotOutlierPSTHs(cellDataStruct, unitIDs.(rTypeName)(isOutlier), maxFiringRates(isOutlier), rTypeName);
+                unitInfo = unitIDs.(responseType){i};
+                cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlier = true;
+                cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = true;
             end
         end
     end
 
     % Display flagged outliers
     displayFlaggedOutliers(cellDataStruct);
-end
 
-function plotOutlierPSTHs(cellDataStruct, outlierUnits, maxFiringRates, responseType)
-    % plotOutlierPSTHs: Plots the raw and smoothed PSTHs of outliers, with a summary table below.
-    %
-    % Inputs:
-    %   - cellDataStruct: Main data structure containing unit data.
-    %   - outlierUnits: Array of outlier unit information structs.
-    %   - maxFiringRates: Array of maximum firing rates for each outlier.
-    %   - responseType: Response type of the outliers being plotted.
-
-    numOutliers = length(outlierUnits);
-    figure('Position', [100, 100, 1200, 300 + 200 * numOutliers]); % Dynamically adjust figure size
-
-    % Loop through each outlier and plot their PSTHs
-    for i = 1:numOutliers
-        unitInfo = outlierUnits{i};
-        groupName = unitInfo.group;
-        recordingName = unitInfo.recording;
-        unitID = unitInfo.id;
-        unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-        
-        % Plot raw PSTH
-        subplot(numOutliers, 2, (i-1)*2 + 1);
-        plot(unitData.binEdges(1:end-1), unitData.psthRaw, 'Color', [0.7, 0.7, 0.7]);
-        title(sprintf('Raw PSTH - %s Unit %s (%s/%s)', responseType, unitID, groupName, recordingName));
-        xlabel('Time (s)');
-        ylabel('Firing Rate (spikes/s)');
-
-        % Plot smoothed PSTH
-        subplot(numOutliers, 2, (i-1)*2 + 2);
-        plot(unitData.binEdges(1:end-1), unitData.psthSmoothed, 'r', 'LineWidth', 1.5);
-        title(sprintf('Smoothed PSTH - %s Unit %s (%s/%s)', responseType, unitID, groupName, recordingName));
-        xlabel('Time (s)');
-        ylabel('Firing Rate (spikes/s)');
+    % Optional: Plotting logic
+    if plotOutliers
+        plotOutlierPSTHs(cellDataStruct, psthData, unitIDs);
     end
-
-    % Add table below the plots summarizing each outlier’s firing rate and std deviation
-    firingRates = maxFiringRates;
-    stdDevs = cellfun(@(u) std(cellDataStruct.(u.group).(u.recording).(u.id).psthSmoothed), outlierUnits);
-
-    % Position table
-    uitable('Data', [extractfield(outlierUnits, 'id')', extractfield(outlierUnits, 'group')', ...
-                     extractfield(outlierUnits, 'recording')', num2cell(firingRates'), num2cell(stdDevs')], ...
-            'ColumnName', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'}, ...
-            'RowName', [], ...
-            'Units', 'normalized', 'Position', [0.05 0.02 0.9 0.2]);
 end
 
 function displayFlaggedOutliers(cellDataStruct)
-    % Display flagged outliers in table format, indicating response type flags.
+    % Display flagged outliers in table format
 
     % Initialize table variables
     flaggedUnits = [];
@@ -144,7 +106,6 @@ function displayFlaggedOutliers(cellDataStruct)
     flaggedRecording = [];
     flaggedFiringRate = [];
     flaggedStdDev = [];
-    flaggedResponseType = [];
 
     % Gather outlier information
     groupNames = fieldnames(cellDataStruct);
@@ -157,27 +118,52 @@ function displayFlaggedOutliers(cellDataStruct)
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-
-                % Check for outlier flags by response type
-                for responseType = {'Increased', 'Decreased', 'NoChange'}
-                    outlierField = ['isOutlier_', responseType{1}];
-                    if isfield(unitData, outlierField) && unitData.(outlierField)
-                        % Append outlier information
-                        flaggedUnits = [flaggedUnits; {unitID}];
-                        flaggedGroup = [flaggedGroup; {groupName}];
-                        flaggedRecording = [flaggedRecording; {recordingName}];
-                        flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
-                        flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
-                        flaggedResponseType = [flaggedResponseType; {responseType{1}}];
-                    end
+                if isfield(unitData, 'isOutlier') && unitData.isOutlier
+                    flaggedUnits = [flaggedUnits; {unitID}];
+                    flaggedGroup = [flaggedGroup; {groupName}];
+                    flaggedRecording = [flaggedRecording; {recordingName}];
+                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
                 end
             end
         end
     end
 
     % Display table
-    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, flaggedResponseType, ...
-        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.', 'Response Type'});
+    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
+        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
     disp('Flagged Outlier Units:');
     disp(flaggedTable);
+end
+
+function plotOutlierPSTHs(cellDataStruct, psthData, unitIDs)
+    % plotOutlierPSTHs: Optionally plots the PSTHs for outlier units
+    % alongside a summary table with outlier info.
+
+    % Collect data for plotting
+    figure;
+    t = tiledlayout(2, 1);
+    title(t, 'Outlier PSTHs and Summary Table');
+
+    % Plot smoothed PSTHs for each response type
+    ax1 = nexttile(t, 1);
+    hold(ax1, 'on');
+    responseTypes = fieldnames(psthData);
+    colors = struct('Increased', [1, 0, 0], 'Decreased', [0, 0, 1], 'NoChange', [0.5, 0.5, 0.5]);
+    
+    for rType = responseTypes'
+        responseType = rType{1};
+        if ~isempty(psthData.(responseType))
+            for i = 1:size(psthData.(responseType), 1)
+                plot(ax1, psthData.(responseType)(i, :), 'Color', colors.(responseType), 'LineWidth', 0.5);
+            end
+        end
+    end
+    title(ax1, 'Outlier PSTHs by Response Type');
+    legend(ax1, responseTypes);
+
+    % Display summary table in second tile
+    ax2 = nexttile(t, 2);
+    set(ax2, 'Visible', 'off');
+    displayFlaggedOutliers(cellDataStruct);
 end
