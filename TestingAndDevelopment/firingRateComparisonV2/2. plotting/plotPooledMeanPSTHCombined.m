@@ -107,27 +107,40 @@ function cellDataStruct = plotPooledMeanPSTHCombined(cellDataStruct, figureFolde
         end
     end
 
-    % Flag Increased Units
-    if ~isempty(increasedPSTHs)
-        maxFiringRates = max(increasedPSTHs, [], 2);
-        outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
-        isOutlier = maxFiringRates > outlierThreshold;
-        for i = find(isOutlier)'
-            unitID = increasedUnitIDs{i};
-            cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID);
+    % <New Block: Print Flagged Units as Table>
+    % Initialize table variables
+    flaggedUnits = [];
+    flaggedGroup = [];
+    flaggedRecording = [];
+    flaggedFiringRate = [];
+    flaggedStdDev = [];
+
+    % Loop through cellDataStruct to collect information about flagged outliers
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordings = fieldnames(cellDataStruct.(groupName));
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(cellDataStruct.(groupName).(recordingName));
+            for u = 1:length(units)
+                unitID = units{u};
+                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                if isfield(unitData, 'isOutlier') && unitData.isOutlier
+                    flaggedUnits = [flaggedUnits; {unitID}];
+                    flaggedGroup = [flaggedGroup; {groupName}];
+                    flaggedRecording = [flaggedRecording; {recordingName}];
+                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
+                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
+                end
+            end
         end
     end
-    
-    % Flag No Change Units
-    if ~isempty(noChangePSTHs)
-        maxFiringRates = max(noChangePSTHs, [], 2);
-        outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
-        isOutlier = maxFiringRates > outlierThreshold;
-        for i = find(isOutlier)'
-            unitID = noChangeUnitIDs{i};
-            cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID);
-        end
-    end
+
+    % Print table of flagged units
+    flaggedTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
+        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
+    disp('Flagged Outlier Units:');
+    disp(flaggedTable);
 
     %% Plotting Logic
   
