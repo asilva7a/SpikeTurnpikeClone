@@ -1,14 +1,13 @@
-function plotOutlierPSTHs(cellDataStruct, responseTypes, unitInfoGroup)
+function plotFlagOutliersInRecording(cellDataStruct, unitInfoGroup)
     % plotOutlierPSTHs: Plots the smoothed PSTHs for flagged outliers across response types 
     % and displays a summary table with outlier information in a separate figure.
     %
     % Inputs:
     %   - cellDataStruct: Main data structure containing unit data and outlier flags.
-    %   - responseTypes: Cell array of response types (e.g., {'Increased', 'Decreased', 'NoChange'}).
     %   - unitInfoGroup: Structure containing unit information organized by response type.
-
+    
     % --- Debugging defaults ---
-    if nargin < 3
+    if nargin < 2
         unitInfoGroup = struct();
         unitInfoGroup.Increased = {};
         unitInfoGroup.Decreased = {};
@@ -21,9 +20,6 @@ function plotOutlierPSTHs(cellDataStruct, responseTypes, unitInfoGroup)
         catch
             error('Error loading cellDataStruct for debugging.');
         end
-    end
-    if nargin < 2
-        responseTypes = {'Increased', 'Decreased', 'NoChange'};
     end
     % --- End of Debugging Defaults ---
 
@@ -41,7 +37,9 @@ function plotOutlierPSTHs(cellDataStruct, responseTypes, unitInfoGroup)
     xlabel(ax1, 'Time (s)');
     ylabel(ax1, 'Firing Rate (spikes/s)');
     
-    % Loop through each response type and plot the flagged PSTHs
+    % Loop through each response type as individual character strings
+    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    
     for i = 1:length(responseTypes)
         responseType = responseTypes{i};  % Get response type as a string
         
@@ -52,19 +50,13 @@ function plotOutlierPSTHs(cellDataStruct, responseTypes, unitInfoGroup)
         for j = 1:length(flaggedUnits)
             unitInfo = flaggedUnits{j};
             psth = cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).psthSmoothed;
-            plot(ax1, psth, 'Color', colors.(responseType), 'LineWidth', 1);
+            plot(ax1, psth, 'Color', colors.(responseType), 'LineWidth', 0.5);
         end
     end
-    
-    % Set legend for response types
     legend(ax1, responseTypes, 'Location', 'northeast');
     hold(ax1, 'off');
-    
-    % Display summary table in a separate figure
-    figure('Position', [100, 700, 800, 300]);
-    summaryTable = compileOutlierSummaryTable(cellDataStruct); % Generate summary table data
-    uitable('Data', summaryTable, 'Units', 'normalized', 'Position', [0, 0, 1, 1]); % Display the table in the figure
 end
+
 
 
 
