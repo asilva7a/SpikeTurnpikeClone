@@ -1,4 +1,4 @@
-function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType)
+function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter)
     % plotTimeLockedMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
     % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
     %
@@ -7,23 +7,15 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     %   - figureFolder: Directory where the plots will be saved.
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
-    
-    % %% Debugging: Preload data for testing
-    % % Load the data
-    % files = {'cellDataStruct.mat', 'cellDataStructPath.mat', 'dataFilePath.mat', ...
-    %          'dataFolder.mat', 'figureFolder.mat'};
-    % for i = 1:length(files)
-    %     load(fullfile(['/home/silva7a-local/Documents/MATLAB/' ...
-    %         'SpikeTurnpikeClone/TestData/testVariables'], files{i}));
-    % end
-    
-    %% Main function
-    % Set default for plotType if not provided
+    %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
+
+    % Set default for plotType and unitFilter if not provided
+    if nargin < 5
+        unitFilter = 'both'; % Default to including both unit types
+    end
     if nargin < 4
         plotType = 'mean+sem'; % Default to mean + SEM
     end
-    
-    % Default treatment time if not provided
     if nargin < 3
         treatmentTime = 1860; % Default treatment time in seconds
     end
@@ -54,6 +46,14 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
 
+                % Apply unit filter based on IsSingleUnit field
+                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
+                   (strcmp(unitFilter, 'multi') && isSingleUnit)
+                    continue; % Skip unit if it doesn't match the filter
+                end
+
+                % Proceed if unit has required fields
                 if isfield(unitData, 'psthSmoothed') && isfield(unitData, 'responseType')
                     psth = unitData.psthSmoothed;
                     binWidth = unitData.binWidth;
@@ -75,8 +75,8 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             % Create a figure with three subplots arranged in a 1x3 layout
             figure('Position', [100, 100, 1600, 500]);
             
-            % Add the main title with group and recording names
-            sgtitle(sprintf('%s - %s - %s', groupName, recordingName, plotType));
+            % Add the main title with group, recording names, and unit filter type
+            sgtitle(sprintf('%s - %s - %s (%s units)', groupName, recordingName, plotType, unitFilter));
 
             % Plot 1: Positively Modulated Units (Increased)
             subplot(1, 3, 1);
@@ -116,7 +116,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
-            fileName = sprintf('%s_%s_%s_smoothedPSTH.fig', groupName, recordingName,plotType);
+            fileName = sprintf('%s_%s_%s_smoothedPSTH_%s.fig', groupName, recordingName, plotType, unitFilter);
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
 
@@ -168,5 +168,6 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     hold off;
 end
+
 
 
