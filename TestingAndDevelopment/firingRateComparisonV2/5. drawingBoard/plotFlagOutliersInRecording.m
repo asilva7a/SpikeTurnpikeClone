@@ -180,8 +180,8 @@ function plotAndSaveOutlierPSTH(psthSmoothed, unitID, groupName, recordingName, 
                'EdgeColor', 'none', 'FontSize', 10);
 
     try
-    saveas(gcf, fullfile(outlierPlotFolder, sprintf('%s_%s_%s.png', groupName, recordingName, unitID)));
-    disp(['Saved file: ', fullfile(outlierPlotFolder, sprintf('%s_%s_%s.png', groupName, recordingName, unitID))]);
+    saveas(gcf, fullfile(outlierPlotFolder, sprintf('%s_%s_%s.fig', groupName, recordingName, unitID)));
+    disp(['Saved file: ', fullfile(outlierPlotFolder, sprintf('%s_%s_%s.fig', groupName, recordingName, unitID))]);
     catch ME
     warning(['Failed to save file for Unit: ', unitID, '. Error: ', ME.message]);
     end
