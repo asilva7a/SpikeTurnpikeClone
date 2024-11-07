@@ -53,7 +53,7 @@ clear all_data;
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 5);
 
 % Calculate pre- and post-treatment firing rate
 cellDataStruct = calculateFiringRate(cellDataStruct);
@@ -73,7 +73,7 @@ plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual');
 
 %% End of Script
-print('Script finished...');
+disp('Script finished...');
 
 
 %% Optional Plots
