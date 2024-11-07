@@ -105,19 +105,32 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
         end
     end
     
-    % Identify and flag outliers on the experimental group level
+   % Identify and flag outliers on the experimental group level using IQR
     for rType = responseTypes
         if ~isempty(psthDataGroup.(rType{1}))
+            % Calculate the maximum firing rates for each unit in this response type
             maxRatesGroup = max(psthDataGroup.(rType{1}), [], 2);
-            thresholdGroup = mean(maxRatesGroup) + 2 * std(maxRatesGroup);
-            isOutlierGroup = maxRatesGroup > thresholdGroup;
-            
+    
+            % Calculate Q1, Q3, and IQR
+            Q1 = prctile(maxRatesGroup, 25); % First quartile (25th percentile)
+            Q3 = prctile(maxRatesGroup, 75); % Third quartile (75th percentile)
+            IQR_value = Q3 - Q1; % Interquartile range
+    
+            % Define outlier thresholds based on IQR
+            lowerThreshold = Q1 - 1.5 * IQR_value;
+            upperThreshold = Q3 + 1.5 * IQR_value;
+    
+            % Identify units that are outliers based on the IQR thresholds
+            isOutlierGroup = maxRatesGroup < lowerThreshold | maxRatesGroup > upperThreshold;
+    
+            % Flag outliers in the cellDataStruct
             for i = find(isOutlierGroup)'
                 unitInfo = unitInfoGroup.(rType{1}){i};
                 cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = true;
             end
         end
     end
+
     
     % Display flagged outliers in separate tables after the outliers are flagged
     displayFlaggedOutliers(cellDataStruct, 'Recording');
