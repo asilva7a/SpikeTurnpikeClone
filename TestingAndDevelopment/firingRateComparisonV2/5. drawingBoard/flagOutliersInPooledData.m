@@ -125,7 +125,7 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
     
     % Optional: Plot outlier PSTHs
     if plotOutliers
-        plotOutlierPSTHs(cellDataStruct, psthDataGroup, unitInfoGroup);
+        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup);
     end
 end
 
