@@ -1,11 +1,11 @@
 function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, plotOutliers)
     % flagOutliersInPooledData: Identifies and flags outlier units based on smoothed PSTHs (`psthSmoothed`) 
-    % separately on recording and experimental group levels.
+    % separately on recording and experimental group levels. Optionally plots flagged PSTHs with a summary.
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing all units and response data.
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
-    %   - plotOutliers: Boolean indicating whether to plot PSTHs and table for flagged outliers.
+    %   - plotOutliers: Boolean indicating whether to plot PSTHs and tables for flagged outliers.
     
     % Default input setup for debugging
     if nargin < 3
@@ -176,4 +176,3 @@ function displayFlaggedOutliers(cellDataStruct, level)
     disp(flaggedTable);
 end
 
- 
