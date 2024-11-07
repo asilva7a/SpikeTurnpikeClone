@@ -1,4 +1,4 @@
-function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter)
+function cellDataStruct = plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter)
     % plotPooledMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
     % Pools all units from 'Emx' and 'Pvalb' groups and separates them by response type.
     %
@@ -33,6 +33,11 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
     decreasedPSTHs = [];
     noChangePSTHs = [];
     timeVector = []; % Initialize in case it needs to be set from data
+
+    % Initialize arrays to store unit IDs by response type
+    increasedUnitIDs = {};
+    decreasedUnitIDs = {};
+    noChangeUnitIDs = {};
 
     % Loop through 'Emx' and 'Pvalb' groups only
     experimentGroups = {'Emx', 'Pvalb'};
@@ -71,10 +76,13 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
                     switch unitData.responseType
                         case 'Increased'
                             increasedPSTHs = [increasedPSTHs; psth];
+                            increasedUnitIDs{end+1} = unitID;
                         case 'Decreased'
                             decreasedPSTHs = [decreasedPSTHs; psth];
+                            decreasedUnitIDs{end+1} = unitID;
                         case 'No Change'
                             noChangePSTHs = [noChangePSTHs; psth];
+                            noChangeUnitIDs{end+1} = unitID;
                     end
                 end
             end
@@ -83,7 +91,7 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
 
     %% Flag Outlier Units
 
-    %  Flag Decreased Units
+    % Flag Decreased Units
     if ~isempty(decreasedPSTHs)
         % Calculate the maximum firing rate for each unit in decreasedPSTHs
         maxFiringRates = max(decreasedPSTHs, [], 2);  % Maximum value along each row (unit)
@@ -93,25 +101,9 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         
         % Identify outlier units
         isOutlier = maxFiringRates > outlierThreshold;
-        outlierIndices = find(isOutlier);
-        
-        % Tag these units as outliers in cellDataStruct
-        for i = 1:length(outlierIndices)
-            unitIdx = outlierIndices(i);
-            unitID = decreasedUnitIDs{unitIdx};  % Assuming you have unit IDs for decreased units
-            
-            % Find the unit in cellDataStruct and add isOutlier field
-            for g = 1:length(groupNames)
-                groupName = groupNames{g};
-                recordings = fieldnames(cellDataStruct.(groupName));
-                for r = 1:length(recordings)
-                    recordingName = recordings{r};
-                    if isfield(cellDataStruct.(groupName).(recordingName), unitID)
-                        cellDataStruct.(groupName).(recordingName).(unitID).isOutlier = true;
-                        break; % Exit loop once the unit is found and tagged
-                    end
-                end
-            end
+        for i = find(isOutlier)'
+            unitID = decreasedUnitIDs{i};
+            cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID);
         end
     end
 
@@ -120,22 +112,9 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         maxFiringRates = max(increasedPSTHs, [], 2);
         outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
         isOutlier = maxFiringRates > outlierThreshold;
-        outlierIndices = find(isOutlier);
-    
-        for i = 1:length(outlierIndices)
-            unitIdx = outlierIndices(i);
-            unitID = increasedUnitIDs{unitIdx};
-            for g = 1:length(groupNames)
-                groupName = groupNames{g};
-                recordings = fieldnames(cellDataStruct.(groupName));
-                for r = 1:length(recordings)
-                    recordingName = recordings{r};
-                    if isfield(cellDataStruct.(groupName).(recordingName), unitID)
-                        cellDataStruct.(groupName).(recordingName).(unitID).isOutlier = true;
-                        break;
-                    end
-                end
-            end
+        for i = find(isOutlier)'
+            unitID = increasedUnitIDs{i};
+            cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID);
         end
     end
     
@@ -144,22 +123,9 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         maxFiringRates = max(noChangePSTHs, [], 2);
         outlierThreshold = mean(maxFiringRates) + 2 * std(maxFiringRates);
         isOutlier = maxFiringRates > outlierThreshold;
-        outlierIndices = find(isOutlier);
-    
-        for i = 1:length(outlierIndices)
-            unitIdx = outlierIndices(i);
-            unitID = noChangeUnitIDs{unitIdx};
-            for g = 1:length(groupNames)
-                groupName = groupNames{g};
-                recordings = fieldnames(cellDataStruct.(groupName));
-                for r = 1:length(recordings)
-                    recordingName = recordings{r};
-                    if isfield(cellDataStruct.(groupName).(recordingName), unitID)
-                        cellDataStruct.(groupName).(recordingName).(unitID).isOutlier = true;
-                        break;
-                    end
-                end
-            end
+        for i = find(isOutlier)'
+            unitID = noChangeUnitIDs{i};
+            cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID);
         end
     end
 
@@ -215,6 +181,24 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
 
     close(gcf); % Close to free memory
 end
+
+%% Helper Function: Mark a unit as an outlier
+function cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID)
+    % This helper function finds the specified unit in the structure and tags it as an outlier.
+    groupNames = fieldnames(cellDataStruct);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordings = fieldnames(cellDataStruct.(groupName));
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            if isfield(cellDataStruct.(groupName).(recordingName), unitID)
+                cellDataStruct.(groupName).(recordingName).(unitID).isOutlier = true;
+                return;
+            end
+        end
+    end
+end
+
 
 
 
