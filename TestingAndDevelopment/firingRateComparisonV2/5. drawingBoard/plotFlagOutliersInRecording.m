@@ -23,41 +23,34 @@ function plotFlagOutliersInRecording(cellDataStruct, unitInfoGroup)
     end
     % --- End of Debugging Defaults ---
 
-    % Define colors for each response type
-    colors = struct('Increased', [1, 0, 0], 'Decreased', [0, 0, 1], 'NoChange', [0.5, 0.5, 0.5]);
+     % Plot the PSTHs for outliers, with response type categorization
+    figure;
+    t = tiledlayout(2, 1);
+    title(t, 'Outlier PSTHs and Summary Table');
     
-    % Create a new figure for plotting
-    figure('Position', [100, 100, 1600, 600]);
-    t = tiledlayout(1, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-    title(t, 'Outlier PSTHs by Response Type');
-    
-    % Create axes for the PSTH plots
-    ax1 = nexttile(t);
+    ax1 = nexttile(t, 1);
     hold(ax1, 'on');
     xlabel(ax1, 'Time (s)');
     ylabel(ax1, 'Firing Rate (spikes/s)');
-    
-    % Loop through each response type as individual character strings
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+
+    colors = struct('Increased', [1, 0, 0], 'Decreased', [0, 0, 1], 'NoChange', [0.5, 0.5, 0.5]);
+    responseTypes = fieldnames(psthDataGroup);
     
     for i = 1:length(responseTypes)
-        responseType = responseTypes{i};  % Get response type as a string
-        
-        % Get the list of outliers for this response type
-        flaggedUnits = unitInfoGroup.(responseType);
-        
-        % Plot each outlier PSTH with the assigned color
-        for j = 1:length(flaggedUnits)
-            unitInfo = flaggedUnits{j};
-            psth = cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).psthSmoothed;
-            plot(ax1, psth, 'Color', colors.(responseType), 'LineWidth', 0.5);
+        responseType = responseTypes{i};
+        if ~isempty(psthDataGroup.(responseType))
+            for j = 1:size(psthDataGroup.(responseType), 1)
+                plot(ax1, psthDataGroup.(responseType)(j, :), 'Color', colors.(responseType), 'LineWidth', 0.5);
+            end
         end
     end
     legend(ax1, responseTypes, 'Location', 'northeast');
     hold(ax1, 'off');
+    
+    % Display summary table in a new axis
+    ax2 = nexttile(t, 2);
+    set(ax2, 'Visible', 'off');
+    flaggedTable = displayFlaggedOutliers(cellDataStruct, 'Experimental');
+    uitable('Parent', ax2.Parent, 'Data', flaggedTable, 'Units', 'normalized', ...
+            'Position', [0.1, 0.1, 0.8, 0.8]);
 end
-
-
-
-
-
