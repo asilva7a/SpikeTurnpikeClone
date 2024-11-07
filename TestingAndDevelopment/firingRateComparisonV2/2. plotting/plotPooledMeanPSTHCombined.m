@@ -224,3 +224,50 @@ function cellDataStruct = markUnitAsOutlier(cellDataStruct, unitID)
         end
     end
 end
+
+% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
+function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, color, plotTitle, treatmentTime, plotType)
+    % plotPSTHWithOverlaySubplot: Helper function to plot mean PSTH with SEM or individual traces.
+    %
+    % Inputs:
+    %   - timeVector: Vector of time points for the PSTH
+    %   - meanPSTH, semPSTH: Mean and SEM of the PSTH
+    %   - individualPSTHs: Matrix of individual PSTHs for the current response type
+    %   - color: Color for both individual traces and mean PSTH line
+    %   - plotTitle: Title for the subplot
+    %   - treatmentTime: Time in seconds for the vertical line
+    %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
+
+    hold on;
+
+    if strcmp(plotType, 'mean+sem')
+        % Plot mean PSTH with SEM using shadedErrorBar, using the color of the response type
+        shadedErrorBar(timeVector, meanPSTH, semPSTH, 'lineprops', {'Color', color(1:3), 'LineWidth', 2});
+    elseif strcmp(plotType, 'mean+individual')
+        % Plot individual PSTHs with color and transparency
+        for i = 1:size(individualPSTHs, 1)
+            plot(timeVector, individualPSTHs(i, :), 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
+        end
+        % Plot mean PSTH on top with the same color as individual traces
+        plot(timeVector, meanPSTH, 'Color', color(1:3), 'LineWidth', 2);
+    else
+        error("plotType must be either 'mean+sem' or 'mean+individual'");
+    end
+
+    % Plot treatment line
+    xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5);
+
+    % Labels, title, and limits
+    xlabel('Time (s)');
+    ylabel('Firing Rate (spikes/s)');
+    title(plotTitle);
+    
+    % Set axis limits
+    ylim([0 inf]);  % Set y-axis lower limit to 0 and let the upper limit auto-adjust
+    xlim([0 5400]); % Set x-axis upper limit to 5400 seconds
+
+    hold off;
+end
+
+
+
