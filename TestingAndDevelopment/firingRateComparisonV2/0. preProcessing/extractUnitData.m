@@ -1,4 +1,4 @@
-function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
+function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath, binWidth)
 
     % Debugging output
     disp('extractUnitData called');
@@ -56,7 +56,7 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath)
                 newUnitStruct.pValue = [];
                 newUnitStruct.responseType = [];
                 newUnitStruct.recording = recordingName;
-                newUnitStruct.binWidth = 0.1;
+                newUnitStruct.binWidth = binWidth;
                 newUnitStruct.binEdges = [];
                 newUnitStruct.numBins = [];
                 newUnitStruct.frBaselineAvg = [];
