@@ -1,29 +1,11 @@
-function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, plotOutliers)
+function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, plotOutliers, dataFolder)
     % flagOutliersInPooledData: Identifies and flags extreme outlier units based on smoothed PSTHs.
-    % Uses a strict IQR-based threshold with a k-factor of 3.0 for extreme outliers.
-
-    % % Default input setup for debugging
-    % if nargin < 3
-    %     plotOutliers = true; % Enable plotting for debugging
-    % end
-    % if nargin < 2
-    %     unitFilter = 'both'; % Include both single and multi-units
-    % end
-    % if nargin < 1
-    %     % Load or initialize a sample cellDataStruct if not provided
-    %     try
-    %         load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct.mat'); % Replace with your sample file path
-    %         fprintf('Debug: Loaded default cellDataStruct from file.\n');
-    %     catch
-    %         error('cellDataStruct not provided and no default file found. Please provide a cellDataStruct.');
-    %     end
-    % end
+    % All units will have an isOutlierExperimental field where 1 indicates an outlier and 0 indicates non-outlier.
 
     % Define response types and groups
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
     experimentGroups = {'Emx', 'Pvalb', 'Control'};
-  
-
+    
     % Initialize groupIQRs structure to store IQR and upper fence for each response type and group
     groupIQRs = struct();
     psthDataGroup = struct();
@@ -31,36 +13,21 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
 
     % Set up empty structures for each response type and group
     for rType = responseTypes
-        psthDataGroup.(rType{1}) = struct('Emx', [], 'Pvalb', [], ...
-            'Control', []);
-        unitInfoGroup.(rType{1}).Emx = {};   % Initialize as empty cell array for Emx
-        unitInfoGroup.(rType{1}).Pvalb = {}; % Initialize as empty cell array for Pvalb
-        unitInfoGroup.(rType{1}).Control = {}; % Initialize as empty cell array for Control
+        psthDataGroup.(rType{1}) = struct('Emx', [], 'Pvalb', [], 'Control', []);
+        unitInfoGroup.(rType{1}).Emx = {};
+        unitInfoGroup.(rType{1}).Pvalb = {};
+        unitInfoGroup.(rType{1}).Control = {};
         groupIQRs.(rType{1}) = struct( ...
-            'Emx', struct( ...
-                'IQR', [], ...
-                'Median', [], ...
-                'UpperFence', [], ...
-                'LowerFence', []), ...
-            'Pvalb', struct( ...
-                'IQR', [], ...
-                'Median', [], ...
-                'UpperFence', [], ...
-                'LowerFence', []), ...
-            'Control', struct( ...
-                'IQR', [], ...
-                'Median', [], ...
-                'UpperFence', [], ...
-                'LowerFence', []) ...
-                );
+            'Emx', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []), ...
+            'Pvalb', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []), ...
+            'Control', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []) ...
+        );
     end
 
     % Loop through each experimental group and collect PSTH data
-    fprintf('Debug: Starting data collection by group and response type\n');
     for g = 1:length(experimentGroups)
         groupName = experimentGroups{g};
         if ~isfield(cellDataStruct, groupName)
-            fprintf('Warning: Group %s not found in cellDataStruct. Skipping.\n', groupName);
             continue;
         end
         
@@ -70,50 +37,42 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
         for r = 1:length(recordings)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
-            fprintf('Debug: Processing recording %s in group %s\n', recordingName, groupName);
 
             % Collect data for each unit within the recording
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                 
+                % Initialize isOutlierExperimental field with a default value of 0
+                cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
+                
                 % Apply unit filter
                 isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
-                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
-                   (strcmp(unitFilter, 'multi') && isSingleUnit)
-                    fprintf('Debug: Skipping unit %s due to filter %s\n', unitID, unitFilter);
+                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || (strcmp(unitFilter, 'multi') && isSingleUnit)
                     continue;
                 end
                 
-                % Check if responseType exists; if not, issue a warning
+                % Check if responseType exists; if not, skip the unit
                 if isfield(unitData, 'responseType')
                     responseType = replace(unitData.responseType, ' ', ''); % Normalize 'No Change' to 'NoChange'
                 else
-                    fprintf('Warning: Unit %s in group %s, recording %s does not have a responseType field. Skipping.\n', unitID, groupName, recordingName);
                     continue; % Skip this unit if responseType is missing
                 end
-                
-                fprintf('Debug: Processing unit %s with response type %s\n', unitID, responseType);
                 
                 % Store PSTH data and unit info at the group level
                 if isfield(unitData, 'psthSmoothed')
                     maxFiringRate = max(unitData.psthSmoothed);
                     psthDataGroup.(responseType).(groupName) = [psthDataGroup.(responseType).(groupName); maxFiringRate];
                     unitInfoGroup.(responseType).(groupName){end+1} = struct('group', groupName, 'recording', recordingName, 'id', unitID);
-                    fprintf('Debug: Added max firing rate %f for unit %s in group %s, response type %s\n', maxFiringRate, unitID, groupName, responseType);
-                else
-                    fprintf('Warning: Unit %s does not have psthSmoothed data\n', unitID);
                 end
             end
         end
     end
 
     % Calculate IQR, median, and thresholds for each response type and group
-    fprintf('Debug: Calculating IQR and thresholds for each response type and group\n');
     for rType = responseTypes
         for grp = experimentGroups
             maxRatesGroup = psthDataGroup.(rType{1}).(grp{1});
-            fprintf('Debug: Calculating for response type %s, group %s\n', rType{1}, grp{1});
             if ~isempty(maxRatesGroup)
                 Q1 = prctile(maxRatesGroup, 25);
                 Q3 = prctile(maxRatesGroup, 75);
@@ -126,29 +85,32 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 groupIQRs.(rType{1}).(grp{1}).Median = median(maxRatesGroup);
                 groupIQRs.(rType{1}).(grp{1}).UpperFence = upperFence;
                 groupIQRs.(rType{1}).(grp{1}).LowerFence = lowerFence;
-                fprintf('Debug: Calculated IQR=%f, Median=%f, UpperFence=%f, LowerFence=%f\n', IQR_value, median(maxRatesGroup), upperFence, lowerFence);
-            else
-                fprintf('Warning: No max rates found for response type %s in group %s\n', rType{1}, grp{1});
             end
         end
     end
 
     % Flag outliers in cellDataStruct based on strict IQR threshold
-    fprintf('Debug: Flagging outliers based on IQR thresholds\n');
     for rType = responseTypes
         for grp = experimentGroups
-            fprintf('Debug: Checking outliers for response type %s, group %s\n', rType{1}, grp{1});
             for i = 1:length(unitInfoGroup.(rType{1}).(grp{1}))
                 unitInfo = unitInfoGroup.(rType{1}).(grp{1}){i};
                 maxFiringRate = psthDataGroup.(rType{1}).(grp{1})(i);
                 
+                % Flag as outlier if max firing rate exceeds upper or lower fence
                 if maxFiringRate > groupIQRs.(rType{1}).(grp{1}).UpperFence || maxFiringRate < groupIQRs.(rType{1}).(grp{1}).LowerFence
-                    cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = true;
-                    fprintf('Debug: Flagged unit %s as outlier with max firing rate %f\n', unitInfo.id, maxFiringRate);
-                else
-                    fprintf('Debug: Unit %s is not an outlier (max firing rate %f)\n', unitInfo.id, maxFiringRate);
+                    cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = 1;
                 end
             end
+        end
+    end
+    
+    % Save the updated struct to the specified data file path
+    if nargin >= 4 && ~isempty(dataFolder)
+        try
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
+            fprintf('Struct saved successfully to: %s\n', dataFolder);
+        catch ME
+            fprintf('Error saving the file: %s\n', ME.message);
         end
     end
 
@@ -157,4 +119,5 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
         plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs);
     end
 end
+
 
