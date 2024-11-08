@@ -38,7 +38,7 @@ try
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);  % Set bin-width to 60s
 
     fprintf('Data loaded and saved successfully!\n');
 catch ME
@@ -59,21 +59,30 @@ cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 5);
 cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
-cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
+cellDataStruct = determineResponseType(cellDataStruct, 1860, 60, dataFolder); % Set bin-width to 60s
 
 % Filter unit data by group for outliers
-cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', true);
+cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', true, dataFolder);
 
 
 %% Plotting 
 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean)
-plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+sem');
+% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+%     'mean+sem');
 
 % Plot Time Locked smoothed PSTHs (mean + individual traces)
-plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+individual');
+% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+%     'mean+individual');
+
+% Plot Time Locked smoothed PSTHs for pooled data (mean + SEM)
+plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
+
+% Plot Time Locked smoothed PSTHs for indidividual units (mean + individual PSTHs)
+plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
+
+
+
 
 %% End of Script
 disp('Script finished...');

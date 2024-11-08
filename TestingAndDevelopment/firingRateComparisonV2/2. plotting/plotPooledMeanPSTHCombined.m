@@ -1,48 +1,79 @@
-function plotPooledMeanPSTH(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter)
-    % plotPooledMeanPSTH: Plots pooled mean PSTH data for 'Emx' and 'Pvalb' groups.
-    % 
+function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
+    % plotPooledMeanPSTHCombined: Generates a single figure with three subplots of pooled time-locked mean PSTHs.
+    % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
+    %
     % Inputs:
-    %   - cellDataStruct: Data structure with unit data.
-    %   - figureFolder: Directory to save the plots.
-    %   - treatmentTime: Time (s) where treatment was administered.
+    %   - cellDataStruct: Data structure containing group, recording, and unit data.
+    %   - figureFolder: Directory where the plots will be saved.
+    %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
+    %   - outlierFilter: If true, excludes units marked as outliers (isOutlierExperimental == 1).
 
-    % Colors for each response type
-    colors = struct('Increased', [1, 0, 0, 0.3], 'Decreased', [0, 0, 1, 0.3], 'NoChange', [0.5, 0.5, 0.5, 0.3]);
+    % Set defaults if arguments are missing
+    if nargin < 6 || isempty(outlierFilter)
+        outlierFilter = true; % Default to excluding outliers
+    end
+    if nargin < 5 || isempty(unitFilter)
+        unitFilter = 'both'; % Default to including both unit types
+    end
+    if nargin < 4 || isempty(plotType)
+        plotType = 'mean+sem'; % Default to mean + SEM
+    end
+    if nargin < 3 || isempty(treatmentTime)
+        treatmentTime = 1860; % Default treatment time in seconds
+    end
 
-    % Gather data across response types
+    % Define colors for each response type
+    colors = struct('Increased', [1, 0, 0, 0.3], ...   % Red with transparency
+                    'Decreased', [0, 0, 1, 0.3], ...   % Blue with transparency
+                    'NoChange', [0.5, 0.5, 0.5, 0.3]); % Grey with transparency
+
+    % Initialize arrays to collect PSTHs by response type
     increasedPSTHs = [];
     decreasedPSTHs = [];
     noChangePSTHs = [];
-    timeVector = [];
+    timeVector = []; % Initialize in case it needs to be set from data
 
-    experimentGroups = {'Emx', 'Pvalb'};
-    for g = 1:length(experimentGroups)
-        groupName = experimentGroups{g};
+    % Loop through each experimental group (Emx and Pvalb) and their recordings to pool data
+    groupNames = {'Emx', 'Pvalb'};
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
         if ~isfield(cellDataStruct, groupName)
+            fprintf('Warning: Group %s not found in cellDataStruct. Skipping.\n', groupName);
             continue;
         end
+        
         recordings = fieldnames(cellDataStruct.(groupName));
-
         for r = 1:length(recordings)
             recordingName = recordings{r};
-            units = fieldnames(cellDataStruct.(groupName).(recordingName));
 
+            % Collect individual PSTHs from units based on response type
+            units = fieldnames(cellDataStruct.(groupName).(recordingName));
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
-                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || (strcmp(unitFilter, 'multi') && isSingleUnit)
-                    continue;
+
+                % Apply outlier filter: skip unit if marked as an outlier
+                if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental == 1
+                    continue; % Skip this unit
                 end
 
+                % Apply unit filter based on IsSingleUnit field
+                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
+                   (strcmp(unitFilter, 'multi') && isSingleUnit)
+                    continue; % Skip unit if it doesn't match the filter
+                end
+
+                % Proceed if unit has required fields
                 if isfield(unitData, 'psthSmoothed') && isfield(unitData, 'responseType')
                     psth = unitData.psthSmoothed;
                     binWidth = unitData.binWidth;
                     binEdges = unitData.binEdges;
                     timeVector = binEdges(1:end-1) + binWidth / 2; % Bin centers
 
+                    % Separate by response type
                     switch unitData.responseType
                         case 'Increased'
                             increasedPSTHs = [increasedPSTHs; psth];
@@ -56,16 +87,46 @@ function plotPooledMeanPSTH(cellDataStruct, figureFolder, treatmentTime, plotTyp
         end
     end
 
-    % Plotting logic
+    % Create a single figure with three subplots arranged in a 1x3 layout for pooled data
     figure('Position', [100, 100, 1600, 500]);
-    sgtitle(sprintf('Pooled Experimental Units (Emx + Pvalb) - %s', plotType));
+    
+    % Add the main title for pooled experimental groups
+    sgtitle(sprintf('Pooled Emx and Pvalb - %s (%s units)', plotType, unitFilter));
 
-    % Plot each response type
-    plotSubplot(timeVector, increasedPSTHs, colors.Increased, 'Increased', treatmentTime, plotType, 1);
-    plotSubplot(timeVector, decreasedPSTHs, colors.Decreased, 'Decreased', treatmentTime, plotType, 2);
-    plotSubplot(timeVector, noChangePSTHs, colors.NoChange, 'No Change', treatmentTime, plotType, 3);
+    % Plot 1: Positively Modulated Units (Increased)
+    subplot(1, 3, 1);
+    if ~isempty(increasedPSTHs)
+        meanIncreasedPSTH = mean(increasedPSTHs, 1, 'omitnan');
+        semIncreasedPSTH = std(increasedPSTHs, 0, 1, 'omitnan') / sqrt(size(increasedPSTHs, 1));
+        plotPSTHWithOverlaySubplot(timeVector, meanIncreasedPSTH, semIncreasedPSTH, ...
+            increasedPSTHs, colors.Increased, 'Increased', treatmentTime, plotType);
+    else
+        title('Increased (No Data)');
+    end
 
-    % Save figure
+    % Plot 2: Negatively Modulated Units (Decreased)
+    subplot(1, 3, 2);
+    if ~isempty(decreasedPSTHs)
+        meanDecreasedPSTH = mean(decreasedPSTHs, 1, 'omitnan');
+        semDecreasedPSTH = std(decreasedPSTHs, 0, 1, 'omitnan') / sqrt(size(decreasedPSTHs, 1));
+        plotPSTHWithOverlaySubplot(timeVector, meanDecreasedPSTH, semDecreasedPSTH, ...
+            decreasedPSTHs, colors.Decreased, 'Decreased', treatmentTime, plotType);
+    else
+        title('Decreased (No Data)');
+    end
+
+    % Plot 3: Non-Responsive Units (No Change)
+    subplot(1, 3, 3);
+    if ~isempty(noChangePSTHs)
+        meanNoChangePSTH = mean(noChangePSTHs, 1, 'omitnan');
+        semNoChangePSTH = std(noChangePSTHs, 0, 1, 'omitnan') / sqrt(size(noChangePSTHs, 1));
+        plotPSTHWithOverlaySubplot(timeVector, meanNoChangePSTH, semNoChangePSTH, ...
+            noChangePSTHs, colors.NoChange, 'No Change', treatmentTime, plotType);
+    else
+        title('No Change (No Data)');
+    end
+
+    % Save figure to the specified directory
     saveDir = fullfile(figureFolder, 'PooledSmoothedPSTHs');
     if ~isfolder(saveDir)
         mkdir(saveDir);
@@ -73,18 +134,8 @@ function plotPooledMeanPSTH(cellDataStruct, figureFolder, treatmentTime, plotTyp
     fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, unitFilter);
     saveas(gcf, fullfile(saveDir, fileName));
     fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
-    close(gcf);
-end
 
-function plotSubplot(timeVector, psths, color, titleText, treatmentTime, plotType, subplotIndex)
-    subplot(1, 3, subplotIndex);
-    if ~isempty(psths)
-        meanPSTH = mean(psths, 1, 'omitnan');
-        semPSTH = std(psths, 0, 1, 'omitnan') / sqrt(size(psths, 1));
-        plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, psths, color, titleText, treatmentTime, plotType);
-    else
-        title([titleText ' (No Data)']);
-    end
+    close(gcf); % Close to free memory
 end
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
@@ -130,8 +181,4 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     hold off;
 end
-
-
-
-
 
