@@ -1,82 +1,86 @@
 function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs)
-    % Define colors for each group
-    groupColors = struct('Emx', [0, 0.4470, 0.7410], 'Pvalb', [0.8500, 0.3250, 0.0980]);
-    responseTypes = fieldnames(psthDataGroup);
+    % plotFlagOutliersInRecording: Plots smoothed PSTHs for flagged outliers and displays IQR with points for max firing rates.
+    %
+    % Inputs:
+    %   - cellDataStruct: Structure containing unit data with outlier flags.
+    %   - psthDataGroup: Structure with maximum firing rates per response type and group.
+    %   - unitInfoGroup: Information about units, organized by response type and group.
+    %   - groupIQRs: IQR and outlier thresholds for each response type and group.
 
-    % Create a 2x3 layout for plots and summary information
+    colors = struct('Emx', [0.8500, 0.3250, 0.0980], 'Pvalb', [0, 0.4470, 0.7410]); % Color scheme for groups
+    responseTypes = fieldnames(psthDataGroup);
+    experimentGroups = {'Emx', 'Pvalb'}; % Define experiment groups locally
+
+    % Set up figure with a 2x3 tiled layout
     figure('Position', [100, 100, 1600, 800]);
     t = tiledlayout(2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
-    title(t, 'Outlier PSTHs and Summary Information by Response Type');
+    title(t, 'Outlier PSTHs and Summary IQR by Response Type');
     
-    % Top row: Plot individual PSTHs for each response type
+    % Top row: Plot PSTHs of outliers
     for i = 1:length(responseTypes)
         responseType = responseTypes{i};
-        psths = psthDataGroup.(responseType);
-
-        % Plot PSTHs for each response type in the top row
         ax1 = nexttile(t, i);
         hold(ax1, 'on');
+        title(ax1, sprintf('Outliers - %s Units', responseType));
         xlabel(ax1, 'Time (s)');
         ylabel(ax1, 'Firing Rate (spikes/s)');
-        title(ax1, sprintf('Outliers - %s Units', responseType));
         
-        % Plot individual PSTHs for outliers, color-coded by group
-        for j = 1:size(psths, 1)
-            unitInfo = unitInfoGroup.(responseType){j};
-            groupColor = groupColors.(unitInfo.group);
-            plot(ax1, psths(j, :), 'Color', groupColor, 'LineWidth', 0.5);
+        % Plot each group's PSTH for outliers only
+        for g = fieldnames(colors)'
+            groupName = g{1};
+            outliers = unitInfoGroup.(responseType).(groupName);
+            if isempty(outliers)
+                continue;
+            end
+            for j = 1:length(outliers)
+                unitID = outliers{j}.id;
+                recordingName = outliers{j}.recording;
+                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+                    plot(ax1, unitData.binEdges(1:end-1) + unitData.binWidth / 2, unitData.psthSmoothed, ...
+                         'Color', colors.(groupName), 'LineWidth', 1.5);
+                end
+            end
         end
         hold(ax1, 'off');
     end
 
-    % Bottom row: Plot IQR with outlier max firing rates
+    % Bottom row: Plot IQR with max firing rates for each group
     for i = 1:length(responseTypes)
         responseType = responseTypes{i};
-
-        % Retrieve IQR, median, and upper fence for the response type
-        emxIQR = groupIQRs.(responseType).Emx.IQR;
-        emxMedian = groupIQRs.(responseType).Emx.Median;
-        emxUpperFence = groupIQRs.(responseType).Emx.UpperFence;
-        pvalbIQR = groupIQRs.(responseType).Pvalb.IQR;
-        pvalbMedian = groupIQRs.(responseType).Pvalb.Median;
-        pvalbUpperFence = groupIQRs.(responseType).Pvalb.UpperFence;
-
-        % Initialize the plot for IQR in the bottom row
-        ax2 = nexttile(t, i + 3);
+        ax2 = nexttile(t, i + 3);  % Bottom row
         hold(ax2, 'on');
-        ylabel(ax2, 'Firing Rate (spikes/s)');
-        title(ax2, sprintf('Firing Rate IQR - %s Units', responseType));
+        title(ax2, sprintf('IQR and Outliers - %s', responseType));
+        xlabel(ax2, 'Groups');
+        ylabel(ax2, 'Max Firing Rate (spikes/s)');
         
-        % Plot IQR as shaded areas
-        fill(ax2, [0.9 1.1 1.1 0.9], [emxMedian - emxIQR/2, emxMedian - emxIQR/2, emxMedian + emxIQR/2, emxMedian + emxIQR/2], ...
-             groupColors.Emx, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-        fill(ax2, [1.9 2.1 2.1 1.9], [pvalbMedian - pvalbIQR/2, pvalbMedian - pvalbIQR/2, pvalbMedian + pvalbIQR/2, pvalbMedian + pvalbIQR/2], ...
-             groupColors.Pvalb, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
-        
-        % Plot the median line for each group
-        plot(ax2, [0.9 1.1], [emxMedian, emxMedian], 'Color', groupColors.Emx, 'LineWidth', 2);
-        plot(ax2, [1.9 2.1], [pvalbMedian, pvalbMedian], 'Color', groupColors.Pvalb, 'LineWidth', 2);
-        
-        % Plot the upper fence for extreme outliers
-        plot(ax2, [0.9 1.1], [emxUpperFence, emxUpperFence], '--', 'Color', groupColors.Emx, 'LineWidth', 1.5);
-        plot(ax2, [1.9 2.1], [pvalbUpperFence, pvalbUpperFence], '--', 'Color', groupColors.Pvalb, 'LineWidth', 1.5);
-
-        % Overlay max firing rates for flagged outliers as individual points
-        emxRates = [];
-        pvalbRates = [];
-        for j = 1:length(unitInfoGroup.(responseType))
-            unitInfo = unitInfoGroup.(responseType){j};
-            maxRate = max(cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).psthSmoothed);
-            if strcmp(unitInfo.group, 'Emx')
-                emxRates = [emxRates; maxRate];
-            elseif strcmp(unitInfo.group, 'Pvalb')
-                pvalbRates = [pvalbRates; maxRate];
+        % Plot IQR region and median line for each group
+        xPositions = [0.25, 0.75]; % Fixed x-positions for Emx and Pvalb groups
+        for g = 1:length(experimentGroups)
+            groupName = experimentGroups{g};
+            maxRatesGroup = psthDataGroup.(responseType).(groupName);
+            if isempty(maxRatesGroup)
+                continue;
             end
+            
+            % Fetch IQR values for the group
+            IQR_val = groupIQRs.(responseType).(groupName).IQR;
+            median_val = groupIQRs.(responseType).(groupName).Median;
+            upperFence = groupIQRs.(responseType).(groupName).UpperFence;
+            lowerFence = groupIQRs.(responseType).(groupName).LowerFence;
+
+            % Plot the IQR region with specified color and transparency
+            xRange = xPositions(g) + [-0.1, 0.1]; % Define x-range for the fill area
+            fill(ax2, [xRange, fliplr(xRange)], [repmat(lowerFence, 1, 2), repmat(upperFence, 1, 2)], ...
+                 colors.(groupName), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+
+            % Plot the median line for the group
+            plot(ax2, [xRange(1), xRange(2)], [median_val, median_val], '--', 'Color', colors.(groupName), 'LineWidth', 1.5);
+
+            % Plot individual max firing rates as scatter points
+            scatter(ax2, repmat(mean(xRange), size(maxRatesGroup)), maxRatesGroup, 36, colors.(groupName), 'filled');
         end
-        scatter(ax2, ones(size(emxRates)), emxRates, 25, groupColors.Emx, 'filled');
-        scatter(ax2, 2 * ones(size(pvalbRates)), pvalbRates, 25, groupColors.Pvalb, 'filled');
-        
         hold(ax2, 'off');
-        set(ax2, 'XTick', [1, 2], 'XTickLabel', {'Emx', 'Pvalb'}, 'XLim', [0.5 2.5]);
     end
 end
+
