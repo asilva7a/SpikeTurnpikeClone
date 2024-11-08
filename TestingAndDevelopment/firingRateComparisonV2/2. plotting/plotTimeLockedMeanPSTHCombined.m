@@ -1,4 +1,4 @@
-function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter)
+function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
     % plotTimeLockedMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
     % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
     %
@@ -8,8 +8,12 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
     %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
     %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
+    %   - outlierFilter: If true, excludes units marked as outliers (isOutlierExperimental == 1).
 
     % Set default for plotType and unitFilter if not provided
+    if nargin < 6 || isempty(outlierFilter)
+        outlierFilter = true; % Default to excluding outliers
+    end
     if nargin < 5
         unitFilter = 'both'; % Default to including both unit types
     end
@@ -45,6 +49,11 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+
+                % Apply outlier filter: skip unit if marked as an outlier
+                if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental == 1
+                    continue; % Skip this unit
+                end
 
                 % Apply unit filter based on IsSingleUnit field
                 isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
@@ -168,6 +177,3 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     hold off;
 end
-
-
-
