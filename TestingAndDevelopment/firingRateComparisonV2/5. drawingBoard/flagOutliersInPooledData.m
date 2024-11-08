@@ -117,8 +117,8 @@ function cellDataStruct = flagOutliersInPooledData(cellDataStruct, unitFilter, p
             IQR_value = Q3 - Q1; % Interquartile range
     
             % Define outlier thresholds based on IQR
-            lowerThreshold = Q1 - 1.5 * IQR_value;
-            upperThreshold = Q3 + 1.5 * IQR_value;
+            lowerThreshold = Q1 - (3.0 * IQR_value);
+            upperThreshold = Q3 + (3.0 * IQR_value);
     
             % Identify units that are outliers based on the IQR thresholds
             isOutlierGroup = maxRatesGroup < lowerThreshold | maxRatesGroup > upperThreshold;
