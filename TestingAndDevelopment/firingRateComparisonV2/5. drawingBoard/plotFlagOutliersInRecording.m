@@ -1,22 +1,14 @@
-function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup)
-    % plotFlagOutliersInRecording: Plots the smoothed PSTHs for flagged outliers across response types 
-    % and displays a summary table as static text within each corresponding plot.
-    %
-    % Inputs:
-    %   - cellDataStruct: Main data structure containing unit data and outlier flags.
-    %   - psthDataGroup: Structure containing PSTH data for each response type.
-    %   - unitInfoGroup: Structure containing unit information organized by response type.
-
-    % Colors for each response type
-    colors = struct('Increased', [1, 0, 0], 'Decreased', [0, 0, 1], 'NoChange', [0.5, 0.5, 0.5]);
+function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs)
+    % Define colors for each group
+    groupColors = struct('Emx', [0, 0.4470, 0.7410], 'Pvalb', [0.8500, 0.3250, 0.0980]);
     responseTypes = fieldnames(psthDataGroup);
 
-    % Create a 2x3 layout for plots and summary text
+    % Create a 2x3 layout for plots and summary information
     figure('Position', [100, 100, 1600, 800]);
     t = tiledlayout(2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
     title(t, 'Outlier PSTHs and Summary Information by Response Type');
     
-    % Iterate over response types to plot each in a separate subplot
+    % Top row: Plot individual PSTHs for each response type
     for i = 1:length(responseTypes)
         responseType = responseTypes{i};
         psths = psthDataGroup.(responseType);
@@ -28,106 +20,63 @@ function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGrou
         ylabel(ax1, 'Firing Rate (spikes/s)');
         title(ax1, sprintf('Outliers - %s Units', responseType));
         
-        % Plot individual PSTHs for outliers
+        % Plot individual PSTHs for outliers, color-coded by group
         for j = 1:size(psths, 1)
-            plot(ax1, psths(j, :), 'Color', colors.(responseType), 'LineWidth', 0.5);
+            unitInfo = unitInfoGroup.(responseType){j};
+            groupColor = groupColors.(unitInfo.group);
+            plot(ax1, psths(j, :), 'Color', groupColor, 'LineWidth', 0.5);
         end
         hold(ax1, 'off');
     end
 
-    % Generate and display summary information in the bottom row, below each PSTH plot
+    % Bottom row: Plot IQR with outlier max firing rates
     for i = 1:length(responseTypes)
         responseType = responseTypes{i};
-        summaryTable = createFlaggedOutlierTable(cellDataStruct, unitInfoGroup.(responseType));
 
-        % Display table as text in the bottom row
-        ax2 = nexttile(t, i + 3);  % Move to the bottom row (offset by 3)
-        set(ax2, 'Visible', 'off');  % Hide axis box
-        displayTableAsText(ax2, summaryTable);
-    end
-end
+        % Retrieve IQR, median, and upper fence for the response type
+        emxIQR = groupIQRs.(responseType).Emx.IQR;
+        emxMedian = groupIQRs.(responseType).Emx.Median;
+        emxUpperFence = groupIQRs.(responseType).Emx.UpperFence;
+        pvalbIQR = groupIQRs.(responseType).Pvalb.IQR;
+        pvalbMedian = groupIQRs.(responseType).Pvalb.Median;
+        pvalbUpperFence = groupIQRs.(responseType).Pvalb.UpperFence;
 
-function summaryTable = createFlaggedOutlierTable(cellDataStruct, unitInfo)
-    % Helper function to create a summary table of flagged outliers for a specific response type.
-    %
-    % Inputs:
-    %   - cellDataStruct: Main data structure with unit data.
-    %   - unitInfo: Unit information for the specific response type.
-    
-    % Initialize table variables
-    flaggedUnits = [];
-    flaggedGroup = [];
-    flaggedRecording = [];
-    flaggedFiringRate = [];
-    flaggedStdDev = [];
-
-    % Debugging: Track loop entry
-    fprintf('Debug: Entering loop with %d units in unitInfo\n', length(unitInfo));
-    
-    % Gather outlier information from cellDataStruct using unitInfo
-    for i = 1:length(unitInfo)
-        unit = unitInfo{i};
+        % Initialize the plot for IQR in the bottom row
+        ax2 = nexttile(t, i + 3);
+        hold(ax2, 'on');
+        ylabel(ax2, 'Firing Rate (spikes/s)');
+        title(ax2, sprintf('Firing Rate IQR - %s Units', responseType));
         
-        % Check for the required fields in unit before proceeding
-        if isfield(unit, 'group') && isfield(unit, 'recording') && isfield(unit, 'id')
-            try
-                % Try to access the data in cellDataStruct
-                unitData = cellDataStruct.(unit.group).(unit.recording).(unit.id);
+        % Plot IQR as shaded areas
+        fill(ax2, [0.9 1.1 1.1 0.9], [emxMedian - emxIQR/2, emxMedian - emxIQR/2, emxMedian + emxIQR/2, emxMedian + emxIQR/2], ...
+             groupColors.Emx, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+        fill(ax2, [1.9 2.1 2.1 1.9], [pvalbMedian - pvalbIQR/2, pvalbMedian - pvalbIQR/2, pvalbMedian + pvalbIQR/2, pvalbMedian + pvalbIQR/2], ...
+             groupColors.Pvalb, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+        
+        % Plot the median line for each group
+        plot(ax2, [0.9 1.1], [emxMedian, emxMedian], 'Color', groupColors.Emx, 'LineWidth', 2);
+        plot(ax2, [1.9 2.1], [pvalbMedian, pvalbMedian], 'Color', groupColors.Pvalb, 'LineWidth', 2);
+        
+        % Plot the upper fence for extreme outliers
+        plot(ax2, [0.9 1.1], [emxUpperFence, emxUpperFence], '--', 'Color', groupColors.Emx, 'LineWidth', 1.5);
+        plot(ax2, [1.9 2.1], [pvalbUpperFence, pvalbUpperFence], '--', 'Color', groupColors.Pvalb, 'LineWidth', 1.5);
 
-                % Debugging: Display accessed unit fields
-                fprintf('Debug: Accessing unit %s in group %s, recording %s\n', ...
-                    unit.id, unit.group, unit.recording);
-                
-                % Check for either outlier flag and add to table if flagged
-                if (isfield(unitData, 'isOutlierRecording') && unitData.isOutlierRecording) || ...
-                   (isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental)
-                    
-                    % Add unit details to table variables
-                    flaggedUnits = [flaggedUnits; {unit.id}];
-                    flaggedGroup = [flaggedGroup; {unit.group}];
-                    flaggedRecording = [flaggedRecording; {unit.recording}];
-                    flaggedFiringRate = [flaggedFiringRate; max(unitData.psthSmoothed)];
-                    flaggedStdDev = [flaggedStdDev; std(unitData.psthSmoothed)];
-                end
-
-            catch ME
-                % Handle case where unit reference might be invalid
-                fprintf('Warning: Could not access data for unit %s in group %s, recording %s. Skipping.\n', ...
-                    unit.id, unit.group, unit.recording);
-                disp(getReport(ME, 'basic'));
+        % Overlay max firing rates for flagged outliers as individual points
+        emxRates = [];
+        pvalbRates = [];
+        for j = 1:length(unitInfoGroup.(responseType))
+            unitInfo = unitInfoGroup.(responseType){j};
+            maxRate = max(cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).psthSmoothed);
+            if strcmp(unitInfo.group, 'Emx')
+                emxRates = [emxRates; maxRate];
+            elseif strcmp(unitInfo.group, 'Pvalb')
+                pvalbRates = [pvalbRates; maxRate];
             end
-        else
-            % Debugging: Display if unit is missing required fields
-            fprintf('Warning: unitInfo entry %d is missing required fields (group, recording, id). Skipping.\n', i);
         end
+        scatter(ax2, ones(size(emxRates)), emxRates, 25, groupColors.Emx, 'filled');
+        scatter(ax2, 2 * ones(size(pvalbRates)), pvalbRates, 25, groupColors.Pvalb, 'filled');
+        
+        hold(ax2, 'off');
+        set(ax2, 'XTick', [1, 2], 'XTickLabel', {'Emx', 'Pvalb'}, 'XLim', [0.5 2.5]);
     end
-    
-    % Create the summary table
-    summaryTable = table(flaggedUnits, flaggedGroup, flaggedRecording, flaggedFiringRate, flaggedStdDev, ...
-        'VariableNames', {'Unit', 'Group', 'Recording', 'Firing Rate', 'Std. Dev.'});
-    
-    % Debugging: Confirm table creation
-    fprintf('Debug: Summary table created with %d entries.\n', height(summaryTable));
-end
-
-function displayTableAsText(ax, summaryTable)
-    % displayTableAsText: Renders a table as text in a given axis.
-    %
-    % Inputs:
-    %   - ax: The axis handle where the table will be displayed as text.
-    %   - summaryTable: The table containing outlier information to display.
-
-    % Convert table to cell array for easier formatting with text
-    tableData = [summaryTable.Properties.VariableNames; table2cell(summaryTable)];
-    
-    % Format text to display
-    tableText = '';
-    for i = 1:size(tableData, 1)
-        rowText = strjoin(cellfun(@(x) num2str(x), tableData(i, :), 'UniformOutput', false), ' | ');
-        tableText = sprintf('%s\n%s', tableText, rowText);
-    end
-    
-    % Display table as multi-line text in the center of the axis
-    text(ax, 0.5, 0.5, tableText, 'Units', 'normalized', 'HorizontalAlignment', 'center', ...
-        'VerticalAlignment', 'middle', 'FontSize', 10, 'FontName', 'Courier');
 end
