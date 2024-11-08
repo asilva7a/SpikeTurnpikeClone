@@ -47,7 +47,7 @@ end
 
 clear all_data;
 
-%% Analysis
+%% Data Processing
 
 % Generate PTSH for single unit
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
@@ -60,6 +60,9 @@ cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, 0.1, dataFolder);
+
+% Filter unit data by group for outliers
+cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', true);
 
 
 %% Plotting 
