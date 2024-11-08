@@ -2,22 +2,22 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
     % flagOutliersInPooledData: Identifies and flags extreme outlier units based on smoothed PSTHs.
     % Uses a strict IQR-based threshold with a k-factor of 3.0 for extreme outliers.
 
-    % Default input setup for debugging
-    if nargin < 3
-        plotOutliers = true; % Enable plotting for debugging
-    end
-    if nargin < 2
-        unitFilter = 'both'; % Include both single and multi-units
-    end
-    if nargin < 1
-        % Load or initialize a sample cellDataStruct if not provided
-        try
-            load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct.mat'); % Replace with your sample file path
-            fprintf('Debug: Loaded default cellDataStruct from file.\n');
-        catch
-            error('cellDataStruct not provided and no default file found. Please provide a cellDataStruct.');
-        end
-    end
+    % % Default input setup for debugging
+    % if nargin < 3
+    %     plotOutliers = true; % Enable plotting for debugging
+    % end
+    % if nargin < 2
+    %     unitFilter = 'both'; % Include both single and multi-units
+    % end
+    % if nargin < 1
+    %     % Load or initialize a sample cellDataStruct if not provided
+    %     try
+    %         load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct.mat'); % Replace with your sample file path
+    %         fprintf('Debug: Loaded default cellDataStruct from file.\n');
+    %     catch
+    %         error('cellDataStruct not provided and no default file found. Please provide a cellDataStruct.');
+    %     end
+    % end
 
     % Define response types and groups
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
@@ -100,8 +100,8 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 Q1 = prctile(maxRatesGroup, 25);
                 Q3 = prctile(maxRatesGroup, 75);
                 IQR_value = Q3 - Q1;
-                upperFence = Q3 + 3.0 * IQR_value;
-                lowerFence = Q1 - 3.0 * IQR_value;
+                upperFence = Q3 + 1.5 * IQR_value;
+                lowerFence = Q1 - 1.5 * IQR_value;
 
                 % Store IQR information in groupIQRs
                 groupIQRs.(rType{1}).(grp{1}).IQR = IQR_value;
