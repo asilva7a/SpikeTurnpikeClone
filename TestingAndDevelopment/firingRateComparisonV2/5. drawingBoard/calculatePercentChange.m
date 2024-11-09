@@ -16,6 +16,33 @@ function unitData = calculatePercentChange(unitData, baselineWindow, treatmentTi
     %           - BaselineMean, BaselineStd, BaselineRange, BaselineVar
     %           - PostMean, PostStd, PostRange, PostVar
 
+
+    % Testing: Default values
+     % Default time windows and treatment time if not provided
+    if nargin < 2 || isempty(baselineWindow)
+        baselineWindow = [0, 1800]; % Default to 0 to 1800 seconds
+        fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
+    end
+    if nargin < 3 || isempty(treatmentTime)
+        treatmentTime = 1860; % Default treatment time at 1860 seconds
+        fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
+    end
+    if nargin < 4 || isempty(postWindow)
+        postWindow = [2000, 4000]; % Default to 2000 to 4000 seconds
+        fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
+    end
+
+    % Check if the unit was flagged as an outlier; if so, skip processing
+    if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+        fprintf('Unit %s is flagged as an outlier. Skipping calculation.\n', unitData.cid);
+        return;
+    end
+
+    % Ensure required fields are present
+    if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ~isfield(unitData, 'binWidth')
+        error('Unit data must contain "psthSmoothed", "binEdges", and "binWidth" fields.');
+    end
+    
     % Check if the unit was flagged as an outlier; if so, skip processing
     if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
         fprintf('Unit %s is flagged as an outlier. Skipping calculation.\n', unitData.cid);
