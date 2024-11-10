@@ -62,8 +62,10 @@ cellDataStruct = calculateFiringRate(cellDataStruct);
 cellDataStruct = determineResponseType(cellDataStruct, 1860, 60, dataFolder); % Set bin-width to 60s
 
 % Filter unit data by group for outliers
-cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', true, dataFolder);
+cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', false, dataFolder);
 
+% Calculate PSTH percent change 
+cellDataStruct = calculatePercentChange(cellDataStruct, dataFolder);
 
 %% Plotting 
 
@@ -76,10 +78,10 @@ cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', true, dataFold
 %     'mean+individual');
 
 % Plot Time Locked smoothed PSTHs for pooled data (mean + SEM)
-plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
+%plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
 
 % Plot Time Locked smoothed PSTHs for indidividual units (mean + individual PSTHs)
-plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
+%plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
 
 
 
@@ -88,10 +90,7 @@ plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual'
 disp('Script finished...');
 
 
-%% Optional Plots
 
-% Sanity Check for individual units
-% plotResponseTypeSanityChecks(cellDataStruct, figureFolder);
 
 %% Old Plotting Functions
 
