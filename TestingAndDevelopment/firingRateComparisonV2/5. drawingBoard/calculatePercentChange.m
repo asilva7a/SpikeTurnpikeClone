@@ -1,4 +1,4 @@
-function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow, treatmentTime, postWindow)
+function calculatePercentChange(cellDataStruct, baselineWindow, treatmentTime, postWindow, dataFolder)
     % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
     % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
     %
@@ -13,7 +13,7 @@ function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow,
 
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
     if nargin < 2 || isempty(baselineWindow)
-        baselineWindow = [0, 1800]; % Default baseline period
+        baselineWindow = [0 , 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
     if nargin < 3 || isempty(treatmentTime)
@@ -21,7 +21,7 @@ function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow,
         fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
     end
     if nargin < 4 || isempty(postWindow)
-        postWindow = [2000, 4000]; % Default post-treatment period
+        postWindow = [2000, 5400]; % Default post-treatment period
         fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
     end
 
@@ -83,12 +83,12 @@ function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow,
                 end
             end
         end
-
-       % Save the updated struct to the specified data file path
+    end
+        % Save the updated struct to the specified data file path
         try
             save(dataFolder, 'cellDataStruct', '-v7');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             fprintf('Error saving the file: %s\n', ME.message);
-        end
+        end   
 end
