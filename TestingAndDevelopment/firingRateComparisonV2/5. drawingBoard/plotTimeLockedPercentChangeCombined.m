@@ -65,6 +65,14 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
                 % Proceed if unit has required percent change data and response type
                 if isfield(unitData, 'psthPercentChange') && isfield(unitData, 'responseType')
                     psthPercentChange = unitData.psthPercentChange;
+
+                    % Check for NaN or Inf values in psthPercentChange
+                    if any(isnan(psthPercentChange)) || any(isinf(psthPercentChange))
+                        fprintf('Skipping unit %s due to NaN or Inf values in psthPercentChange\n', unitID);
+                        continue; % Skip this unit
+                    end
+
+                    % Extract bin information
                     binWidth = unitData.binWidth;
                     binEdges = unitData.binEdges;
                     timeVector = binEdges(1:end-1) + binWidth / 2; % Bin centers
