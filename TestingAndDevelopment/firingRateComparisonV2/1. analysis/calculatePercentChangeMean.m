@@ -1,4 +1,4 @@
-function cellDataStruct = calculatePercentChange(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
+function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
     % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
     % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
     %
