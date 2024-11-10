@@ -52,6 +52,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
 
                 % Apply outlier filter: skip unit if marked as an outlier
                 if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental == 1
+                    fprintf('Skipping outlier unit %s from group %s, recording %s\n', unitID, groupName, recordingName);
                     continue; % Skip this unit
                 end
 
@@ -68,7 +69,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
 
                     % Check for NaN or Inf values in psthPercentChange
                     if any(isnan(psthPercentChange)) || any(isinf(psthPercentChange))
-                        fprintf('Skipping unit %s due to NaN or Inf values in psthPercentChange\n', unitID);
+                        fprintf('Skipping unit %s from group %s, recording %s due to NaN or Inf values in psthPercentChange\n', unitID, groupName, recordingName);
                         continue; % Skip this unit
                     end
 
