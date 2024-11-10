@@ -1,4 +1,4 @@
-function calculatePercentChange(cellDataStruct, baselineWindow, treatmentTime, postWindow, dataFolder)
+function calculatePercentChange(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
     % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
     % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
     %
@@ -12,15 +12,15 @@ function calculatePercentChange(cellDataStruct, baselineWindow, treatmentTime, p
     %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
 
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
-    if nargin < 2 || isempty(baselineWindow)
+    if nargin < 3 || isempty(baselineWindow)
         baselineWindow = [0 , 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
-    if nargin < 3 || isempty(treatmentTime)
+    if nargin < 4 || isempty(treatmentTime)
         treatmentTime = 1860; % Default treatment onset time
         fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
     end
-    if nargin < 4 || isempty(postWindow)
+    if nargin < 5 || isempty(postWindow)
         postWindow = [2000, 5400]; % Default post-treatment period
         fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
     end
