@@ -77,8 +77,8 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 Q1 = prctile(maxRatesGroup, 25);
                 Q3 = prctile(maxRatesGroup, 75);
                 IQR_value = Q3 - Q1;
-                upperFence = Q3 + 1.5 * IQR_value;
-                lowerFence = Q1 - 1.5 * IQR_value;
+                upperFence = Q3 + 3.0 * IQR_value;
+                lowerFence = Q1 - 3.0 * IQR_value;
 
                 % Store IQR information in groupIQRs
                 groupIQRs.(rType{1}).(grp{1}).IQR = IQR_value;
