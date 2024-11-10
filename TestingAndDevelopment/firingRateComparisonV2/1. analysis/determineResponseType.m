@@ -1,7 +1,7 @@
 function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth, dataFolder)
     % determineResponseType: Calculates pre- and post-treatment responses for units in cellDataStruct.
     % Determines whether each unit shows an "Increased", "Decreased", or "No Change" response.
-    % 
+    %
     % Inputs:
     %   - cellDataStruct: Data structure containing unit data with firing rates.
     %   - treatmentTime: Time in seconds when treatment was administered.
@@ -88,23 +88,14 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 meanDiff = frTreatmentAvg - frBaselineAvg;
 
                 % Calculate Cliff's Delta
-                n1 = length(FR_before);
-                n2 = length(FR_after);
-                delta = 0;
-                for i = 1:n1
-                    for j = 1:n2
-                        delta = delta + sign(FR_after(j) - FR_before(i));
-                    end
-                end
-                cliffsDelta = delta / (n1 * n2);
+                cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
 
-                % Confidence interval (assuming normality for simplicity)
-                ciLow = meanDiff - 1.96 * pooledStdDev / sqrt(length(FR_before));
-                ciHigh = meanDiff + 1.96 * pooledStdDev / sqrt(length(FR_before));
+                % Verify if Cliff's Delta matches the response label
+                responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
 
                 % Store results, including p-values and additional metrics
                 unitData.pValue = p_wilcoxon;
-                unitData.responseType = responseType;
+                unitData.responseType = responseTypeVerified;  % Use the verified response type
                 unitData.testMetaData = struct( ...
                     'MeanPre', frBaselineAvg, ...
                     'MeanPost', frTreatmentAvg, ...
@@ -116,13 +107,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     'SpikeCountPost', frTreatmentSpikeCount, ...
                     'CliffsDelta', cliffsDelta, ...
                     'MeanDifference', meanDiff, ...
-                    'ConfidenceInterval', [ciLow, ciHigh], ...
                     'pValue_Wilcoxon', p_wilcoxon, ...
                     'pValue_KruskalWallis', p_kruskalwallis);
 
                 % Display debug information
                 fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
-                    unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseType);
+                    unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseTypeVerified);
 
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
@@ -143,4 +133,40 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     end
 end
 
+%% Helper Function to Calculate Cliff's Delta
+function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
+    n1 = length(FR_before);
+    n2 = length(FR_after);
+    delta = 0;
+    for i = 1:n1
+        for j = 1:n2
+            delta = delta + sign(FR_after(j) - FR_before(i));
+        end
+    end
+    cliffsDelta = delta / (n1 * n2);
+end
 
+%% Helper Function to Check Cliff's Delta against Response Type
+function responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta)
+    % Set thresholds for Cliff's Delta interpretation
+    threshold = 0.147; % Common threshold to indicate a small effect size for Cliff's Delta
+    % Determine if Cliff's Delta agrees with the response type label
+    switch responseType
+        case 'Increased'
+            if cliffsDelta < threshold
+                fprintf('Warning: Cliff''s Delta (%.3f) does not support "Increased" response type.\n', cliffsDelta);
+                responseTypeVerified = 'No Change';
+            else
+                responseTypeVerified = 'Increased';
+            end
+        case 'Decreased'
+            if cliffsDelta > -threshold
+                fprintf('Warning: Cliff''s Delta (%.3f) does not support "Decreased" response type.\n', cliffsDelta);
+                responseTypeVerified = 'No Change';
+            else
+                responseTypeVerified = 'Decreased';
+            end
+        otherwise
+            responseTypeVerified = 'No Change';
+    end
+end
