@@ -21,7 +21,7 @@ function cellDataStruct = calculatePercentChange(cellDataStruct, dataFolder, bas
         fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
     end
     if nargin < 5 || isempty(postWindow)
-        postWindow = [2000, 5400]; % Default post-treatment period
+        postWindow = [2000, 5399]; % Default post-treatment period
         fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
     end
 
