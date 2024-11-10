@@ -1,17 +1,15 @@
-function calculatePercentChange(baselineWindow, treatmentTime, postWindow)
-    % calculatePercentChange: Calculates percent change in firing rate for a specified unit's smoothed PSTH,
-    % relative to a baseline period before treatment. Also tracks metadata for both baseline and post-treatment periods.
+function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow, treatmentTime, postWindow)
+    % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
+    % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
     %
     % Inputs:
-    %   - unitData: Struct containing the specific unit's data (e.g., cellDataStruct.Emx.recording.cid311).
-    %   - baselineWindow: 2-element vector [start, end] indicating time range for baseline calculation.
-    %   - treatmentTime: Scalar value indicating the treatment time in seconds.
-    %   - postWindow: 2-element vector [start, end] indicating time range for post-treatment period.
+    %   - cellDataStruct: Main data structure containing all groups, recordings, and units.
+    %   - baselineWindow: 2-element vector [start, end] for the baseline period in seconds.
+    %   - treatmentTime: Scalar, indicating the treatment onset time in seconds.
+    %   - postWindow: 2-element vector [start, end] for the post-treatment period in seconds.
     %
     % Output:
-    %   - unitData: Updated unit structure containing:
-    %       - psthPercentChange: Array of percent change values for the entire PSTH.
-    %       - psthPercentChangeStats: Sub-struct with metadata on baseline and post-treatment stats.
+    %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
 
     % Load data
     load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct_backup_2024-11-08_00-19-23.mat');
@@ -20,78 +18,77 @@ function calculatePercentChange(baselineWindow, treatmentTime, postWindow)
     load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\dataFolder.mat');
     load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\figureFolder.mat');
 
-    % UnitID
-    unitData = cellDataStruct.Emx.emx_hCTZtreated_0001_rec1.cid186;
-
-    % Default baseline and post-treatment time windows if not provided
-    if nargin < 1 || isempty(baselineWindow)
-        baselineWindow = [0, 1800]; % Example baseline window
+    % Default values for baselineWindow, treatmentTime, and postWindow if not provided
+    if nargin < 2 || isempty(baselineWindow)
+        baselineWindow = [0, 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
-    if nargin < 2 || isempty(treatmentTime)
-        treatmentTime = 1860; % Example treatment time
+    if nargin < 3 || isempty(treatmentTime)
+        treatmentTime = 1860; % Default treatment onset time
         fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
     end
-    if nargin < 3 || isempty(postWindow)
-        postWindow = [2000, 4000]; % Example post-treatment window
+    if nargin < 4 || isempty(postWindow)
+        postWindow = [2000, 4000]; % Default post-treatment period
         fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
     end
 
-    % Check if the unit was flagged as an outlier; if so, skip processing
-    if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-        fprintf('Unit is flagged as an outlier. Skipping calculation.\n');
-        return;
+    % Loop through each group, recording, and unit
+    groupNames = fieldnames(cellDataStruct);
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        recordings = fieldnames(cellDataStruct.(groupName));
+
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(cellDataStruct.(groupName).(recordingName));
+
+            for u = 1:length(units)
+                unitID = units{u};
+                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+
+                % Check if unit is flagged as an outlier; skip if flagged
+                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+                    continue;
+                end
+
+                % Ensure the unit has required fields: 'psthSmoothed' and time data
+                if isfield(unitData, 'psthSmoothed') && isfield(unitData, 'binEdges') && isfield(unitData, 'binWidth')
+                    psthSmoothed = unitData.psthSmoothed;
+                    binEdges = unitData.binEdges;
+                    binWidth = unitData.binWidth;
+                    binCenters = binEdges(1:end-1) + binWidth / 2;
+
+                    % Define baseline and post-treatment indices
+                    baselineIndices = binCenters >= baselineWindow(1) & binCenters < baselineWindow(2);
+                    postIndices = binCenters >= postWindow(1) & binCenters < postWindow(2);
+
+                    % Calculate baseline average firing rate
+                    baselineMean = mean(psthSmoothed(baselineIndices), 'omitnan');
+
+                    % Calculate percent change relative to baseline for the entire PSTH
+                    psthPercentChange = ((psthSmoothed - baselineMean) / baselineMean) * 100;
+
+                    % Store percent change array in unit data
+                    cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChange = psthPercentChange;
+
+                    % Compute and store metadata
+                    psthPercentChangeStats = struct();
+                    psthPercentChangeStats.baseline = struct( ...
+                        'mean', baselineMean, ...
+                        'stdDev', std(psthSmoothed(baselineIndices), 'omitnan'), ...
+                        'range', range(psthSmoothed(baselineIndices)), ...
+                        'var', var(psthSmoothed(baselineIndices)));
+
+                    psthPercentChangeStats.postTreatment = struct( ...
+                        'mean', mean(psthSmoothed(postIndices), 'omitnan'), ...
+                        'stdDev', std(psthSmoothed(postIndices), 'omitnan'), ...
+                        'range', range(psthSmoothed(postIndices)),...
+                        'var', var(psthSmoothed(postIndices)));
+    
+                    % Store metadata struct in unit data
+                    cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChangeStats = psthPercentChangeStats;
+                end
+            end
+        end
     end
-
-    % Ensure required fields are present
-    if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ~isfield(unitData, 'binWidth')
-        error('Unit data must contain "psthSmoothed", "binEdges", and "binWidth" fields.');
-    end
-
-    % Calculate bin centers for PSTH data
-    binWidth = unitData.binWidth;
-    binCenters = unitData.binEdges(1:end-1) + binWidth / 2;
-
-    % Identify baseline and post-treatment period indices
-    baselineIndices = binCenters >= baselineWindow(1) & binCenters <= baselineWindow(2);
-    postIndices = binCenters >= postWindow(1) & binCenters <= postWindow(2);
-
-    if ~any(baselineIndices)
-        error('No data found in the specified baseline window.');
-    end
-    if ~any(postIndices)
-        error('No data found in the specified post-treatment window.');
-    end
-
-    % Calculate baseline statistics
-    baselineFiringRates = unitData.psthSmoothed(baselineIndices);
-    baselineMean = mean(baselineFiringRates);
-    baselineStd = std(baselineFiringRates);
-    baselineRange = range(baselineFiringRates);
-    baselineVar = var(baselineFiringRates);
-
-    % Calculate post-treatment statistics
-    postFiringRates = unitData.psthSmoothed(postIndices);
-    postMean = mean(postFiringRates);
-    postStd = std(postFiringRates);
-    postRange = range(postFiringRates);
-    postVar = var(postFiringRates);
-
-    % Calculate percent change for the entire PSTH relative to baseline mean
-    psthPercentChange = ((unitData.psthSmoothed - baselineMean) / baselineMean) * 100;
-
-    % Store percent change and baseline/post-treatment metadata in the unit structure
-    unitData.psthPercentChange = psthPercentChange;
-    unitData.psthPercentChangeStats = struct( ...
-        'BaselineMean', baselineMean, ...
-        'BaselineStd', baselineStd, ...
-        'BaselineRange', baselineRange, ...
-        'BaselineVar', baselineVar, ...
-        'PostMean', postMean, ...
-        'PostStd', postStd, ...
-        'PostRange', postRange, ...
-        'PostVar', postVar ...
-    );
-
-    fprintf('Percent change calculated and stored.\n');
 end
