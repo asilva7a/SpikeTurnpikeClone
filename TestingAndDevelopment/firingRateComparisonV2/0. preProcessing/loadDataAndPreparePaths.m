@@ -1,32 +1,25 @@
 function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths()
-    % loadDataAndPreparePaths: Handles user input for paths and prepares file paths.
+    % loadDataAndPreparePaths: Prompts user to select directories for data and figure storage.
     
-    % Default paths and filenames
-    defaultDataFolder = '/home/silva7a-local/Documents/MATLAB/Data/eb_recordings/SpikeStuff';
+    % Default filenames (within selected folders)
     defaultDataFile = 'all_data.mat';
-    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/Data/eb_recording_plots';
     defaultCellStructFile = 'cellDataStruct.mat';
 
-    % Define user input prompts
-    prompt = {'Enter Data Folder:', 'Enter Data File Name:', 'Enter Figures Folder:'};
-    defaultValues = {defaultDataFolder, defaultDataFile, defaultFigureFolder};
-
     try
-        % Get user input with defaults
-        userInput = inputdlg(prompt, 'Select Data and Figures Paths', [1 50], defaultValues);
-
-        % Handle cancellation gracefully
-        if isempty(userInput)
-            error('UserInput:Cancelled', 'User cancelled the input. Exiting script.');
+        % Prompt user to select Data Folder
+        dataFolder = uigetdir('', 'Select the Data Folder');
+        if dataFolder == 0
+            error('UserInput:Cancelled', 'No Data Folder selected. Exiting script.');
         end
 
-        % Extract inputs from the user dialog
-        dataFolder = userInput{1};
-        dataFile = userInput{2};
-        figureFolder = userInput{3};
+        % Prompt user to select Figures Folder
+        figureFolder = uigetdir('', 'Select the Figures Folder');
+        if figureFolder == 0
+            error('UserInput:Cancelled', 'No Figures Folder selected. Exiting script.');
+        end
 
         % Generate file paths
-        dataFilePath = fullfile(dataFolder, dataFile);
+        dataFilePath = fullfile(dataFolder, defaultDataFile);
         cellDataStructPath = fullfile(dataFolder, defaultCellStructFile);
 
         % Ensure the figures folder exists (create if needed)
@@ -42,9 +35,8 @@ function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadData
 
         % Display selected paths for confirmation
         fprintf('Data File: %s\n', dataFilePath);
-        fprintf('Data File Path: %s/n',dataFilePath)
+        fprintf('Data Folder: %s\n', dataFolder);
         fprintf('Figure Folder: %s\n', figureFolder);
-        fprintf('')
 
     catch ME
         % Log errors and rethrow
