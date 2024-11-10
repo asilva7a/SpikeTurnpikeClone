@@ -11,13 +11,6 @@ function cellDataStruct = calculatePercentChange(cellDataStruct, baselineWindow,
     % Output:
     %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
 
-    % Load data
-    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct_backup_2024-11-08_00-19-23.mat');
-    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStructPath.mat');
-    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\dataFilePath.mat');
-    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\dataFolder.mat');
-    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\figureFolder.mat');
-
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
     if nargin < 2 || isempty(baselineWindow)
         baselineWindow = [0, 1800]; % Default baseline period
