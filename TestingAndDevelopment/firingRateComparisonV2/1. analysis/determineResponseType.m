@@ -1,6 +1,7 @@
 function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth, dataFolder)
     % determineResponseType: Calculates pre- and post-treatment responses for units in cellDataStruct.
     % Determines whether each unit shows an "Increased", "Decreased", or "No Change" response.
+    % 
     % Inputs:
     %   - cellDataStruct: Data structure containing unit data with firing rates.
     %   - treatmentTime: Time in seconds when treatment was administered.
@@ -65,14 +66,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
 
                 % Determine response type based on both p-values and median change
-                if p_kruskalwallis < 0.01 && p_wilcoxon < 0.01
+                if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
                     if median(FR_after) > median(FR_before)
                         responseType = 'Increased';
                     else
                         responseType = 'Decreased';
                     end
-                elseif p_kruskalwallis < 0.01
-                    responseType = 'No Change';
                 else
                     responseType = 'No Change';
                 end
@@ -88,9 +87,16 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 frTreatmentSpikeCount = sum(FR_after) * binWidth;
                 meanDiff = frTreatmentAvg - frBaselineAvg;
 
-                % Effect size (Cohen's d)
-                pooledStdDev = mean([frBaselineStdDev, frTreatmentStdDev]);
-                effectSize = meanDiff / pooledStdDev;
+                % Calculate Cliff's Delta
+                n1 = length(FR_before);
+                n2 = length(FR_after);
+                delta = 0;
+                for i = 1:n1
+                    for j = 1:n2
+                        delta = delta + sign(FR_after(j) - FR_before(i));
+                    end
+                end
+                cliffsDelta = delta / (n1 * n2);
 
                 % Confidence interval (assuming normality for simplicity)
                 ciLow = meanDiff - 1.96 * pooledStdDev / sqrt(length(FR_before));
@@ -108,15 +114,15 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     'VariancePost', frTreatmentVariance, ...
                     'SpikeCountPre', frBaselineSpikeCount, ...
                     'SpikeCountPost', frTreatmentSpikeCount, ...
-                    'EffectSize', effectSize, ...
+                    'CliffsDelta', cliffsDelta, ...
                     'MeanDifference', meanDiff, ...
                     'ConfidenceInterval', [ciLow, ciHigh], ...
                     'pValue_Wilcoxon', p_wilcoxon, ...
                     'pValue_KruskalWallis', p_kruskalwallis);
 
                 % Display debug information
-                fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Response: %s\n', ...
-                    unitID, p_wilcoxon, p_kruskalwallis, responseType);
+                fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
+                    unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseType);
 
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
@@ -136,4 +142,5 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         fprintf('Data folder not specified; struct not saved to disk.\n');
     end
 end
+
 
