@@ -1,51 +1,45 @@
-function unitData = calculatePercentChange(unitData, baselineWindow, treatmentTime, postWindow)
-    % calculatePercentChange: Calculates percent change in firing rate for a unit's smoothed PSTH,
-    % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
+function calculatePercentChange(baselineWindow, treatmentTime, postWindow)
+    % calculatePercentChange: Calculates percent change in firing rate for a specified unit's smoothed PSTH,
+    % relative to a baseline period before treatment. Also tracks metadata for both baseline and post-treatment periods.
     %
     % Inputs:
-    %   - unitData: Data structure for an individual unit, containing fields 'psthSmoothed', 'binEdges',
-    %               and 'isOutlierExperimental'.
-    %   - baselineWindow: 2-element vector [start, end] indicating the time range for baseline calculation.
+    %   - unitData: Struct containing the specific unit's data (e.g., cellDataStruct.Emx.recording.cid311).
+    %   - baselineWindow: 2-element vector [start, end] indicating time range for baseline calculation.
     %   - treatmentTime: Scalar value indicating the treatment time in seconds.
-    %   - postWindow: 2-element vector [start, end] indicating the time range for post-treatment period.
+    %   - postWindow: 2-element vector [start, end] indicating time range for post-treatment period.
     %
     % Output:
     %   - unitData: Updated unit structure containing:
     %       - psthPercentChange: Array of percent change values for the entire PSTH.
-    %       - psthPercentChangeStats: Sub-struct with metadata on baseline and post-treatment stats:
-    %           - BaselineMean, BaselineStd, BaselineRange, BaselineVar
-    %           - PostMean, PostStd, PostRange, PostVar
+    %       - psthPercentChangeStats: Sub-struct with metadata on baseline and post-treatment stats.
 
+    % Load data
+    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStruct_backup_2024-11-08_00-19-23.mat');
+    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\cellDataStructPath.mat');
+    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\dataFilePath.mat');
+    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\dataFolder.mat');
+    load('C:\Users\adsil\Documents\Repos\SpikeTurnpikeClone\TestData\TestVariables\figureFolder.mat');
 
-    % Testing: Default values
-     % Default time windows and treatment time if not provided
-    if nargin < 2 || isempty(baselineWindow)
-        baselineWindow = [0, 1800]; % Default to 0 to 1800 seconds
+    % UnitID
+    unitData = cellDataStruct.Emx.emx_hCTZtreated_0001_rec1.cid186;
+
+    % Default baseline and post-treatment time windows if not provided
+    if nargin < 1 || isempty(baselineWindow)
+        baselineWindow = [0, 1800]; % Example baseline window
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
-    if nargin < 3 || isempty(treatmentTime)
-        treatmentTime = 1860; % Default treatment time at 1860 seconds
+    if nargin < 2 || isempty(treatmentTime)
+        treatmentTime = 1860; % Example treatment time
         fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
     end
-    if nargin < 4 || isempty(postWindow)
-        postWindow = [2000, 4000]; % Default to 2000 to 4000 seconds
+    if nargin < 3 || isempty(postWindow)
+        postWindow = [2000, 4000]; % Example post-treatment window
         fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
     end
 
     % Check if the unit was flagged as an outlier; if so, skip processing
     if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-        fprintf('Unit %s is flagged as an outlier. Skipping calculation.\n', unitData.cid);
-        return;
-    end
-
-    % Ensure required fields are present
-    if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ~isfield(unitData, 'binWidth')
-        error('Unit data must contain "psthSmoothed", "binEdges", and "binWidth" fields.');
-    end
-    
-    % Check if the unit was flagged as an outlier; if so, skip processing
-    if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-        fprintf('Unit %s is flagged as an outlier. Skipping calculation.\n', unitData.cid);
+        fprintf('Unit is flagged as an outlier. Skipping calculation.\n');
         return;
     end
 
@@ -61,7 +55,7 @@ function unitData = calculatePercentChange(unitData, baselineWindow, treatmentTi
     % Identify baseline and post-treatment period indices
     baselineIndices = binCenters >= baselineWindow(1) & binCenters <= baselineWindow(2);
     postIndices = binCenters >= postWindow(1) & binCenters <= postWindow(2);
-    
+
     if ~any(baselineIndices)
         error('No data found in the specified baseline window.');
     end
@@ -99,6 +93,5 @@ function unitData = calculatePercentChange(unitData, baselineWindow, treatmentTi
         'PostVar', postVar ...
     );
 
-    fprintf('Percent change calculated and stored for unit %s.\n', unitData.cid);
+    fprintf('Percent change calculated and stored.\n');
 end
-
