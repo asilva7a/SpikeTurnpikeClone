@@ -4,7 +4,7 @@ function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadData
     % Default paths and filenames
     defaultDataFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData';
     defaultDataFile = 'all_data.mat';
-    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData';
+    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/figures_BinWidth-60s_BoxCar-5';
     defaultCellStructFile = 'cellDataStruct.mat';
 
     % Define user input prompts
