@@ -71,7 +71,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                         isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.6 || sum(FR_after == 0) / numel(FR_after) >= 0.6);
                         
                         % Perform statistical tests regardless of flags
-                        [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'bulk');
+                        [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01, 'tail', 'both');
                         
                         combinedData = [FR_before(:); FR_after(:)];
                         groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
