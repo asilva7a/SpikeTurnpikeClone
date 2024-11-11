@@ -226,7 +226,7 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     % Labels, title, and limits
     xlabel('Time (s)');
-    ylabel('Firing Rate (spikes/s)');
+    ylabel('Firing Rate Percent Change(%)');
     title(plotTitle);
     
     % Set axis limits
