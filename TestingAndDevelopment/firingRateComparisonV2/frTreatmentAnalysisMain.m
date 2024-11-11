@@ -65,7 +65,7 @@ cellDataStruct = determineResponseType(cellDataStruct, 1860, 60, dataFolder); % 
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', false, dataFolder);
 
 % Calculate PSTH percent change 
-cellDataStruct = calculatePercentChange(cellDataStruct, dataFolder);
+cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
 
 %% Plotting 
 
@@ -82,6 +82,12 @@ cellDataStruct = calculatePercentChange(cellDataStruct, dataFolder);
 
 % Plot Time Locked smoothed PSTHs for indidividual units (mean + individual PSTHs)
 %plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
+
+% Plot Time locked percent change PSTHs (mean + inidividual units)
+ plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+individual');
+
+% Plot Time locked percent change PSTHs (mean + sem)
+ plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+sem');
 
 
 
