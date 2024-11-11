@@ -18,6 +18,8 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     excludedUnits = struct('UnitID', {}, 'Recording', {}, 'Group', {}, 'ExclusionReason', {});
     excludedCount = 1;
 
+
+
     % Define silence score parameters
     silence_threshold = 0.01; % Threshold for considering a bin as silent
     silence_score_threshold = 0.8; % Threshold for silence score to classify as mostly silent
@@ -151,6 +153,21 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         end
     end
     
+    % Track excluded units
+    if nargin >= 4 && ~isempty(dataFolder)
+        [excludedUnits, excludedTable] = trackExcludedUnits(cellDataStruct, 'both', true);
+        
+        % Save exclusion data
+        if ~isempty(excludedUnits)
+            tableFileName = 'ExcludedUnits_ResponseAnalysis.csv';
+            tablePath = fullfile(dataFolder, tableFileName);
+            writetable(excludedTable, tablePath);
+            
+            matFile = fullfile(dataFolder, 'exclusions.mat');
+            save(matFile, 'excludedUnits', 'excludedTable');
+        end
+    end
+    
     % Save Updated Struct
     if nargin >= 4 && ~isempty(dataFolder)
         try
@@ -167,20 +184,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         fprintf('Data folder not specified; struct not saved to disk.\n');
     end
 
-    % Track excluded units
-    if nargin >= 4 && ~isempty(dataFolder)
-        [excludedUnits, excludedTable] = trackExcludedUnits(cellDataStruct, 'both', true);
-        
-        % Save exclusion data
-        if ~isempty(excludedUnits)
-            tableFileName = 'ExcludedUnits_ResponseAnalysis.csv';
-            tablePath = fullfile(dataFolder, tableFileName);
-            writetable(excludedTable, tablePath);
-            
-            matFile = fullfile(dataFolder, 'exclusions.mat');
-            save(matFile, 'excludedUnits', 'excludedTable');
-        end
-    end
+   
 
 end
 
