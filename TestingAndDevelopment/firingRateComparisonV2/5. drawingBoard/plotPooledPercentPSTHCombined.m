@@ -12,12 +12,23 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
 
     % Debugging Preload Data
     try
+        % Set up data path and load data
         dataPath = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'cellDataStruct.mat');
         loadedData = load(dataPath);
         cellDataStruct = loadedData.cellDataStruct;  % Extract the actual structure
         clear loadedData  % Clean up temporary variable
+        
+        % Set up figure folder path
+        figureFolder = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'TestFigures');
+        
+        % Create figure folder if it doesn't exist
+        if ~isfolder(figureFolder)
+            mkdir(figureFolder);
+            fprintf('Created figure folder: %s\n', figureFolder);
+        end
+        
     catch ME
-        error('Failed to load data: %s', ME.message);
+        error('Failed to load data or create figure folder: %s', ME.message);
     end
 
     % Set defaults if arguments are missing
@@ -138,16 +149,44 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
         title('No Change (No Data)');
     end
 
-    % Save figure to the specified directory
+    % Save figure to the specified directory with optimized settings
+    try
+    % Create save directory if it doesn't exist
     saveDir = fullfile(figureFolder, 'PooledPercentChangePSTHs');
     if ~isfolder(saveDir)
         mkdir(saveDir);
     end
-    fileName = sprintf('Pooled_Emx_Pvalb_%s_percentChangePSTH_%s.fig', plotType, unitFilter);
-    saveas(gcf, fullfile(saveDir, fileName));
-    fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
-
-    close(gcf); % Close to free memory
+    
+    % Set up base filename
+    baseFileName = sprintf('Pooled_Emx_Pvalb_%s_percentChangePSTH_%s', plotType, unitFilter);
+    
+    % Save as .fig for MATLAB editing
+    figFile = fullfile(saveDir, [baseFileName '.fig']);
+    savefig(gcf, figFile); % 'compact' reduces file size
+    
+    % Save as high-resolution PNG
+    pngFile = fullfile(saveDir, [baseFileName '.png']);
+    exportgraphics(gcf, pngFile, 'Resolution', 300);
+    
+    % Optional: Save as PDF for vector graphics
+    pdfFile = fullfile(saveDir, [baseFileName '.pdf']);
+    exportgraphics(gcf, pdfFile, 'ContentType', 'vector');
+    
+    % Report success
+    fprintf('Figures saved successfully:\n');
+    fprintf('  FIG: %s\n', figFile);
+    fprintf('  PNG: %s\n', pngFile);
+    fprintf('  PDF: %s\n', pdfFile);
+    
+    catch ME
+    warning('Failed to save figures:');
+    fprintf('Error: %s\n', ME.message);
+    end
+    
+    % Close figure to free memory
+    if ishandle(gcf)
+    close(gcf);
+    end
 end
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
