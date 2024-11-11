@@ -187,15 +187,16 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
 end
 
 
-%% Helper Function to Calculate Cliff's Delta
 function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
     % Memory-efficient implementation for large arrays
-    chunkSize = 1000;  % Adjust based on available memory
     totalComparisons = length(FR_before) * length(FR_after);
     delta = 0;
     
-    % Process in chunks
+    % Process in chunks to avoid memory issues
+    chunkSize = 1000;  % Adjust based on available memory
+    
     for i = 1:chunkSize:length(FR_before)
+        % Get current chunk indices
         endIdx = min(i + chunkSize - 1, length(FR_before));
         chunk_before = FR_before(i:endIdx);
         
@@ -205,6 +206,7 @@ function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
         end
     end
     
+    % Calculate final Cliff's Delta
     cliffsDelta = delta / totalComparisons;
 end
 
