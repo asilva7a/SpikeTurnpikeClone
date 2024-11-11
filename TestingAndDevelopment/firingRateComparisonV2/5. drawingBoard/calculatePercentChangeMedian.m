@@ -11,9 +11,10 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
     % Output:
     %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
 
+
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
     if nargin < 3 || isempty(baselineWindow)
-        baselineWindow = [0 , 1800]; % Default baseline period
+        baselineWindow = [1500, 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
     if nargin < 4 || isempty(treatmentTime)
@@ -39,6 +40,11 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
 
+                 % Display the unit being processed for debugging
+                 fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
+                        groupName, recordingName, unitID);
+
+
                 % Check if unit is flagged as an outlier; skip if flagged
                 if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
                     continue;
@@ -56,10 +62,22 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
                     postIndices = binCenters >= postWindow(1) & binCenters < postWindow(2);
 
                     % Calculate baseline average firing rate
-                    baselineMedian = median(psthSmoothed(baselineIndices), 'omitnan');
+                    baselineMedian = median(psthSmoothed(baselineIndices & psthSmoothed > 0), 'omitnan');
+                    
+                    disp("Calculated baseline median:");
+                    disp(baselineMedian);
 
-                    % Calculate percent change relative to baseline for the entire PSTH
-                    psthPercentChange = ((psthSmoothed - baselineMedian) / baselineMedian) * 100;
+                     % Calculate percent change relative to baseline for the entire PSTH
+                    if isequal(baselineMedian, 0)  % Conditional scaling based on presence of zeros in baseline
+                        scalingFactor = 0.0001;
+                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMedian + scalingFactor)) / (baselineMedian + scalingFactor)) * 100;
+                    elseif isnan(baselineMedian)
+                        scalingFactor = 0.0001;
+                        baselineMedian = 0.0001;
+                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMedian + scalingFactor)) / (baselineMedian + scalingFactor)) * 100;
+                    else
+                        psthPercentChange = ((psthSmoothed - baselineMedian) / baselineMedian) * 100;
+                    end
 
                     % Store percent change array in unit data
                     cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChange = psthPercentChange;
