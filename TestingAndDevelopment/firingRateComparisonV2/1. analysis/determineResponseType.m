@@ -138,13 +138,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     % Display debug information
                     fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
                         unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseTypeVerified);
-            
                     end
-            end
-            
+
             % Save the updated unit data back to the structure
             cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
-
+      
+            end
         end
     end
     
