@@ -89,7 +89,7 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
 
                 % Proceed if unit has required fields
                 if isfield(unitData, 'psthPercentChange') && isfield(unitData, 'responseType')
-                    psth = unitData.psthSmoothed;
+                    psth = unitData.psthPercentChange;
                     binWidth = unitData.binWidth;
                     binEdges = unitData.binEdges;
                     timeVector = binEdges(1:end-1) + binWidth / 2; % Bin centers
