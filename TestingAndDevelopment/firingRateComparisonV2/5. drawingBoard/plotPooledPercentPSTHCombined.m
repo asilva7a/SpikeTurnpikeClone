@@ -10,26 +10,26 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
     %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
     %   - outlierFilter: If true, excludes units marked as outliers (isOutlierExperimental == 1).
 
-    % Debugging Preload Data
-    try
-        % Set up data path and load data
-        dataPath = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'cellDataStruct.mat');
-        loadedData = load(dataPath);
-        cellDataStruct = loadedData.cellDataStruct;  % Extract the actual structure
-        clear loadedData  % Clean up temporary variable
-        
-        % Set up figure folder path
-        figureFolder = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'TestFigures');
-        
-        % Create figure folder if it doesn't exist
-        if ~isfolder(figureFolder)
-            mkdir(figureFolder);
-            fprintf('Created figure folder: %s\n', figureFolder);
-        end
-        
-    catch ME
-        error('Failed to load data or create figure folder: %s', ME.message);
-    end
+    % % Debugging Preload Data
+    % try
+    %     % Set up data path and load data
+    %     dataPath = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'cellDataStruct.mat');
+    %     loadedData = load(dataPath);
+    %     cellDataStruct = loadedData.cellDataStruct;  % Extract the actual structure
+    %     clear loadedData  % Clean up temporary variable
+    % 
+    %     % Set up figure folder path
+    %     figureFolder = fullfile('C:', 'Users', 'adsil', 'Documents', 'Repos', 'SpikeTurnpikeClone', 'TestData', 'TestFigures');
+    % 
+    %     % Create figure folder if it doesn't exist
+    %     if ~isfolder(figureFolder)
+    %         mkdir(figureFolder);
+    %         fprintf('Created figure folder: %s\n', figureFolder);
+    %     end
+    % 
+    % catch ME
+    %     error('Failed to load data or create figure folder: %s', ME.message);
+    % end
 
     % Set defaults if arguments are missing
     if nargin < 6 || isempty(outlierFilter)
@@ -102,7 +102,10 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
                             decreasedPSTHs = [decreasedPSTHs; psth];
                         case 'No Change'
                             noChangePSTHs = [noChangePSTHs; psth];
-                        case 'MostlySilent' || 'MostlyZero'
+                        case {'MostlySilent', 'MostlyZero'}  % Proper syntax for multiple cases
+                            continue;
+                        otherwise
+                            warning('Unknown response type: %s', unitData.responseType);
                             continue;
                     end
                 end
