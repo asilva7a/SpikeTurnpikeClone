@@ -3,7 +3,8 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
     % All units will have an isOutlierExperimental field where 1 indicates an outlier and 0 indicates non-outlier.
 
     % Define response types and groups
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'NoChange', ... 
+        'Mostly Silent', 'Mostly Zeroes'};
     experimentGroups = {'Emx', 'Pvalb', 'Control'};
     
     % Initialize groupIQRs structure to store IQR and upper fence for each response type and group
@@ -42,19 +43,24 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                
+                % Inside the loop for each unit
+
                 % Initialize isOutlierExperimental field with a default value of 0
                 cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
                 
                 % Apply unit filter
                 isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+                
                 if (strcmp(unitFilter, 'single') && ~isSingleUnit) || (strcmp(unitFilter, 'multi') && isSingleUnit)
                     continue;
                 end
                 
-                % Check if responseType exists; if not, skip the unit
                 if isfield(unitData, 'responseType')
                     responseType = replace(unitData.responseType, ' ', ''); % Normalize 'No Change' to 'NoChange'
+                    % Skip 'Mostly Silent' and 'Mostly Zeroes' units
+                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZeroes')
+                        continue;
+                    end
                 else
                     continue; % Skip this unit if responseType is missing
                 end
