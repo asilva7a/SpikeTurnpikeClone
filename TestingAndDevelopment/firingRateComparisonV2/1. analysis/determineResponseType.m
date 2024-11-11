@@ -18,11 +18,9 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     excludedUnits = struct('UnitID', {}, 'Recording', {}, 'Group', {}, 'ExclusionReason', {});
     excludedCount = 1;
 
-
-
     % Define silence score parameters
-    silence_threshold = 0.01; % Threshold for considering a bin as silent
-    silence_score_threshold = 0.8; % Threshold for silence score to classify as mostly silent
+    silence_threshold = 0.001; % Threshold for considering a bin as silent
+    silence_score_threshold = 1; % Threshold for silence score to classify as mostly silent
 
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
@@ -191,10 +189,23 @@ end
 
 %% Helper Function to Calculate Cliff's Delta
 function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
-    % Vectorized implementation
-    [X, Y] = meshgrid(FR_before, FR_after);
-    delta = sum(sum(sign(Y - X)));
-    cliffsDelta = delta / (length(FR_before) * length(FR_after));
+    % Memory-efficient implementation for large arrays
+    chunkSize = 1000;  % Adjust based on available memory
+    totalComparisons = length(FR_before) * length(FR_after);
+    delta = 0;
+    
+    % Process in chunks
+    for i = 1:chunkSize:length(FR_before)
+        endIdx = min(i + chunkSize - 1, length(FR_before));
+        chunk_before = FR_before(i:endIdx);
+        
+        % Compare chunk with FR_after
+        for j = 1:length(FR_after)
+            delta = delta + sum(sign(FR_after(j) - chunk_before));
+        end
+    end
+    
+    cliffsDelta = delta / totalComparisons;
 end
 
 %% Helper Function to Check Cliff's Delta against Response Type
