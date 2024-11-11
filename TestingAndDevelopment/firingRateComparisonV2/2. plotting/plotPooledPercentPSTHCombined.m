@@ -102,8 +102,6 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
                             decreasedPSTHs = [decreasedPSTHs; psth];
                         case 'No Change'
                             noChangePSTHs = [noChangePSTHs; psth];
-                        case {'MostlySilent', 'MostlyZero'}  % Proper syntax for multiple cases
-                            continue;
                         otherwise
                             warning('Unknown response type: %s', unitData.responseType);
                             continue;
