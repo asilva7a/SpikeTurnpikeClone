@@ -54,92 +54,85 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 FR_before = psthData(preIndices);
                 FR_after = psthData(postIndices);
 
-          
-                 % Ensure sufficient data in both periods
-                if isempty(FR_before) || isempty(FR_after)
-                    warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
-                    unitData.responseType = 'Data Missing';
-                    continue;
-                end
-
-                 % Calculate silence scores
+                % Calculate silence scores
                 [silence_score_before, silence_score_after] = calculateSilenceScore(FR_before, FR_after, binWidth, silence_threshold);
-    
-                % Check for mostly silent data
-                if silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold
-                    warning('Mostly silent data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
-                    unitData.responseType = 'Mostly Silent';
-                    continue;
-                elseif sum(FR_before == 0) / numel(FR_before) >= 0.6 || ...
-                       sum(FR_after == 0) / numel(FR_after) >= 0.6
-                    warning('Mostly zero data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
-                    unitData.responseType = 'Mostly Zero';
-                    continue;
-                end
                 
                 % Store Silence Score in Unit Data
                 unitData.silenceScoreBefore = silence_score_before; % Add silence score outside of metadata struct
                 unitData.silenceScoreAfter = silence_score_after;
 
-                % Perform Wilcoxon signed-rank test
-                [p_wilcoxon, ~] = ranksum(FR_before, FR_after);
-
-                % Perform Kruskal-Wallis test for distribution differences between pre- and post-treatment
-                combinedData = [FR_before(:); FR_after(:)];
-                groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
-                p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
-
-                % Determine response type based on both p-values and median change
-                if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
-                    if median(FR_after) > median(FR_before)
-                        responseType = 'Increased';
-                    else
-                        responseType = 'Decreased';
-                    end
+                % Check for mostly silent data
+                if isempty(FR_before) || isempty(FR_after)
+                    warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.responseType = 'Data Missing';
+                elseif silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold
+                    warning('Mostly silent data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.responseType = 'Mostly Silent';
+                elseif sum(FR_before == 0) / numel(FR_before) >= 0.6 || sum(FR_after == 0) / numel(FR_after) >= 0.6
+                    warning('Mostly zero data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.responseType = 'Mostly Zero';
                 else
-                    responseType = 'No Change';
+                    % Perform Wilcoxon signed-rank test
+                    [p_wilcoxon, ~] = ranksum(FR_before, FR_after);
+    
+                    % Perform Kruskal-Wallis test for distribution differences between pre- and post-treatment
+                    combinedData = [FR_before(:); FR_after(:)];
+                    groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
+                    p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
+    
+                    % Determine response type based on both p-values and median change
+                    if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
+                        if median(FR_after) > median(FR_before)
+                            responseType = 'Increased';
+                        else
+                            responseType = 'Decreased';
+                        end
+                    else
+                        responseType = 'No Change';
+                    end
+    
+                    % Calculate additional quality metrics
+                    frBaselineAvg = mean(FR_before);
+                    frTreatmentAvg = mean(FR_after);
+                    frBaselineStdDev = std(FR_before);
+                    frTreatmentStdDev = std(FR_after);
+                    frBaselineVariance = var(FR_before);
+                    frTreatmentVariance = var(FR_after);
+                    frBaselineSpikeCount = sum(FR_before) * binWidth;
+                    frTreatmentSpikeCount = sum(FR_after) * binWidth;
+                    meanDiff = frTreatmentAvg - frBaselineAvg;
+    
+                    % Calculate Cliff's Delta
+                    cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
+    
+                    % Verify if Cliff's Delta matches the response label
+                    responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
+    
+                    % Store results, including p-values and additional metrics
+                    unitData.pValue = p_wilcoxon;
+                    unitData.responseType = responseTypeVerified;  % Use the verified response type
+                    unitData.testMetaData = struct( ...
+                        'MeanPre', frBaselineAvg, ...
+                        'MeanPost', frTreatmentAvg, ...
+                        'StdDevPre', frBaselineStdDev, ...
+                        'StdDevPost', frTreatmentStdDev, ...
+                        'VariancePre', frBaselineVariance, ...
+                        'VariancePost', frTreatmentVariance, ...
+                        'SpikeCountPre', frBaselineSpikeCount, ...
+                        'SpikeCountPost', frTreatmentSpikeCount, ...
+                        'CliffsDelta', cliffsDelta, ...
+                        'MeanDifference', meanDiff, ...
+                        'pValue_Wilcoxon', p_wilcoxon, ...
+                        'pValue_KruskalWallis', p_kruskalwallis);
+    
+                    % Display debug information
+                    fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
+                        unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseTypeVerified);
                 end
-
-                % Calculate additional quality metrics
-                frBaselineAvg = mean(FR_before);
-                frTreatmentAvg = mean(FR_after);
-                frBaselineStdDev = std(FR_before);
-                frTreatmentStdDev = std(FR_after);
-                frBaselineVariance = var(FR_before);
-                frTreatmentVariance = var(FR_after);
-                frBaselineSpikeCount = sum(FR_before) * binWidth;
-                frTreatmentSpikeCount = sum(FR_after) * binWidth;
-                meanDiff = frTreatmentAvg - frBaselineAvg;
-
-                % Calculate Cliff's Delta
-                cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
-
-                % Verify if Cliff's Delta matches the response label
-                responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
-
-                % Store results, including p-values and additional metrics
-                unitData.pValue = p_wilcoxon;
-                unitData.responseType = responseTypeVerified;  % Use the verified response type
-                unitData.testMetaData = struct( ...
-                    'MeanPre', frBaselineAvg, ...
-                    'MeanPost', frTreatmentAvg, ...
-                    'StdDevPre', frBaselineStdDev, ...
-                    'StdDevPost', frTreatmentStdDev, ...
-                    'VariancePre', frBaselineVariance, ...
-                    'VariancePost', frTreatmentVariance, ...
-                    'SpikeCountPre', frBaselineSpikeCount, ...
-                    'SpikeCountPost', frTreatmentSpikeCount, ...
-                    'CliffsDelta', cliffsDelta, ...
-                    'MeanDifference', meanDiff, ...
-                    'pValue_Wilcoxon', p_wilcoxon, ...
-                    'pValue_KruskalWallis', p_kruskalwallis);
-
-                % Display debug information
-                fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
-                    unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseTypeVerified);
 
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
+
             end
         end
     end
