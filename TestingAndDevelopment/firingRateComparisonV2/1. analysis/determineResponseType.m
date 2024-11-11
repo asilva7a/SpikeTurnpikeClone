@@ -16,7 +16,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
 
     % Define silence score parameters
     silence_threshold = 0.01; % Threshold for considering a bin as silent
-    silence_score_threshold = 0.6; % Threshold for silence score to classify as mostly silent
+    silence_score_threshold = 0.8; % Threshold for silence score to classify as mostly silent
 
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
@@ -152,15 +152,10 @@ end
 
 %% Helper Function to Calculate Cliff's Delta
 function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
-    n1 = length(FR_before);
-    n2 = length(FR_after);
-    delta = 0;
-    for i = 1:n1
-        for j = 1:n2
-            delta = delta + sign(FR_after(j) - FR_before(i));
-        end
-    end
-    cliffsDelta = delta / (n1 * n2);
+    % Vectorized implementation
+    [X, Y] = meshgrid(FR_before, FR_after);
+    delta = sum(sum(sign(Y - X)));
+    cliffsDelta = delta / (length(FR_before) * length(FR_after));
 end
 
 %% Helper Function to Check Cliff's Delta against Response Type
