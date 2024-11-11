@@ -13,10 +13,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         treatmentTime = 1860;
         fprintf('No treatment time specified. Using default: %d seconds.\n', treatmentTime);
     end
-    
-    % Initiate Unit Exclusion Tracking
-    excludedUnits = struct('UnitID', {}, 'Recording', {}, 'Group', {}, 'ExclusionReason', {});
-    excludedCount = 1;
 
     % Define silence score parameters
     silence_threshold = 0.0001; % Threshold for considering a bin as silent
@@ -42,7 +38,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     binWidth = unitData.binWidth;
                     fprintf('Using bin width from data structure: %.2f seconds.\n', binWidth);
                 end
-
+                
+                % Initiate Unit Flags
+                unitData.unitFlags = struct('isMostlySilent', false, 'isMostlyZero', false, 'isDataMissing', false);
+                
                 % Extract PSTH data and bin edges
                 psthData = unitData.psthSmoothed;
                 binEdges = unitData.binEdges;
@@ -60,92 +59,86 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
 
                 % Calculate silence scores
                 [silence_score_before, silence_score_after] = calculateSilenceScore(FR_before, FR_after, binWidth, silence_threshold);
-                
-                % Store Silence Score in Unit Data
-                unitData.silenceScoreBefore = silence_score_before; % Add silence score outside of metadata struct
-                unitData.silenceScoreAfter = silence_score_after;
 
-                    if isempty(FR_before) || isempty(FR_after)
-                        warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
-                        unitData.responseType = 'Data Missing';
-                        responseType = 'Data Missing';
-                    else
-                        % Set Initial Flags
-                        isMostlySilent = (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
-                        isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.95 || sum(FR_after == 0) / numel(FR_after) >= 0.95);
-                        
-                        % Perform statistical tests regardless of flags
-                        [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
-                        
-                        combinedData = [FR_before(:); FR_after(:)];
-                        groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
-                        p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
-                        
-                        % Determine base response type
-                        if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
-                            if median(FR_after) > median(FR_before)
-                                responseType = 'Increased';
-                            else
-                                responseType = 'Decreased';
-                            end
+                % Main Processing block
+                if isempty(FR_before) || isempty(FR_after)
+                    warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.unitFlags.isDataMissing = true;
+                    responseType = 'Missing Data';  
+                else
+                    % Set flags but don't affect response type
+                    isMostlySilent = (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
+                    isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.6 || sum(FR_after == 0) / numel(FR_after) >= 0.6);
+                    
+                    % Store flags in unit data
+                    unitData.unitFlags.isMostlySilent = isMostlySilent;
+                    unitData.unitFlags.isMostlyZero = isMostlyZero;
+
+                    % Perform statistical tests for all units
+                    [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
+                    combinedData = [FR_before(:); FR_after(:)];
+                    groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
+                    p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
+                    
+                    % Determine response type based on statistical tests
+                    if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
+                        if median(FR_after) > median(FR_before)
+                            responseType = 'Increased';
                         else
-                            responseType = 'No Change';
+                            responseType = 'Decreased';
                         end
-                        
-                        % Apply flags if present
-                        if isMostlySilent
-                            warning('Mostly silent data for Unit %s in %s, %s.', unitID, groupName, recordingName);
-                            responseType = 'Mostly Silent';
-                        elseif isMostlyZero
-                            warning('Mostly zero data for Unit %s in %s, %s.', unitID, groupName, recordingName);
-                            responseType = 'Mostly Zero';
-                        end
-                    
-                    % Calculate additional metrics regardless of response type
-                    frBaselineAvg = mean(FR_before);
-                    frTreatmentAvg = mean(FR_after);
-                    frBaselineStdDev = std(FR_before);
-                    frTreatmentStdDev = std(FR_after);
-                    frBaselineVariance = var(FR_before);
-                    frTreatmentVariance = var(FR_after);
-                    frBaselineSpikeCount = sum(FR_before) * binWidth;
-                    frTreatmentSpikeCount = sum(FR_after) * binWidth;
-                    meanDiff = frTreatmentAvg - frBaselineAvg;
-                    
-                    % Calculate Cliff's Delta
-                    cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
-                    
-                    % Single verification block
-                    if ~strcmp(responseType, 'Mostly Silent') && ~strcmp(responseType, 'Mostly Zero') && ~strcmp(responseType, 'Data Missing')
-                        responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
                     else
-                        responseTypeVerified = responseType;
+                        responseType = 'No Change';
                     end
-                        
-                    % Store results, including p-values and additional metrics
-                    unitData.pValue = p_wilcoxon;
-                    unitData.responseType = responseTypeVerified;  % Use the verified response type
-                    unitData.testMetaData = struct( ...
-                        'MeanPre', frBaselineAvg, ...
-                        'MeanPost', frTreatmentAvg, ...
-                        'StdDevPre', frBaselineStdDev, ...
-                        'StdDevPost', frTreatmentStdDev, ...
-                        'VariancePre', frBaselineVariance, ...
-                        'VariancePost', frTreatmentVariance, ...
-                        'SpikeCountPre', frBaselineSpikeCount, ...
-                        'SpikeCountPost', frTreatmentSpikeCount, ...
-                        'CliffsDelta', cliffsDelta, ...
-                        'MeanDifference', meanDiff, ...
-                        'pValue_Wilcoxon', p_wilcoxon, ...
-                        'pValue_KruskalWallis', p_kruskalwallis);
-    
-                    % Display debug information
-                    fprintf('Unit %s | p-value (Wilcoxon): %.3f | p-value (Kruskal-Wallis): %.3f | Cliff''s Delta: %.3f | Response: %s\n', ...
-                        unitID, p_wilcoxon, p_kruskalwallis, cliffsDelta, responseTypeVerified);
-                    end
+                end
+                    
+                
+                % Calculate additional metrics regardless of response type
+                frBaselineAvg = mean(FR_before);
+                frTreatmentAvg = mean(FR_after);
+                frBaselineStdDev = std(FR_before);
+                frTreatmentStdDev = std(FR_after);
+                frBaselineVariance = var(FR_before);
+                frTreatmentVariance = var(FR_after);
+                frBaselineSpikeCount = sum(FR_before) * binWidth;
+                frTreatmentSpikeCount = sum(FR_after) * binWidth;
+                meanDiff = frTreatmentAvg - frBaselineAvg;
+                
+                % Calculate Cliff's Delta and verify response type for all units
+                cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
+                responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
+                    
+                % Store results, including p-values and additional metrics
+                unitData.pValue = p_wilcoxon;
+                unitData.responseType = responseTypeVerified;  % Use the verified response type
+                unitData.testMetaData = struct( ...
+                    'MeanPre', frBaselineAvg, ...
+                    'MeanPost', frTreatmentAvg, ...
+                    'StdDevPre', frBaselineStdDev, ...
+                    'StdDevPost', frTreatmentStdDev, ...
+                    'VariancePre', frBaselineVariance, ...
+                    'VariancePost', frTreatmentVariance, ...
+                    'SpikeCountPre', frBaselineSpikeCount, ...
+                    'SpikeCountPost', frTreatmentSpikeCount, ...
+                    'CliffsDelta', cliffsDelta, ...
+                    'MeanDifference', meanDiff, ...
+                    'pValue_Wilcoxon', p_wilcoxon, ...
+                    'pValue_KruskalWallis', p_kruskalwallis);
 
-            % Save the updated unit data back to the structure
-            cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
+               % Modified debug information to include flags
+                fprintf(['Unit %s ' ...
+                    '| p-value (Wilcoxon): %.3f ' ...
+                    '| p-value (KW): %.3f ' ...
+                    '| Cliff''s Delta: %.3f ' ...
+                    '| Response: %s ' ...
+                    '| Flags: Silent=%d, Zero=%d\n'], ...
+                    unitID, p_wilcoxon, p_kruskalwallis, ...
+                    cliffsDelta, responseTypeVerified, ...
+                    unitData.unitFlags.isMostlySilent, ...
+                    unitData.unitFlags.isMostlyZero);
+    
+                % Save the updated unit data back to the structure
+                cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
       
             end
         end
@@ -181,8 +174,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     else
         fprintf('Data folder not specified; struct not saved to disk.\n');
     end
-
-   
 
 end
 
