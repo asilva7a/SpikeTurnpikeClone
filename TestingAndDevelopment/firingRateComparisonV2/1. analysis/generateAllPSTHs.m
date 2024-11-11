@@ -26,34 +26,74 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
             
+            % Create temporary arrays to store results
+            numUnits = length(units);
+            psthResults = cell(numUnits, 1);
+            binEdgesResults = cell(numUnits, 1);
+            
             % Process units in parallel or serial
             if useParallel
-                parfor u = 1:length(units)
-                    [psth, edges, ~] = generatePSTH_optimized(cellDataStruct.(groupName).(recordingName).(units{u}));
-                    % Store results
-                    cellDataStruct.(groupName).(recordingName).(units{u}).psthRaw = psth;
-                    cellDataStruct.(groupName).(recordingName).(units{u}).binEdges = edges;
+                parfor u = 1:numUnits
+                    unitID = units{u};
+                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                    
+                    % Generate PSTH for this unit
+                    try
+                        [psth, edges] = generatePSTH_single(unitData);
+                        psthResults{u} = psth;
+                        binEdgesResults{u} = edges;
+                    catch ME
+                        warning('Error processing unit %s: %s', unitID, ME.message);
+                        psthResults{u} = [];
+                        binEdgesResults{u} = [];
+                    end
                 end
             else
-                for u = 1:length(units)
-                    [psth, edges, ~] = generatePSTH_optimized(cellDataStruct.(groupName).(recordingName).(units{u}));
-                    cellDataStruct.(groupName).(recordingName).(units{u}).psthRaw = psth;
-                    cellDataStruct.(groupName).(recordingName).(units{u}).binEdges = edges;
+                for u = 1:numUnits
+                    unitID = units{u};
+                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                    
+                    % Generate PSTH for this unit
+                    try
+                        [psth, edges] = generatePSTH_single(unitData);
+                        psthResults{u} = psth;
+                        binEdgesResults{u} = edges;
+                    catch ME
+                        warning('Error processing unit %s: %s', unitID, ME.message);
+                        psthResults{u} = [];
+                        binEdgesResults{u} = [];
+                    end
+                end
+            end
+            
+            % Store results back in the structure
+            for u = 1:numUnits
+                if ~isempty(psthResults{u})
+                    unitID = units{u};
+                    cellDataStruct.(groupName).(recordingName).(unitID).psthRaw = psthResults{u};
+                    cellDataStruct.(groupName).(recordingName).(unitID).binEdges = binEdgesResults{u};
                 end
             end
             
             % Update progress
-            processedUnits = processedUnits + length(units);
+            processedUnits = processedUnits + numUnits;
             fprintf('Progress: %d/%d units processed (%.1f%%)\n', ...
                 processedUnits, totalUnits, (processedUnits/totalUnits)*100);
         end
     end
     
     % Save results
-    saveResults(cellDataStruct, dataFolder);
+    if ~isempty(dataFolder)
+        try
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3');
+            fprintf('Data saved successfully to: %s\n', dataFolder);
+        catch ME
+            fprintf('Error saving data: %s\n', ME.message);
+        end
+    end
 end
 
-function [psth, binEdges, splitData] = generatePSTH_optimized(unitData)
+function [psth, binEdges] = generatePSTH_single(unitData)
     % Extract spike times and convert to seconds
     spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
     
@@ -62,21 +102,12 @@ function [psth, binEdges, splitData] = generatePSTH_optimized(unitData)
     binWidth = unitData.binWidth;
     binEdges = 0:binWidth:recordingLength;
     
-    % Use histcounts instead of cell-based binning (much faster)
+    % Use histcounts for efficient binning
     [spikeCounts, binEdges] = histcounts(spikeTimes, binEdges);
     psth = spikeCounts / binWidth;  % Convert to firing rate
-    
-    % Only compute splitData if needed
-    if nargout > 2
-        splitData = arrayfun(@(i) spikeTimes(spikeTimes >= binEdges(i) & ...
-            spikeTimes < binEdges(i+1)), 1:length(binEdges)-1, 'UniformOutput', false);
-    else
-        splitData = [];
-    end
 end
 
 function totalUnits = countTotalUnits(cellDataStruct)
-    % Count total units for progress tracking
     totalUnits = 0;
     groups = fieldnames(cellDataStruct);
     for g = 1:length(groups)
@@ -87,11 +118,3 @@ function totalUnits = countTotalUnits(cellDataStruct)
     end
 end
 
-function saveResults(cellDataStruct, dataFolder)
-    try
-        save(dataFolder, 'cellDataStruct', '-v7.3', '-nocompression');
-        fprintf('Data saved successfully to: %s\n', dataFolder);
-    catch ME
-        fprintf('Error saving data: %s\n', ME.message);
-    end
-end
