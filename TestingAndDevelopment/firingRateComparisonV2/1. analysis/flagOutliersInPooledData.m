@@ -3,8 +3,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
     % All units will have an isOutlierExperimental field where 1 indicates an outlier and 0 indicates non-outlier.
 
     % Define response types and groups
-    responseTypes = {'Increased', 'Decreased', 'NoChange', ... 
-        'Mostly Silent', 'Mostly Zeroes'};
+    responseTypes = {'Increased', 'Decreased', 'NoChange'};
     experimentGroups = {'Emx', 'Pvalb', 'Control'};
     
     % Initialize groupIQRs structure to store IQR and upper fence for each response type and group
