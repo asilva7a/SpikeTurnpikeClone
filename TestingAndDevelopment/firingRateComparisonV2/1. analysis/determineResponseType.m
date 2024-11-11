@@ -50,13 +50,24 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 FR_before = psthData(preIndices);
                 FR_after = psthData(postIndices);
 
-              % Ensure sufficient data in both periods
+          
+                 % Ensure sufficient data in both periods
                 if isempty(FR_before) || isempty(FR_after)
                     warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
                     unitData.responseType = 'Data Missing';
                     continue;
-                elseif sum(FR_before == 0) / numel(FR_before) >= 0.95 || ...
-                       sum(FR_after == 0) / numel(FR_after) >= 0.95
+                end
+
+                 % Calculate silence scores
+                [silence_score_before, silence_score_after] = calculateSilenceScores(FR_before, FR_after, binWidth, silence_threshold);
+    
+                % Check for mostly silent data
+                if silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold
+                    warning('Mostly silent data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.responseType = 'Mostly Silent';
+                    continue;
+                elseif sum(FR_before == 0) / numel(FR_before) >= 0.6 || ...
+                       sum(FR_after == 0) / numel(FR_after) >= 0.6
                     warning('Mostly zero data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
                     unitData.responseType = 'Mostly Zero';
                     continue;
@@ -110,6 +121,8 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     'VariancePost', frTreatmentVariance, ...
                     'SpikeCountPre', frBaselineSpikeCount, ...
                     'SpikeCountPost', frTreatmentSpikeCount, ...
+                    'SilenceScorePre', silence_score_before, ...
+                    'SilenceScorePost', silence_score_after, ...
                     'CliffsDelta', cliffsDelta, ...
                     'MeanDifference', meanDiff, ...
                     'pValue_Wilcoxon', p_wilcoxon, ...
