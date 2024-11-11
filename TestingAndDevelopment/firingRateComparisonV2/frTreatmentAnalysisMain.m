@@ -78,16 +78,16 @@ cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
 %     'mean+individual');
 
 % Plot Time Locked smoothed PSTHs for pooled data (mean + SEM)
-%plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
+% plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
 
 % Plot Time Locked smoothed PSTHs for indidividual units (mean + individual PSTHs)
 %plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
 
 % Plot Time locked percent change PSTHs (mean + inidividual units)
- plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+individual');
+% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+individual');
 
 % Plot Time locked percent change PSTHs (mean + sem)
- plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+sem');
+% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+sem');
 
 
 
