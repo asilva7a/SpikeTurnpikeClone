@@ -57,7 +57,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 if isfield(unitData, 'responseType')
                     responseType = replace(unitData.responseType, ' ', ''); % Normalize 'No Change' to 'NoChange'
                     % Skip 'Mostly Silent' and 'Mostly Zeroes' units
-                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZeroes')
+                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZero')
                         continue;
                     end
                 else
