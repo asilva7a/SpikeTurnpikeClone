@@ -50,10 +50,15 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 FR_before = psthData(preIndices);
                 FR_after = psthData(postIndices);
 
-                % Ensure we have sufficient data in both periods
+              % Ensure sufficient data in both periods
                 if isempty(FR_before) || isempty(FR_after)
                     warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
                     unitData.responseType = 'Data Missing';
+                    continue;
+                elseif sum(FR_before == 0) / numel(FR_before) >= 0.95 || ...
+                       sum(FR_after == 0) / numel(FR_after) >= 0.95
+                    warning('Mostly zero data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
+                    unitData.responseType = 'Mostly Zero';
                     continue;
                 end
 
