@@ -20,7 +20,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
 
     % Define silence score parameters
     silence_threshold = 0.0001; % Threshold for considering a bin as silent
-    silence_score_threshold = 0.095; % Threshold for silence score to classify as mostly silent
+    silence_score_threshold = 0.95; % Threshold for silence score to classify as mostly silent
 
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
@@ -72,7 +72,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     else
                         % Set Initial Flags
                         isMostlySilent = (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
-                        isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.95 || sum(FR_after == 0) / numel(FR_after) >= 0.6);
+                        isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.95 || sum(FR_after == 0) / numel(FR_after) >= 0.95);
                         
                         % Perform statistical tests regardless of flags
                         [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
