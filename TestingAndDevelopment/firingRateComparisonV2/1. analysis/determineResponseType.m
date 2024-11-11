@@ -14,6 +14,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         fprintf('No treatment time specified. Using default: %d seconds.\n', treatmentTime);
     end
 
+    % Define silence score parameters
+    silence_threshold = 0.01; % Threshold for considering a bin as silent
+    silence_score_threshold = 0.6; % Threshold for silence score to classify as mostly silent
+
     % Loop over all groups, recordings, and units
     groupNames = fieldnames(cellDataStruct);
 
@@ -59,7 +63,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 end
 
                  % Calculate silence scores
-                [silence_score_before, silence_score_after] = calculateSilenceScores(FR_before, FR_after, binWidth, silence_threshold);
+                [silence_score_before, silence_score_after] = calculateSilenceScore(FR_before, FR_after, binWidth, silence_threshold);
     
                 % Check for mostly silent data
                 if silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold
@@ -72,6 +76,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     unitData.responseType = 'Mostly Zero';
                     continue;
                 end
+                
+                % Store Silence Score in Unit Data
+                unitData.silenceScoreBefore = silence_score_before; % Add silence score outside of metadata struct
+                unitData.silenceScoreAfter = silence_score_after;
 
                 % Perform Wilcoxon signed-rank test
                 [p_wilcoxon, ~] = ranksum(FR_before, FR_after);
@@ -121,8 +129,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     'VariancePost', frTreatmentVariance, ...
                     'SpikeCountPre', frBaselineSpikeCount, ...
                     'SpikeCountPost', frTreatmentSpikeCount, ...
-                    'SilenceScorePre', silence_score_before, ...
-                    'SilenceScorePost', silence_score_after, ...
                     'CliffsDelta', cliffsDelta, ...
                     'MeanDifference', meanDiff, ...
                     'pValue_Wilcoxon', p_wilcoxon, ...
