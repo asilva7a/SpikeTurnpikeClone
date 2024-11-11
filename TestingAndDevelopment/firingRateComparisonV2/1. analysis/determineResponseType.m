@@ -66,12 +66,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                         unitData.responseType = 'Data Missing';
                         responseType = 'Data Missing';
                     else
-                        % Set initial flags
+                        % Set Initial Flags
                         isMostlySilent = (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
                         isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.6 || sum(FR_after == 0) / numel(FR_after) >= 0.6);
                         
                         % Perform statistical tests regardless of flags
-                        [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01, 'tail', 'both');
+                        [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
                         
                         combinedData = [FR_before(:); FR_after(:)];
                         groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
@@ -111,16 +111,13 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     % Calculate Cliff's Delta
                     cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
                     
-                    % Only verify response type if not flagged
+                    % Single verification block
                     if ~strcmp(responseType, 'Mostly Silent') && ~strcmp(responseType, 'Mostly Zero') && ~strcmp(responseType, 'Data Missing')
                         responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
                     else
                         responseTypeVerified = responseType;
                     end
-    
-                    % Verify if Cliff's Delta matches the response label
-                    responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
-    
+                        
                     % Store results, including p-values and additional metrics
                     unitData.pValue = p_wilcoxon;
                     unitData.responseType = responseTypeVerified;  % Use the verified response type
@@ -150,19 +147,23 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
 
         end
     end
+    
+    % Save Updated Struct
+    if nargin >= 4 && ~isempty(dataFolder)
+        try
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
+            fprintf('Struct saved successfully to: %s\n', dataFolder);
+        catch ME
+            % Detailed error message
+            fprintf('Error saving the file:\n');
+            fprintf('Message: %s\n', ME.message);
+            fprintf('Identifier: %s\n', ME.identifier);
+            fprintf('Stack: %s, Line %d\n', ME.stack(1).name, ME.stack(1).line);
+        end
+    else
+        fprintf('Data folder not specified; struct not saved to disk.\n');
+    end
 
-
-        % Save the updated struct to the specified data file path
-            if nargin >= 3 && ~isempty(dataFolder)
-                try
-                    save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
-                    fprintf('Struct saved successfully to: %s\n', dataFolder);
-                catch ME
-                    fprintf('Error saving the file: %s\n', ME.message);
-                end
-            else
-                fprintf('Data folder not specified; struct not saved to disk.\n');
-            end
 end
 
 
