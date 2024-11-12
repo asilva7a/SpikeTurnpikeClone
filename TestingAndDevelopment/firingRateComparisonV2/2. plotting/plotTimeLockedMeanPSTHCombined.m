@@ -39,8 +39,8 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
         for r = 1:length(recordings)
             recordingName = recordings{r};
             
-            % Define the directory for "Raw PSTHs" within each group and recording
-            saveDir = fullfile(figureFolder, groupName, recordingName, 'psthSmoothedCombined');
+            % Define the directory for figures within each group and recording
+            saveDir = fullfile(figureFolder, groupName, recordingName);
             if ~isfolder(saveDir)
                 mkdir(saveDir);
                 fprintf('Created directory for %s combined PSTHs: %s\n',recordingName, saveDir);
@@ -134,7 +134,6 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             % Main Saving Block
             try
                 timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-                saveDir = fullfile(figureFolder, 'recordingSmoothedPSTHs');
                 fileName = sprintf('%s_%s_%s_recordingSmoothedPSTH_%s.fig', ...
                     groupName, recordingName, plotType, timeStamp);
                     
