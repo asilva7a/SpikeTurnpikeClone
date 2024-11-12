@@ -1,4 +1,4 @@
-function generateDirectories(cellDataStruct, figureFolder)
+function generateFigureDirectories(cellDataStruct, figureFolder)
     % Base directory path
     baseDir = figureFolder;
     
