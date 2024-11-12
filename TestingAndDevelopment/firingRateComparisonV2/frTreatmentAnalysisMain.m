@@ -6,18 +6,28 @@
 %   [ ] finalize figure naming convention
 %   [ ] change dir structure so data and figures saved in 2 subfolders of
 %       main project folder
+%   [ ] change back up generation for cellDataStruct to after struct is
+%       generated and fully populated
+%   [ ] go through file generation and make sure the naming convention is
+%       consistent with data structure below
 %
 %% Directory Structure
-% /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/
-% └── GroupName
-%     └── RecordingName
-%         ├── Raw PSTHs
-%         │   ├── RawPSTH-cid0_2024-10-30_13-45.png
-%         │   └── ...
-%         └── Smoothed PSTHs
-%             ├── SmoothedPSTH-cid0_2024-10-30_13-45.png
-%             └── ...
-
+% Project Folder: /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/
+% ├── projectData
+% │   ├── all_data.mat
+% │   ├── config.mat 
+% │   └── cellDataStruct.mat
+% └── projectFigures
+%     ├── 0.projectFigures (e.g. experimental, ctrl)
+%     │   └── project_Figure-timestamp.fig
+%     └── groupName (e.g. Ctrl, Emx, Pvalb)
+%         ├── 0.groupFigures
+%         │   └── Emx_Figure-timestamp.fig           
+%         └── recordingName (e.g emx_0001_rec1)
+%             ├── 0.recordingFigures
+%             │   └── emx_0001_rec1_Figure-timestamp.fig           
+%             └── unitID (e.g. cid214)
+%                 └── cid214_Figure-timestamp.fig
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear; clc;
 
