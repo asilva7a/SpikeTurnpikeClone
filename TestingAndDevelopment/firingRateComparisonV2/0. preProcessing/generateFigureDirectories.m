@@ -21,7 +21,7 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
         end
 
         % Create group level figure folder
-        groupFigures = fullfile(groupPath, 'GroupFigures');
+        groupFigures = fullfile(groupPath, '0.groupFigures');
         if ~exist(groupFigures, 'dir')
             mkdir(groupFigures);
             fprintf('Created group figure folder: %s\n', groupFigures);
@@ -41,7 +41,7 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
                 fprintf('Created recording folder: %s\n', recordingName);
 
                 % Create recording level figure directory
-                recordingFigures = fullfile(recordingPath, 'RecordingFigures');
+                recordingFigures = fullfile(recordingPath, '0.recordingFigures');
                 if ~exist(recordingFigures, 'dir')
                     mkdir(recordingFigures);
                     fprintf('Created recording figure folder: %s\n', recordingFigures);
