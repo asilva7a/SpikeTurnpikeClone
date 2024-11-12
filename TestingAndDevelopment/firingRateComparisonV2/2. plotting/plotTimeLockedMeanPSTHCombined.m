@@ -44,6 +44,13 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             noChangePSTHs = [];
             timeVector = []; % Initialize in case it needs to be set from data
 
+            % Define the directory for "Raw PSTHs" within each group and recording
+            saveDir = fullfile(figureFolder, groupName, recordingName, 'meanPSTHCombined');
+            if ~isfolder(saveDir)
+                mkdir(saveDir);
+                fprintf('Created directory for Combined PSTHs: %s\n', saveDir);
+            end
+
             % Collect individual PSTHs from units based on response type
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
             for u = 1:length(units)
@@ -124,7 +131,6 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Save figure
-            saveDir = fullfile(figureFolder, 'SmoothedPSTHs');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
