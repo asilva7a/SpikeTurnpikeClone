@@ -131,15 +131,29 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                 title('No Change (No Data)');
             end
 
-            % Save figure
-            fileName = sprintf('%s_%s_%s_psthSmoothedCombined_%s.fig', groupName, recordingName, plotType, unitFilter);
-            saveas(gcf, fullfile(saveDir, fileName));
-            fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
-
-            close(gcf); % Close to free memory
+            % Main Saving Block
+            try
+                timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+                saveDir = fullfile(figureFolder, 'recordingSmoothedPSTHs');
+                fileName = sprintf('%s_%s_%s_recordingSmoothedPSTH_%s.fig', ...
+                    groupName, recordingName, plotType, timeStamp);
+                    
+                % Call the save function
+                savingFunction(gcf, saveDir, fileName);
+                
+            catch ME
+                fprintf('Critical error in figure saving:\n');
+                fprintf('Message: %s\n', ME.message);
+                fprintf('Stack:\n');
+                for k = 1:length(ME.stack)
+                    fprintf('File: %s, Line: %d, Function: %s\n', ...
+                        ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+                end
+            end
         end
     end
 end
+
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
 function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, color, plotTitle, treatmentTime, plotType)
