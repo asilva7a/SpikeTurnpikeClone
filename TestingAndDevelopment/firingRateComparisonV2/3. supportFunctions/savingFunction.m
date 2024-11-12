@@ -1,5 +1,5 @@
 % Save figure to the specified directory with error handling
-function saveFigureWithRetry(fig, saveDir, fileName)
+function savingFunction(fig, saveDir, fileName)
     if ~isfolder(saveDir)
         mkdir(saveDir);
     end
