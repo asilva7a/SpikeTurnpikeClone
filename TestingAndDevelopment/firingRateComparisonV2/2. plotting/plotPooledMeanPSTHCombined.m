@@ -49,7 +49,7 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         saveDir = fullfile(figureFolder, groupName,'0. groupFigures'); % Saves figure at recording level
         if ~isfolder(saveDir)
             mkdir(saveDir);
-            fprintf('Created directory for %s combined PSTHs: %s\n',recordingName, saveDir);
+            fprintf('Created directory for %s combined PSTHs: %s\n',groupName, saveDir);
         end
         
         recordings = fieldnames(cellDataStruct.(groupName));
