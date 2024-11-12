@@ -150,44 +150,24 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
         title('No Change (No Data)');
     end
 
-    % Save figure to the specified directory with optimized settings
-    try
-    % Create save directory if it doesn't exist
-    saveDir = fullfile(figureFolder, 'PooledPercentChangePSTHs');
-    if ~isfolder(saveDir)
-        mkdir(saveDir);
-    end
-    
-    % Set up base filename
-    baseFileName = sprintf('Pooled_Emx_Pvalb_%s_percentChangePSTH_%s', plotType, unitFilter);
-    
-    % Save as .fig for MATLAB editing
-    figFile = fullfile(saveDir, [baseFileName '.fig']);
-    savefig(gcf, figFile); % 'compact' reduces file size
-    
-    % Save as high-resolution PNG
-    pngFile = fullfile(saveDir, [baseFileName '.png']);
-    exportgraphics(gcf, pngFile, 'Resolution', 300);
-    
-    % Optional: Save as PDF for vector graphics
-    pdfFile = fullfile(saveDir, [baseFileName '.pdf']);
-    exportgraphics(gcf, pdfFile, 'ContentType', 'vector');
-    
-    % Report success
-    fprintf('Figures saved successfully:\n');
-    fprintf('  FIG: %s\n', figFile);
-    fprintf('  PNG: %s\n', pngFile);
-    fprintf('  PDF: %s\n', pdfFile);
-    
-    catch ME
-    warning('Failed to save figures:');
-    fprintf('Error: %s\n', ME.message);
-    end
-    
-    % Close figure to free memory
-    if ishandle(gcf)
-    close(gcf);
-    end
+    % Main Saving Block
+        try
+            timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+            fileName = sprintf('%s_%s_%s_percentChangePSTH_%s.fig', ... % example Emx_emx-0001-rec1_mean+SEM_percentChangePSTH_2024-11-12_12:12.fig
+                groupName, recordingName, plotType, timeStamp);         % group name at beginning redundant clutter; get rid of it
+                
+            % Call the save function
+            savingFunction(gcf, saveDir, fileName);
+            
+        catch ME
+            fprintf('Critical error in figure saving:\n');
+            fprintf('Message: %s\n', ME.message);
+            fprintf('Stack:\n');
+            for k = 1:length(ME.stack)
+                fprintf('File: %s, Line: %d, Function: %s\n', ...
+                    ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+            end
+        end
 end
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
