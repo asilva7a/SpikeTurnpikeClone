@@ -126,17 +126,26 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         title('No Change (No Data)');
     end
 
-    % Save figure to the specified directory
-    saveDir = fullfile(figureFolder, 'PooledSmoothedPSTHs');
-    if ~isfolder(saveDir)
-        mkdir(saveDir);
+    % Main Saving Block
+    try
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        saveDir = fullfile(figureFolder, 'PooledSmoothedPSTHs');
+        fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, timeStamp);
+            
+        % Call the save function
+        saveFigureWithRetry(gcf, saveDir, fileName);
+        
+    catch ME
+        fprintf('Critical error in figure saving:\n');
+        fprintf('Message: %s\n', ME.message);
+        fprintf('Stack:\n');
+        for k = 1:length(ME.stack)
+            fprintf('File: %s, Line: %d, Function: %s\n', ...
+                ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+        end
     end
-    fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, unitFilter);
-    saveas(gcf, fullfile(saveDir, fileName));
-    fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
-
-    close(gcf); % Close to free memory
 end
+
 
 %% Helper Function: Plot PSTH with Overlay in a Subplot using shadedErrorBar or individual traces
 function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPSTHs, color, plotTitle, treatmentTime, plotType)
