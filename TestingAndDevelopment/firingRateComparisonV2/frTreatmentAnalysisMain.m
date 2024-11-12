@@ -1,9 +1,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% To-Do
+%   [x] standardize saving logic for figures to follow directory structure
+%   [ ] make function or modify main script to create single param file for pipeline
+%   [ ] change names for functions so purpose is more unambiguous
+%   [ ] finalize figure naming convention
+%   [ ] change dir structure so data and figures saved in 2 subfolders of
+%       main project folder
 %
-
 %% Directory Structure
-% /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/
+% /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/
 % └── GroupName
 %     └── RecordingName
 %         ├── Raw PSTHs
@@ -31,14 +36,14 @@ disp('Starting main script...');
 % end
 
 
-%% Get User Input for Directories
-
+%% Set Up Directories
+% Get User Input for Directories
 try
-    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths();
+    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths(); % Generates file paths for the output variables and variables saves to config.mat
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);  % Set bin-width to 60s
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 0.01);  % set binWidth in seconds
 
     fprintf('Data loaded and saved successfully!\n');
 catch ME
@@ -47,49 +52,72 @@ end
 
 clear all_data;
 
+% Generate Figure Directories
+generateFigureDirectories(cellDataStruct, figureFolder);
+
 %% Data Processing
 
 % Generate PTSH for single unit
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 5);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 20);
 
 % Calculate pre- and post-treatment firing rate
 cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
-cellDataStruct = determineResponseType(cellDataStruct, 1860, 60, dataFolder); % Set bin-width to 60s
+cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
+    60, dataFolder); % Set bin-width to 60s
 
 % Filter unit data by group for outliers
-cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', false, dataFolder);
+cellDataStruct = flagOutliersInPooledData(cellDataStruct, 'both', ...
+    false, dataFolder);
 
 % Calculate PSTH percent change 
-cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
+cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 
 %% Plotting 
 
-% Plot Time Locked smoothed PSTHs (mean + std. error of the mean)
-% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-%     'mean+sem');
+% Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
+% recording level
+plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+     'mean+sem', 'both', true);
 
-% Plot Time Locked smoothed PSTHs (mean + individual traces)
-% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-%     'mean+individual');
+% Plot Time Locked smoothed PSTHs (mean + individual traces); 
+% recording level
+plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+     'mean+individual', 'both', true);
 
-% Plot Time Locked smoothed PSTHs for pooled data (mean + SEM)
-% plotPooledMeanPSTHCombined(cellDataStruct, figureFolder);
+% Plot Time Locked smoothed PSTHs for pooled data (mean + SEM); 
+% group level
+plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+    'mean+sem', 'both', true);
 
-% Plot Time Locked smoothed PSTHs for indidividual units (mean + individual PSTHs)
-%plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, 'mean+individual', 'both', true);
+% Plot Time Locked smoothed PSTHs for indidividual units (mean + individual)
+% group level
+plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+    'mean+individual', 'both', true);
 
 % Plot Time locked percent change PSTHs (mean + inidividual units)
-% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+individual');
+% recording level
+plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
+    'mean+individual', 'both', true);
 
 % Plot Time locked percent change PSTHs (mean + sem)
-% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, 'mean+sem');
+% recording level
+plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
+    'mean+sem');
 
+% Plot Time locked percent change PSTHs Group (mean + individual units)
+% group level
+plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too similar to other function; differentiate somehow
+    'mean+individual');
 
+% Plot Time locked percent change PSTHs Group (mean + sem)
+% group level
+plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
+    'mean+sem');
 
 
 %% End of Script
