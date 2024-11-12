@@ -1,10 +1,11 @@
 function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths()
     % loadDataAndPreparePaths: Handles user input for paths and prepares file paths.
     
+    %% Generate Paths
     % Default paths and filenames
     defaultDataFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData';
     defaultDataFile = 'all_data.mat';
-    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/figures_BinWidth-60s_BoxCar-5';
+    defaultFigureFolder = '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/testFigures/figures_BinWidth-0.01s_BoxCar-20';
     defaultCellStructFile = 'cellDataStruct.mat';
 
     % Define user input prompts
@@ -45,6 +46,39 @@ function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadData
         fprintf('Data File Path: %s/n',dataFilePath)
         fprintf('Figure Folder: %s\n', figureFolder);
         fprintf('')
+
+        %% Save file paths to struct for debugging later
+        % Create a structure to store all paths
+        pathConfig = struct(...
+            'dataFilePath', dataFilePath, ...
+            'dataFolder', dataFolder, ...
+            'cellDataStructPath', cellDataStructPath, ...
+            'figureFolder', figureFolder);
+
+        % Create config directory if it doesn't exist
+        configDir = fullfile(dataFolder, 'config');
+        if ~exist(configDir, 'dir')
+            mkdir(configDir);
+        end
+
+        % Save paths to config file with timestamp
+        timeStamp = datetime('now','Format', 'yyyy-mm-dd_HH-MM');
+        configFileName = fullfile(configDir, sprintf('path_config_%s.mat', timeStamp));
+        
+        % Save the configuration
+        save(configFileName, '-struct', 'pathConfig');
+        fprintf('Path configuration saved to: %s\n', configFileName);
+
+        % Ensure the figures folder exists (create if needed)
+        if ~isfolder(figureFolder)
+            mkdir(figureFolder);
+            fprintf('Created new figures folder: %s\n', figureFolder);
+        end
+
+        % Validate if the data file exists
+        if ~isfile(dataFilePath)
+            error('FileNotFound:DataFile', 'The data file does not exist: %s', dataFilePath);
+        end
 
     catch ME
         % Log errors and rethrow
