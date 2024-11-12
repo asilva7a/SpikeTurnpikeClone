@@ -37,6 +37,13 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
 
         for r = 1:length(recordings)
             recordingName = recordings{r};
+            
+            % Define the directory for figures within each group and recording
+            saveDir = fullfile(figureFolder, groupName, recordingName,'0. recordingFigures'); % Saves figure at recording level
+            if ~isfolder(saveDir)
+                mkdir(saveDir);
+                fprintf('Created directory for %s percent change PSTHs: %s\n',recordingName, saveDir);
+            end
 
             % Initialize arrays for collecting percent changes by response type
             increasedPercentChange = [];
