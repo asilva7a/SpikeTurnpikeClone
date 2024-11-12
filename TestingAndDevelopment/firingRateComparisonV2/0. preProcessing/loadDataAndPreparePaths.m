@@ -62,7 +62,7 @@ function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadData
         end
 
         % Save paths to config file with timestamp
-        timeStamp = datetime('now','Format', 'y-MMM-d HH:mm:ss');
+        timeStamp = datetime('now','Format', 'y-MMM-d_HH:mm:ss');
         configFileName = fullfile(configDir, sprintf('path_config_%s.mat', timeStamp));
         
         % Save the configuration
