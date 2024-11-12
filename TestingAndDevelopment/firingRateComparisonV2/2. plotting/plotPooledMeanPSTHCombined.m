@@ -137,7 +137,7 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
     % Main Saving Block
     try
         timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        saveDir = fullfile(figureFolder, 'PooledSmoothedPSTHs');
+        saveDir = fullfile(figureFolder, '0. groupFigures');
         fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, timeStamp);
             
         % Call the save function
