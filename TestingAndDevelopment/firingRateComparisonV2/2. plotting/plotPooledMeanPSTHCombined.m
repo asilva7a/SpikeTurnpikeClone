@@ -126,7 +126,7 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         title('No Change (No Data)');
     end
 
-     % Main Saving Block
+    % Main Saving Block
     try
         timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
         saveDir = fullfile(figureFolder, 'PooledSmoothedPSTHs');
