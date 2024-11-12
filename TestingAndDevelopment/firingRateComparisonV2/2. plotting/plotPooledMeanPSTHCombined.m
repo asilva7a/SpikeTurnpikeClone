@@ -133,7 +133,7 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, timeStamp);
             
         % Call the save function
-        saveFigureWithRetry(gcf, saveDir, fileName);
+        savingFunction(gcf, saveDir, fileName);
         
     catch ME
         fprintf('Critical error in figure saving:\n');
@@ -190,4 +190,3 @@ function plotPSTHWithOverlaySubplot(timeVector, meanPSTH, semPSTH, individualPST
 
     hold off;
 end
-
