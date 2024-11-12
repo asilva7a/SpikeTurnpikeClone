@@ -82,7 +82,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     
                     % Determine response type based on statistical tests
                     if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
-                        if median(FR_after) > median(FR_before)
+                        if mean(FR_after) > mean(FR_before)
                             responseType = 'Increased';
                         else
                             responseType = 'Decreased';
@@ -105,7 +105,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     
                 % Store results, including p-values and additional metrics
                 unitData.pValue = p_wilcoxon;
-                unitData.responseType = responseType;  % Use the verified response type
+                unitData.responseType = responseType; 
                 unitData.testMetaData = struct( ...
                     'MeanPre', frBaselineAvg, ...
                     'MeanPost', frTreatmentAvg, ...
@@ -125,9 +125,9 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     '| Response: %s ' ...
                     '| Flags: Silent=%d, Zero=%d\n'], ...
                     unitID, p_wilcoxon, p_kruskalwallis, ...
-                    cliffsDelta, responseTypeVerified, ...
-                    unitData.unitFlags.isMostlySilent, ...
-                    unitData.unitFlags.isMostlyZero);
+                    responseType, ...
+                    isMostlySilent, isMostlyZero);
+
     
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
@@ -139,7 +139,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     % Save Updated Struct
     if nargin >= 4 && ~isempty(dataFolder)
         try
-            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             % Detailed error message
