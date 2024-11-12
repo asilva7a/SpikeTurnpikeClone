@@ -135,16 +135,24 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
                 title('No Change (No Data)');
             end
 
-            % Save figure
-            saveDir = fullfile(figureFolder, 'PercentChangePSTHs');
-            if ~isfolder(saveDir)
-                mkdir(saveDir);
+            % Main Saving Block
+            try
+                timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+                fileName = sprintf('%s_%s_%s_timeLockedPercentChangeCombined_%s.fig', ...
+                    groupName, recordingName, plotType, timeStamp);
+                    
+                % Call the save function
+                savingFunction(gcf, saveDir, fileName);
+                
+            catch ME
+                fprintf('Critical error in figure saving:\n');
+                fprintf('Message: %s\n', ME.message);
+                fprintf('Stack:\n');
+                for k = 1:length(ME.stack)
+                    fprintf('File: %s, Line: %d, Function: %s\n', ...
+                        ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+                end
             end
-            fileName = sprintf('%s_%s_%s_percentChangePSTH_%s.fig', groupName, recordingName, plotType, unitFilter);
-            saveas(gcf, fullfile(saveDir, fileName));
-            fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
-
-            close(gcf); % Close to free memory
         end
     end
 end
