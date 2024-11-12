@@ -1,6 +1,7 @@
 function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
     % plotTimeLockedMeanPSTHCombined: Generates a single figure with three subplots of time-locked mean PSTHs.
     % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
+    % Plot-Level: Recording
     %
     % Inputs:
     %   - cellDataStruct: Data structure containing group, recording, and unit data.
@@ -37,19 +38,19 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
 
         for r = 1:length(recordings)
             recordingName = recordings{r};
+            
+            % Define the directory for "Raw PSTHs" within each group and recording
+            saveDir = fullfile(figureFolder, groupName, recordingName, 'psthSmoothedCombined');
+            if ~isfolder(saveDir)
+                mkdir(saveDir);
+                fprintf('Created directory for %s combined PSTHs: %s\n',recordingName, saveDir);
+            end
 
             % Initialize arrays for collecting PSTHs by response type
             increasedPSTHs = [];
             decreasedPSTHs = [];
             noChangePSTHs = [];
             timeVector = []; % Initialize in case it needs to be set from data
-
-            % Define the directory for "Raw PSTHs" within each group and recording
-            saveDir = fullfile(figureFolder, groupName, recordingName, 'meanPSTHCombined');
-            if ~isfolder(saveDir)
-                mkdir(saveDir);
-                fprintf('Created directory for Combined PSTHs: %s\n', saveDir);
-            end
 
             % Collect individual PSTHs from units based on response type
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
@@ -92,7 +93,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Create a figure with three subplots arranged in a 1x3 layout
-            figure('visible','off','Position', [100, 100, 1600, 500]);
+            figure('Position', [100, 100, 1600, 500]);
             
             % Add the main title with group, recording names, and unit filter type
             sgtitle(sprintf('%s - %s - %s (%s units)', groupName, recordingName, plotType, unitFilter));
@@ -131,7 +132,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Save figure
-            fileName = sprintf('%s_%s_%s_smoothedPSTH_%s.fig', groupName, recordingName, plotType, unitFilter);
+            fileName = sprintf('%s_%s_%s_psthSmoothedCombined_%s.fig', groupName, recordingName, plotType, unitFilter);
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
 
