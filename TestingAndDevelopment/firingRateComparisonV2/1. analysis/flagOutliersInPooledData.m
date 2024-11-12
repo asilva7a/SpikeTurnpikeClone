@@ -68,13 +68,6 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                         responseType = char(unitData.responseType);
                         responseType = strrep(responseType, ' ', '');
                     end
-                    
-                    % Skip 'Mostly Silent' and 'Mostly Zeroes' units
-                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZero')
-                        continue;
-                    end
-                else
-                    continue; % Skip this unit if responseType is missing
                 end
                 
                 % Store PSTH data and unit info at the group level
