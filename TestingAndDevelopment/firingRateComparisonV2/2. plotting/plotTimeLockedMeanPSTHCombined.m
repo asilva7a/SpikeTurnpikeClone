@@ -92,7 +92,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Create a figure with three subplots arranged in a 1x3 layout
-            figure('Position', [100, 100, 1600, 500]);
+            figure('visible','off','Position', [100, 100, 1600, 500]);
             
             % Add the main title with group, recording names, and unit filter type
             sgtitle(sprintf('%s - %s - %s (%s units)', groupName, recordingName, plotType, unitFilter));
@@ -131,9 +131,6 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
 
             % Save figure
-            if ~isfolder(saveDir)
-                mkdir(saveDir);
-            end
             fileName = sprintf('%s_%s_%s_smoothedPSTH_%s.fig', groupName, recordingName, plotType, unitFilter);
             saveas(gcf, fullfile(saveDir, fileName));
             fprintf('Figure saved to: %s\n', fullfile(saveDir, fileName));
