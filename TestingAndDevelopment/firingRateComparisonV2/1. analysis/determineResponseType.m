@@ -102,15 +102,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 frTreatmentVariance = var(FR_after);
                 frBaselineSpikeCount = sum(FR_before) * binWidth;
                 frTreatmentSpikeCount = sum(FR_after) * binWidth;
-                meanDiff = frTreatmentAvg - frBaselineAvg;
-                
-                % Calculate Cliff's Delta and verify response type for all units
-                cliffsDelta = calculateCliffsDelta(FR_before, FR_after);
-                responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta);
                     
                 % Store results, including p-values and additional metrics
                 unitData.pValue = p_wilcoxon;
-                unitData.responseType = responseTypeVerified;  % Use the verified response type
+                unitData.responseType = responseType;  % Use the verified response type
                 unitData.testMetaData = struct( ...
                     'MeanPre', frBaselineAvg, ...
                     'MeanPost', frTreatmentAvg, ...
@@ -120,8 +115,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     'VariancePost', frTreatmentVariance, ...
                     'SpikeCountPre', frBaselineSpikeCount, ...
                     'SpikeCountPost', frTreatmentSpikeCount, ...
-                    'CliffsDelta', cliffsDelta, ...
-                    'MeanDifference', meanDiff, ...
                     'pValue_Wilcoxon', p_wilcoxon, ...
                     'pValue_KruskalWallis', p_kruskalwallis);
 
@@ -129,7 +122,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 fprintf(['Unit %s ' ...
                     '| p-value (Wilcoxon): %.3f ' ...
                     '| p-value (KW): %.3f ' ...
-                    '| Cliff''s Delta: %.3f ' ...
                     '| Response: %s ' ...
                     '| Flags: Silent=%d, Zero=%d\n'], ...
                     unitID, p_wilcoxon, p_kruskalwallis, ...
@@ -143,22 +135,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
             end
         end
     end
-    
-    % Track excluded units
-    if nargin >= 4 && ~isempty(dataFolder)
-        [excludedUnits, excludedTable] = trackExcludedUnits(cellDataStruct, 'both', true);
-        
-        % Save exclusion data
-        if ~isempty(excludedUnits)
-            tableFileName = 'ExcludedUnits_ResponseAnalysis.csv';
-            tablePath = fullfile(dataFolder, tableFileName);
-            writetable(excludedTable, tablePath);
-            
-            matFile = fullfile(dataFolder, 'exclusions.mat');
-            save(matFile, 'excludedUnits', 'excludedTable');
-        end
-    end
-    
+
     % Save Updated Struct
     if nargin >= 4 && ~isempty(dataFolder)
         try
@@ -175,53 +152,4 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
         fprintf('Data folder not specified; struct not saved to disk.\n');
     end
 
-end
-
-
-function cliffsDelta = calculateCliffsDelta(FR_before, FR_after)
-    % Memory-efficient implementation for large arrays
-    totalComparisons = length(FR_before) * length(FR_after);
-    delta = 0;
-    
-    % Process in chunks to avoid memory issues
-    chunkSize = 1000;  % Adjust based on available memory
-    
-    for i = 1:chunkSize:length(FR_before)
-        % Get current chunk indices
-        endIdx = min(i + chunkSize - 1, length(FR_before));
-        chunk_before = FR_before(i:endIdx);
-        
-        % Compare chunk with FR_after
-        for j = 1:length(FR_after)
-            delta = delta + sum(sign(FR_after(j) - chunk_before));
-        end
-    end
-    
-    % Calculate final Cliff's Delta
-    cliffsDelta = delta / totalComparisons;
-end
-
-%% Helper Function to Check Cliff's Delta against Response Type
-function responseTypeVerified = checkCliffsDelta(responseType, cliffsDelta)
-    % Set thresholds for Cliff's Delta interpretation
-    threshold = 0.147; % Common threshold to indicate a small effect size for Cliff's Delta
-    % Determine if Cliff's Delta agrees with the response type label
-    switch responseType
-        case 'Increased'
-            if cliffsDelta < threshold
-                fprintf('Warning: Cliff''s Delta (%.3f) does not support "Increased" response type.\n', cliffsDelta);
-                responseTypeVerified = 'No Change';
-            else
-                responseTypeVerified = 'Increased';
-            end
-        case 'Decreased'
-            if cliffsDelta > -threshold
-                fprintf('Warning: Cliff''s Delta (%.3f) does not support "Decreased" response type.\n', cliffsDelta);
-                responseTypeVerified = 'No Change';
-            else
-                responseTypeVerified = 'Decreased';
-            end
-        otherwise
-            responseTypeVerified = 'No Change';
-    end
 end
