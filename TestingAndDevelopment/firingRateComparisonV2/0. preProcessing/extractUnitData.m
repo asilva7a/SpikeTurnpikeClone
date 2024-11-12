@@ -80,7 +80,7 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath, binWid
         end
 
         % Save the struct with optional compression (-v7.3 for large data)
-        save(cellDataStructPath, 'cellDataStruct', '-v7');
+        save(cellDataStructPath, 'cellDataStruct', '-v7.3');
         fprintf('Saved cellDataStruct to: %s\n', cellDataStructPath);
 
         % Verify if the file was saved successfully
