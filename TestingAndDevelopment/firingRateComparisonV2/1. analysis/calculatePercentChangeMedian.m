@@ -104,7 +104,7 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
     end
         % Save the updated struct to the specified data file path
         try
-            save(dataFolder, 'cellDataStruct', '-v7');
+            save(dataFolder, 'cellDataStruct', '-v7.3');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             fprintf('Error saving the file: %s\n', ME.message);
