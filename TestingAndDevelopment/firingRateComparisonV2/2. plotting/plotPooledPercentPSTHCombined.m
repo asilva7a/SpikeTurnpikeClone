@@ -64,6 +64,13 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
             fprintf('Warning: Group %s not found in cellDataStruct. Skipping.\n', groupName);
             continue;
         end
+
+        % Define the directory for group figures
+        saveDir = fullfile(figureFolder, groupName,'0. groupFigures'); % Saves figure at recording level
+        if ~isfolder(saveDir)
+            mkdir(saveDir);
+            fprintf('Created directory for %s combined PSTHs: %s\n',groupName, saveDir);
+        end
         
         recordings = fieldnames(cellDataStruct.(groupName));
         for r = 1:length(recordings)
