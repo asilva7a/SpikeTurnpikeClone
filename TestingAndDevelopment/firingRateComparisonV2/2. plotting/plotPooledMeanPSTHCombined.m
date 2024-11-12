@@ -1,14 +1,15 @@
 function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
-    % plotPooledMeanPSTHCombined: Generates a single figure with three subplots of pooled time-locked mean PSTHs.
-    % Each subplot shows positively modulated, negatively modulated, or unresponsive units.
-    %
-    % Inputs:
-    %   - cellDataStruct: Data structure containing group, recording, and unit data.
-    %   - figureFolder: Directory where the plots will be saved.
-    %   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
-    %   - plotType: Type of plot ('mean+sem' or 'mean+individual')
-    %   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
-    %   - outlierFilter: If true, excludes units marked as outliers (isOutlierExperimental == 1).
+% plotPooledMeanPSTHCombined: Generates a single figure with three subplots of pooled time-locked mean PSTHs.
+% Each subplot shows positively modulated, negatively modulated, or unresponsive units.
+% Plot Level: 
+%
+% Inputs:
+%   - cellDataStruct: Data structure containing group, recording, and unit data.
+%   - figureFolder: Directory where the plots will be saved.
+%   - treatmentTime: Time (in seconds) where treatment was administered (for time-locking).
+%   - plotType: Type of plot ('mean+sem' or 'mean+individual')
+%   - unitFilter: Specifies which units to include ('single', 'multi', or 'both').
+%   - outlierFilter: If true, excludes units marked as outliers (isOutlierExperimental == 1).
 
     % Set defaults if arguments are missing
     if nargin < 6 || isempty(outlierFilter)
@@ -42,6 +43,13 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         if ~isfield(cellDataStruct, groupName)
             fprintf('Warning: Group %s not found in cellDataStruct. Skipping.\n', groupName);
             continue;
+        end
+
+        % Define the directory for group figures
+        saveDir = fullfile(figureFolder, groupName,'0. groupFigures'); % Saves figure at recording level
+        if ~isfolder(saveDir)
+            mkdir(saveDir);
+            fprintf('Created directory for %s combined PSTHs: %s\n',recordingName, saveDir);
         end
         
         recordings = fieldnames(cellDataStruct.(groupName));
