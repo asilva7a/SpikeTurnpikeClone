@@ -40,7 +40,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             recordingName = recordings{r};
             
             % Define the directory for figures within each group and recording
-            saveDir = fullfile(figureFolder, groupName, recordingName);
+            saveDir = fullfile(figureFolder, groupName, recordingName,'RecordingFigures'); % Saves figure at recording level
             if ~isfolder(saveDir)
                 mkdir(saveDir);
                 fprintf('Created directory for %s combined PSTHs: %s\n',recordingName, saveDir);
@@ -91,6 +91,8 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                     end
                 end
             end
+            
+            %% Plotting 
 
             % Create a figure with three subplots arranged in a 1x3 layout
             figure('Position', [100, 100, 1600, 500]);
