@@ -1,4 +1,4 @@
-function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
+function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
     % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
     % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
     %
@@ -11,9 +11,10 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
     % Output:
     %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
 
+
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
     if nargin < 3 || isempty(baselineWindow)
-        baselineWindow = [0 , 1800]; % Default baseline period
+        baselineWindow = [1500, 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
     if nargin < 4 || isempty(treatmentTime)
@@ -39,6 +40,11 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
 
+                 % Display the unit being processed for debugging
+                 fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
+                        groupName, recordingName, unitID);
+
+
                 % Check if unit is flagged as an outlier; skip if flagged
                 if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
                     continue;
@@ -56,10 +62,22 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
                     postIndices = binCenters >= postWindow(1) & binCenters < postWindow(2);
 
                     % Calculate baseline average firing rate
-                    baselineMean = mean(psthSmoothed(baselineIndices), 'omitnan');
+                    baselineMean = mean(psthSmoothed(baselineIndices & psthSmoothed > 0), 'omitnan');
+                    
+                    disp("Calculated baseline mean:");
+                    disp(baselineMean);
 
-                    % Calculate percent change relative to baseline for the entire PSTH
-                    psthPercentChange = ((psthSmoothed - baselineMean) / baselineMean) * 100;
+                     % Calculate percent change relative to baseline for the entire PSTH
+                    if isequal(baselineMean, 0)  % Conditional scaling based on presence of zeros in baseline
+                        scalingFactor = 0.0001;
+                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMean + scalingFactor)) / (baselineMean + scalingFactor)) * 100;
+                    elseif isnan(baselineMean)
+                        scalingFactor = 0.0001;
+                        baselineMean = 0.0001;
+                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMean + scalingFactor)) / (baselineMean + scalingFactor)) * 100;
+                    else
+                        psthPercentChange = ((psthSmoothed - baselineMean) / baselineMean) * 100;
+                    end
 
                     % Store percent change array in unit data
                     cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChange = psthPercentChange;
@@ -67,13 +85,13 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
                     % Compute and store metadata
                     psthPercentChangeStats = struct();
                     psthPercentChangeStats.baseline = struct( ...
-                        'mean', baselineMean, ...
+                        'median', baselineMean, ...
                         'stdDev', std(psthSmoothed(baselineIndices), 'omitnan'), ...
                         'range', range(psthSmoothed(baselineIndices)), ...
                         'var', var(psthSmoothed(baselineIndices)));
 
                     psthPercentChangeStats.postTreatment = struct( ...
-                        'mean', mean(psthSmoothed(postIndices), 'omitnan'), ...
+                        'median', mean(psthSmoothed(postIndices), 'omitnan'), ...
                         'stdDev', std(psthSmoothed(postIndices), 'omitnan'), ...
                         'range', range(psthSmoothed(postIndices)),...
                         'var', var(psthSmoothed(postIndices)));
@@ -86,7 +104,7 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
     end
         % Save the updated struct to the specified data file path
         try
-            save(dataFolder, 'cellDataStruct', '-v7');
+            save(dataFolder, 'cellDataStruct', '-v7.3');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             fprintf('Error saving the file: %s\n', ME.message);
