@@ -160,9 +160,9 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
     % Main Saving Block
         try
             timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-            saveDir = fullfile(figureFolder, '0. expFigures')
-            fileName = sprintf('%s_%s_%s_percentChangePSTH_%s.fig', ... % example Emx_emx-0001-rec1_mean+SEM_percentChangePSTH_2024-11-12_12:12.fig
-                groupName, recordingName, plotType, timeStamp);         % group name at beginning redundant clutter; get rid of it
+            saveDir = fullfile(figureFolder, '0. expFigures');
+            fileName = sprintf('Pooled_Emx_Pvalb_%s_percentChangePSTH_%s.fig', ... % example Emx_emx-0001-rec1_mean+SEM_percentChangePSTH_2024-11-12_12:12.fig
+                      plotType, timeStamp);         % group name at beginning redundant clutter; get rid of it
                 
             % Call the save function
             savingFunction(gcf, saveDir, fileName);
