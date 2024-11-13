@@ -15,11 +15,11 @@ function [cellDataStruct] = calculateFiringRate(cellDataStruct, treatmentTime, p
         disp('No treatment time specified; defaulting to 1860 seconds.');
     end
     if nargin < 3 || isempty(preWindow)
-        preWindow = 1000;  % Default pre-treatment window in seconds
+        preWindow = 1859;  % Default pre-treatment window in seconds
         disp('No pre-treatment window specified; defaulting to 1000 seconds.');
     end
     if nargin < 4 || isempty(postWindow)
-        postWindow = 3000;  % Default post-treatment window in seconds
+        postWindow = 3540;  % Default post-treatment window in seconds
         disp('No post-treatment window specified; defaulting to 3000 seconds.');
     end
 
