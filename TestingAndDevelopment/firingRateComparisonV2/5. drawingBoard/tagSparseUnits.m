@@ -1,14 +1,14 @@
-function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBefore, binWidth, minFrRate, projectData)
-    %tagSparseUnits Tags units with firing rates below threshold and identifies single-firing units
-    %   Inputs:
-    %       cellDataStruct: Nested structure containing unit data
-    %       frBefore: Firing rates before treatment
-    %       binWidth: Width of time bins in seconds
-    %       minFrRate: Minimum firing rate threshold (default 0.5 Hz)
-    %       projectData: Optional path for saving results
-    %   Outputs:
-    %       cellDataStruct: Updated structure with sparse unit tags
-    %       sparseUnitsList: Table containing sparse unit information
+function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBefore, binWidth, minFrRate, dataFolder)
+    % tagSparseUnits Tags units with specific firing patterns
+    % Inputs:
+    %   cellDataStruct: Nested structure containing unit data
+    %   frBefore: Firing rates before treatment
+    %   binWidth: Width of time bins in seconds
+    %   minFrRate: Minimum firing rate threshold (default 0.5 Hz)
+    %   dataFolder: Optional path for saving results
+    % Outputs:
+    %   cellDataStruct: Updated structure with tagged units
+    %   sparseUnitsList: Table containing identified units
     
     % Set default args
     if nargin < 4 || isempty(minFrRate)
@@ -26,13 +26,13 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
         end
     end
     
-    % Initiate data table with additional columns for single-firing detection
-    unitTable = table('Size', [numFields, 7], ...
+    % Initiate data table
+    unitTable = table('Size', [numFields, 6], ...
                       'VariableTypes', {'string', 'string', 'string', ...
-                                        'double', 'double', 'double', 'logical'}, ...
+                                        'double', 'double', 'logical'}, ...
                       'VariableNames', {'unitID', 'recordingName', 'groupName', ...
-                                        'sparseScore', 'initialFiringRate', ...
-                                        'laterFiringRate', 'isSingleFiring'});
+                                        'peakFiringRate', 'silencePeriodRate', ...
+                                        'isSingleFiring'});
     
     % Initialize counter for table rows
     rowCounter = 1;
@@ -52,61 +52,104 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 psthData = unitData.psthSmoothed;
                 timeVector = unitData.binEdges(1:end-1) + binWidth/2;
                 
-                % Define analysis windows more precisely
-                earlyWindow = timeVector <= 20;  % First 20 seconds
-                lateWindow = timeVector > 20;    % After 20 seconds
+                % Find peak firing period (adjust windows based on binWidth)
+                minutesToSecs = 60;
+                earlyWindowMins = 30; % 30 minutes for early window
+                timeInMinutes = timeVector/minutesToSecs;
                 
-                % Calculate metrics
-                maxEarlyFiring = max(psthData(earlyWindow));
-                meanLateFiring = mean(psthData(lateWindow));
+                earlyIdx = timeInMinutes <= earlyWindowMins;
+                lateIdx = timeInMinutes > earlyWindowMins;
                 
-                % Criteria for single-firing pattern:
-                % 1. Strong early firing (> minFrRate)
-                % 2. Very low firing later (< 10% of peak)
-                % 3. Early peak must be significant compared to overall activity
-                isSingleFiring = (maxEarlyFiring > minFrRate) && ...
-                                (meanLateFiring < 0.1 * maxEarlyFiring) && ...
-                                (maxEarlyFiring > 5 * meanLateFiring);
-                
-                sparseScore = meanLateFiring/minFrRate;
-                
-                % Update unit structure
-                cellDataStruct.(groupName).(recordingName).(unitID).isSingleFiring = isSingleFiring;
-                cellDataStruct.(groupName).(recordingName).(unitID).singleFiringMetrics = struct(...
-                    'maxEarlyFiring', maxEarlyFiring, ...
-                    'meanLateFiring', meanLateFiring, ...
-                    'earlyToLateRatio', maxEarlyFiring/meanLateFiring);
-                
-                % Add to table
-                unitTable.unitID(rowCounter) = string(unitID);
-                unitTable.recordingName(rowCounter) = string(recordingName);
-                unitTable.groupName(rowCounter) = string(groupName);
-                unitTable.sparseScore(rowCounter) = sparseScore;
-                unitTable.maxEarlyFiring(rowCounter) = maxEarlyFiring;
-                unitTable.meanLateFiring(rowCounter) = meanLateFiring;
-                unitTable.isSingleFiring(rowCounter) = isSingleFiring;
-                
-                rowCounter = rowCounter + 1;
+                if ~isempty(earlyIdx) && ~isempty(lateIdx)
+                    % Calculate metrics
+                    peakRate = max(psthData(earlyIdx));
+                    silenceRate = mean(psthData(lateIdx));
+                    peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
+                    
+                    % Define criteria for single firing pattern
+                    hasSignificantPeak = peakRate > 0.4;  % Increased threshold to match example
+                    hasLowLateFiring = silenceRate < 0.02; % Stricter silence criterion
+                    peakToBaselineRatio = peakRate / (silenceRate + eps);
+                    hasGoodContrast = peakToBaselineRatio > 15;
+                    peakTimeCorrect = peakTimeInMins >= 5 && peakTimeInMins <= 20;
+                    
+                    % Combine criteria
+                    isSingleFiring = hasSignificantPeak && hasLowLateFiring && ...
+                                   hasGoodContrast && peakTimeCorrect;
+                    
+                    if isSingleFiring
+                        fprintf('Found single-firing unit: %s\n', unitID);
+                        fprintf('Peak rate: %.2f Hz at %.1f minutes\n', peakRate, peakTimeInMins);
+                        fprintf('Silence rate: %.2f Hz\n', silenceRate);
+                        fprintf('Peak-to-baseline ratio: %.1f\n\n', peakToBaselineRatio);
+                    end
+                    
+                    % Store in table
+                    unitTable.unitID(rowCounter) = string(unitID);
+                    unitTable.recordingName(rowCounter) = string(recordingName);
+                    unitTable.groupName(rowCounter) = string(groupName);
+                    unitTable.peakFiringRate(rowCounter) = peakRate;
+                    unitTable.silencePeriodRate(rowCounter) = silenceRate;
+                    unitTable.isSingleFiring(rowCounter) = isSingleFiring;
+                    
+                    % Update unit structure with more detailed metrics
+                    cellDataStruct.(groupName).(recordingName).(unitID).isSingleFiring = isSingleFiring;
+                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics = struct(...
+                        'peakRate', peakRate, ...
+                        'silenceRate', silenceRate, ...
+                        'peakToSilenceRatio', peakToBaselineRatio, ...
+                        'peakTime', timeVector(find(psthData == peakRate, 1, 'first')));
+                    
+                    rowCounter = rowCounter + 1;
+                end
             end     
         end
     end
 
-    % Create output table of sparse and single-firing units
+    % Trim any unused rows from the table
+    unitTable = unitTable(1:rowCounter-1, :);
+
+    % Create output table of single-firing units
     sparseUnitsList = unitTable(unitTable.isSingleFiring, :);
     
-    % Sort by sparseScore for easier analysis
-    sparseUnitsList = sortrows(sparseUnitsList, 'sparseScore', 'ascend');
+    % Sort by peak firing rate
+    if ~isempty(sparseUnitsList)
+        sparseUnitsList = sortrows(sparseUnitsList, 'peakFiringRate', 'descend');
+        
+        % Create visualization
+        figure('Position', [100 100 800 600]);
+        for i = 1:min(5, height(sparseUnitsList))
+            unitID = sparseUnitsList.unitID(i);
+            groupName = sparseUnitsList.groupName(i);
+            recordingName = sparseUnitsList.recordingName(i);
+            
+            psthData = cellDataStruct.(groupName).(recordingName).(unitID).psthSmoothed;
+            timeVector = cellDataStruct.(groupName).(recordingName).(unitID).binEdges(1:end-1) + binWidth/2;
+            timeInMinutes = timeVector/minutesToSecs;
+            
+            subplot(min(5, height(sparseUnitsList)), 1, i);
+            plot(timeInMinutes, psthData, 'LineWidth', 1.5);
+            title(sprintf('Unit %s (Peak: %.2f Hz at %.1f mins)', ...
+                  char(unitID), ...
+                  cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakRate, ...
+                  cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakTime/minutesToSecs));
+            ylabel('Firing Rate (Hz)');
+            xlabel('Time (minutes)');
+            grid on;
+            % Add vertical lines for analysis windows
+            hold on;
+            xline(30, '--r', 'Analysis cutoff');
+            hold off;
+        end
+    end
 
-    % Sort by early-to-late firing ratio for easier analysis
-    sparseUnitsList = sortrows(sparseUnitsList, 'maxEarlyFiring', 'descend');
-    
-    % Optional: save sparseUnitList to projectData
-    if nargin > 4 && ~isempty(projectData)
+    % Optional: save results
+    if nargin > 4 && ~isempty(dataFolder) && ~isempty(sparseUnitsList)
         try
             timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
             fileName = sprintf('sparseUnitsTable_%s.csv', timeStamp);
             
-            saveDir = fullfile(projectData, 'sparseUnitTable');
+            saveDir = fullfile(dataFolder, 'sparseUnitTable');
             if ~exist(saveDir, 'dir')
                 mkdir(saveDir);
             end
@@ -114,18 +157,23 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
             savePath = fullfile(saveDir, fileName);
             writetable(sparseUnitsList, savePath);
             
-            fprintf('Successfully saved to %s\n', savePath);
+            % Save figure if it was created
+            if ~isempty(sparseUnitsList)
+                figPath = fullfile(saveDir, sprintf('sparseUnits_plot_%s.fig', timeStamp));
+                savefig(gcf, figPath);
+                fprintf('Plot saved to: %s\n', figPath);
+            end
+            
+            fprintf('Successfully saved results to: %s\n', savePath);
             
         catch ME
-            fprintf('Error saving sparse units table:\n');
+            fprintf('Error saving results:\n');
             fprintf('Message: %s\n', ME.message);
-            fprintf('Stack:\n');
-            for k = 1:length(ME.stack)
-                fprintf('File: %s, Line: %d, Function: %s\n', ...
-                    ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
-            end
         end
     end
 end
+
+
+
 
 
