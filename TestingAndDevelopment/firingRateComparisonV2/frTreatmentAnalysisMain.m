@@ -82,7 +82,7 @@ cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
 
 % Detect Outliers in Response Groups
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
-    false, dataFolder);
+    true, dataFolder);
 
 % Calculate PSTH percent change 
 cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
@@ -134,23 +134,3 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 
 %% End of Script
 disp('Script finished...');
-
-
-
-
-%% Old Plotting Functions
-
-% Plot raw PSTH
-%plotAllRawPSTHs(cellDataStruct, 1860, figureFolder, dataFolder);
-
-% Plot smooth PSTH
-%plotAllSmoothedPSTHs(cellDataStruct, 1860, figureFolder); % Saves figures assuming raw PSTH was plotted first
-
-% Plot line PSTHs
-%plotPSTHLines(cellDataStruct, 1860, figureFolder, dataFolder); % Saves figures assuming raw PSTH was plotted first
-
-% Plot average PSTHs with individual response
-%plotAveragePSTHWithResponse(cellDataStruct, figureFolder);
-
-% Plot group PSTHs with individual responses
-% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder);
