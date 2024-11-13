@@ -50,38 +50,47 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                 
-                % Get PSTH data
+                   % Get PSTH data
                 psthData = unitData.psthSmoothed;
                 timeVector = unitData.binEdges(1:end-1) + binWidth/2;
                 minutesToSecs = 60;
                 timeInMinutes = timeVector/minutesToSecs;
                 
-                % Single firing pattern detection
-                peakRate = max(psthData(earlyIdx));
-                silenceRate = mean(psthData(lateIdx));
-                peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
-
-                postPeakData = psthData(find(psthData == peakRate, 1, 'first'):end);
-                continuityScore = mean(diff(postPeakData) > 0.1); % Measure abruptness of changes
+                % Define time windows for analysis
+                earlyWindowMins = 30;
+                earlyIdx = timeInMinutes <= earlyWindowMins;
+                lateIdx = timeInMinutes > earlyWindowMins;
                 
+                % Now we can safely calculate metrics
                 if ~isempty(earlyIdx) && ~isempty(lateIdx)
                     % Single firing metrics
                     peakRate = max(psthData(earlyIdx));
                     silenceRate = mean(psthData(lateIdx));
                     peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
                     
-                    % Single firing criteria
+                    % Calculate rate of decline after peak
+                    peakIndex = find(psthData == peakRate, 1, 'first');
+                    if peakIndex < length(psthData)-5  % Ensure enough points after peak
+                        % Calculate average rate of decline over next 5 minutes
+                        postPeakWindow = peakIndex:(peakIndex + round(5 * 60/binWidth));
+                        postPeakWindow = postPeakWindow(postPeakWindow <= length(psthData));
+                        rateOfDecline = abs(diff(psthData(postPeakWindow(1:min(end,10))))/binWidth);
+                        isAbruptDecline = mean(rateOfDecline) > 0.1; % Threshold for abrupt decline
+                    else
+                        isAbruptDecline = false;
+                    end
+                    
+                    % Modified single firing criteria
                     hasSignificantPeak = peakRate > 0.3;
-                    hasLowLateFiring = silenceRate < 0.05; % Stric silence requirement
+                    hasLowLateFiring = silenceRate < 0.05;  % Stricter silence requirement
                     peakToBaselineRatio = peakRate / (silenceRate + eps);
                     hasGoodContrast = peakToBaselineRatio > 8;
                     peakTimeCorrect = peakTimeInMins <= 20;
-                    isAbruptDecline = continuityScore < 0.2; % Criterion to detect abrupt vs gradual changes
                     
-                    % Combine criteria
+                    % Combine criteria - must have abrupt decline
                     isSingleFiring = hasSignificantPeak && hasLowLateFiring && ...
-                    hasGoodContrast && peakTimeCorrect && isAbruptDecline;
-                    
+                                     hasGoodContrast && peakTimeCorrect && isAbruptDecline;
+                                        
                     % Square wave detection
                     windowSize = 5; % minutes
                     stepSize = 1;   % minutes
