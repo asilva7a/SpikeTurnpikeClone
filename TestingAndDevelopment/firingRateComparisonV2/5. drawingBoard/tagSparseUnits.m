@@ -5,6 +5,7 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
 %       frBefore: Firing rates before treatment
 %       binWidth: Width of time bins in seconds
 %       minFrRate: Minimum firing rate threshold (default 0.5 Hz)
+%       projectData: Optional path for saving results
 %   Outputs:
 %       cellDataStruct: Updated structure with sparse unit tags
 %       sparseUnitsList: Table containing sparse unit information
@@ -81,36 +82,36 @@ sparseUnitsList = unitTable(unitTable.sparseScore < 1, :);
 sparseUnitsList = sortrows(sparseUnitsList, 'sparseScore', 'ascend');
 
 % Optional: save sparseUnitList to projectData
-    if nargin > 4 && ~isempty(projectData)
-        try
-            % Create timestamp and filename
-            timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-            fileName = sprintf('sparseUnitsTable_%s.csv', timeStamp);
-            
-            % Create save directory if it doesn't exist
-            saveDir = fullfile(projectData, 'sparseUnitTable');
-            if ~exist(saveDir, 'dir')
-                mkdir(saveDir);
-            end
-            
-            % Create full save path
-            savePath = fullfile(saveDir, fileName);
-            
-            % Write table to CSV
-            writetable(sparseUnitsList, savePath);
-            
-            fprintf('Successfully saved to %s\n', savePath);
-            
-        catch ME
-            fprintf('Error saving sparse units table:\n');
-            fprintf('Message: %s\n', ME.message);
-            fprintf('Stack:\n');
-            for k = 1:length(ME.stack)
-                fprintf('File: %s, Line: %d, Function: %s\n', ...
-                    ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+if nargin > 4 && ~isempty(projectData)
+    try
+        % Create timestamp and filename
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('sparseUnitsTable_%s.csv', timeStamp);
         
-            end
+        % Create save directory if it doesn't exist
+        saveDir = fullfile(projectData, 'sparseUnitTable');
+        if ~exist(saveDir, 'dir')
+            mkdir(saveDir);
+        end
+        
+        % Create full save path
+        savePath = fullfile(saveDir, fileName);
+        
+        % Write table to CSV
+        writetable(sparseUnitsList, savePath);
+        
+        fprintf('Successfully saved to %s\n', savePath);
+        
+    catch ME
+        fprintf('Error saving sparse units table:\n');
+        fprintf('Message: %s\n', ME.message);
+        fprintf('Stack:\n');
+        for k = 1:length(ME.stack)
+            fprintf('File: %s, Line: %d, Function: %s\n', ...
+                ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
         end
     end
+end
+
 end
 
