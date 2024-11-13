@@ -27,12 +27,14 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     end
     
     % Initiate data table
-    unitTable = table('Size', [numFields, 6], ...
+    unitTable = table('Size', [numFields, 9], ...
                       'VariableTypes', {'string', 'string', 'string', ...
-                                        'double', 'double', 'logical'}, ...
+                                        'double', 'double', 'logical', ...
+                                        'logical', 'double', 'double'}, ...
                       'VariableNames', {'unitID', 'recordingName', 'groupName', ...
                                         'peakFiringRate', 'silencePeriodRate', ...
-                                        'isSingleFiring'});
+                                        'isSingleFiring', 'hasSquareWave', ...
+                                        'squareWaveStartTime', 'squareWaveDuration'});
     
     % Initialize counter for table rows
     rowCounter = 1;
@@ -51,54 +53,111 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 % Get PSTH data
                 psthData = unitData.psthSmoothed;
                 timeVector = unitData.binEdges(1:end-1) + binWidth/2;
-                
-                % Find peak firing period (adjust windows based on binWidth)
                 minutesToSecs = 60;
-                earlyWindowMins = 30; % 30 minutes for early window
                 timeInMinutes = timeVector/minutesToSecs;
                 
+                % Single firing pattern detection
+                earlyWindowMins = 30;
                 earlyIdx = timeInMinutes <= earlyWindowMins;
                 lateIdx = timeInMinutes > earlyWindowMins;
                 
                 if ~isempty(earlyIdx) && ~isempty(lateIdx)
-                    % Calculate metrics
+                    % Single firing metrics
                     peakRate = max(psthData(earlyIdx));
                     silenceRate = mean(psthData(lateIdx));
                     peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
                     
-                    % Define criteria for single firing pattern
-                    hasSignificantPeak = peakRate > 0.4;  % Increased threshold to match example
-                    hasLowLateFiring = silenceRate < 0.02; % Stricter silence criterion
+                    % Single firing criteria
+                    hasSignificantPeak = peakRate > 0.5;
+                    hasLowLateFiring = silenceRate < 0.1;
                     peakToBaselineRatio = peakRate / (silenceRate + eps);
-                    hasGoodContrast = peakToBaselineRatio > 15;
-                    peakTimeCorrect = peakTimeInMins >= 5 && peakTimeInMins <= 20;
+                    hasGoodContrast = peakToBaselineRatio > 5;
+                    peakTimeCorrect = peakTimeInMins <= 20;
                     
                     % Combine criteria
                     isSingleFiring = hasSignificantPeak && hasLowLateFiring && ...
                                    hasGoodContrast && peakTimeCorrect;
                     
-                    if isSingleFiring
-                        fprintf('Found single-firing unit: %s\n', unitID);
-                        fprintf('Peak rate: %.2f Hz at %.1f minutes\n', peakRate, peakTimeInMins);
-                        fprintf('Silence rate: %.2f Hz\n', silenceRate);
-                        fprintf('Peak-to-baseline ratio: %.1f\n\n', peakToBaselineRatio);
+                    % Square wave detection
+                    windowSize = 5; % minutes
+                    stepSize = 1;   % minutes
+                    minSquareDuration = 2; % minutes
+                    hasSquareWave = false;
+                    squareMetrics = struct('startTime', 0, 'duration', 0, 'amplitude', 0);
+                    
+                    % Convert time windows to indices
+                    pointsPerMin = sum(timeInMinutes <= 1);
+                    windowPoints = round(windowSize * pointsPerMin);
+                    stepPoints = round(stepSize * pointsPerMin);
+                    
+                    % Scan through recording
+                    for startIdx = 1:stepPoints:length(psthData)-windowPoints
+                        endIdx = startIdx + windowPoints - 1;
+                        windowData = psthData(startIdx:endIdx);
+                        windowTime = timeInMinutes(startIdx:endIdx);
+                        
+                        % Calculate metrics
+                        meanRate = mean(windowData);
+                        cv = std(windowData)/meanRate;
+                        
+                        % Check for square wave characteristics
+                        if meanRate > 0.2 && cv < 0.25 % Stable firing above threshold
+                            % Check edges
+                            if startIdx > 1 && endIdx < length(psthData)
+                                beforeRate = mean(psthData(max(1,startIdx-3):startIdx-1));
+                                afterRate = mean(psthData(endIdx+1:min(length(psthData),endIdx+3)));
+                                
+                                % Calculate transition sharpness
+                                onsetRatio = meanRate/max(beforeRate, eps);
+                                offsetRatio = meanRate/max(afterRate, eps);
+                                
+                                if onsetRatio > 3 && offsetRatio > 3 && ...
+                                   (windowTime(end)-windowTime(1)) >= minSquareDuration
+                                    hasSquareWave = true;
+                                    squareMetrics.startTime = windowTime(1);
+                                    squareMetrics.duration = windowTime(end)-windowTime(1);
+                                    squareMetrics.amplitude = meanRate;
+                                    break
+                                end
+                            end
+                        end
                     end
                     
-                    % Store in table
+                    % Store results in table
                     unitTable.unitID(rowCounter) = string(unitID);
                     unitTable.recordingName(rowCounter) = string(recordingName);
                     unitTable.groupName(rowCounter) = string(groupName);
                     unitTable.peakFiringRate(rowCounter) = peakRate;
                     unitTable.silencePeriodRate(rowCounter) = silenceRate;
                     unitTable.isSingleFiring(rowCounter) = isSingleFiring;
+                    unitTable.hasSquareWave(rowCounter) = hasSquareWave;
+                    unitTable.squareWaveStartTime(rowCounter) = squareMetrics.startTime;
+                    unitTable.squareWaveDuration(rowCounter) = squareMetrics.duration;
                     
-                    % Update unit structure with more detailed metrics
+                    % Update unit structure
                     cellDataStruct.(groupName).(recordingName).(unitID).isSingleFiring = isSingleFiring;
-                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics = struct(...
-                        'peakRate', peakRate, ...
-                        'silenceRate', silenceRate, ...
-                        'peakToSilenceRatio', peakToBaselineRatio, ...
-                        'peakTime', timeVector(find(psthData == peakRate, 1, 'first')));
+                    cellDataStruct.(groupName).(recordingName).(unitID).hasSquareWave = hasSquareWave;
+                    
+                    if isSingleFiring
+                        cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics = struct(...
+                            'peakRate', peakRate, ...
+                            'silenceRate', silenceRate, ...
+                            'peakToSilenceRatio', peakToBaselineRatio, ...
+                            'peakTime', timeVector(find(psthData == peakRate, 1, 'first')));
+                            
+                        fprintf('Found single-firing unit: %s\n', unitID);
+                        fprintf('Peak rate: %.2f Hz at %.1f minutes\n', peakRate, peakTimeInMins);
+                        fprintf('Silence rate: %.2f Hz\n\n', silenceRate);
+                    end
+                    
+                    if hasSquareWave
+                        cellDataStruct.(groupName).(recordingName).(unitID).squareMetrics = squareMetrics;
+                        
+                        fprintf('Found square wave in unit: %s\n', unitID);
+                        fprintf('Time: %.1f-%.1f minutes\n', squareMetrics.startTime, ...
+                            squareMetrics.startTime + squareMetrics.duration);
+                        fprintf('Amplitude: %.2f Hz\n\n', squareMetrics.amplitude);
+                    end
                     
                     rowCounter = rowCounter + 1;
                 end
@@ -109,12 +168,12 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     % Trim any unused rows from the table
     unitTable = unitTable(1:rowCounter-1, :);
 
-    % Create output table of single-firing units
-    sparseUnitsList = unitTable(unitTable.isSingleFiring, :);
+    % Create output table of identified units
+    sparseUnitsList = unitTable(unitTable.isSingleFiring | unitTable.hasSquareWave, :);
     
-    % Sort by peak firing rate
+    % Sort by pattern type
     if ~isempty(sparseUnitsList)
-        sparseUnitsList = sortrows(sparseUnitsList, 'peakFiringRate', 'descend');
+        sparseUnitsList = sortrows(sparseUnitsList, {'isSingleFiring', 'hasSquareWave'}, {'descend', 'descend'});
         
         % Create visualization
         figure('Position', [100 100 800 600]);
@@ -129,42 +188,53 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
             
             subplot(min(5, height(sparseUnitsList)), 1, i);
             plot(timeInMinutes, psthData, 'LineWidth', 1.5);
-            title(sprintf('Unit %s (Peak: %.2f Hz at %.1f mins)', ...
-                  char(unitID), ...
-                  cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakRate, ...
-                  cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakTime/minutesToSecs));
+            
+            if sparseUnitsList.hasSquareWave(i)
+                squareMetrics = cellDataStruct.(groupName).(recordingName).(unitID).squareMetrics;
+                titleStr = sprintf('Unit %s (Square wave: %.2f Hz, %.1f-%.1f min)', ...
+                    char(unitID), squareMetrics.amplitude, ...
+                    squareMetrics.startTime, squareMetrics.startTime + squareMetrics.duration);
+                
+                % Highlight square wave period
+                hold on;
+                ylims = ylim;
+                patch([squareMetrics.startTime, squareMetrics.startTime + squareMetrics.duration, ...
+                       squareMetrics.startTime + squareMetrics.duration, squareMetrics.startTime], ...
+                      [ylims(1) ylims(1) ylims(2) ylims(2)], ...
+                      'y', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+                hold off;
+            else
+                titleStr = sprintf('Unit %s (Single firing: Peak %.2f Hz at %.1f min)', ...
+                    char(unitID), ...
+                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakRate, ...
+                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakTime/minutesToSecs);
+            end
+            
+            title(titleStr);
             ylabel('Firing Rate (Hz)');
             xlabel('Time (minutes)');
             grid on;
-            % Add vertical lines for analysis windows
-            hold on;
-            xline(30, '--r', 'Analysis cutoff');
-            hold off;
         end
     end
 
-    % Optional: save results
+    % Save results
     if nargin > 4 && ~isempty(dataFolder) && ~isempty(sparseUnitsList)
         try
             timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-            fileName = sprintf('sparseUnitsTable_%s.csv', timeStamp);
-            
             saveDir = fullfile(dataFolder, 'sparseUnitTable');
             if ~exist(saveDir, 'dir')
                 mkdir(saveDir);
             end
             
-            savePath = fullfile(saveDir, fileName);
-            writetable(sparseUnitsList, savePath);
+            % Save table
+            tablePath = fullfile(saveDir, sprintf('sparseUnitsTable_%s.csv', timeStamp));
+            writetable(sparseUnitsList, tablePath);
             
-            % Save figure if it was created
-            if ~isempty(sparseUnitsList)
-                figPath = fullfile(saveDir, sprintf('sparseUnits_plot_%s.fig', timeStamp));
-                savefig(gcf, figPath);
-                fprintf('Plot saved to: %s\n', figPath);
-            end
+            % Save figure
+            figPath = fullfile(saveDir, sprintf('sparseUnits_plot_%s.fig', timeStamp));
+            savefig(gcf, figPath);
             
-            fprintf('Successfully saved results to: %s\n', savePath);
+            fprintf('Results saved to: %s\n', saveDir);
             
         catch ME
             fprintf('Error saving results:\n');
@@ -172,8 +242,3 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
         end
     end
 end
-
-
-
-
-
