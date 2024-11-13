@@ -1,8 +1,7 @@
-function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBefore, binWidth, minFrRate, dataFolder)
+function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, binWidth, minFrRate, dataFolder)
     % tagSparseUnits Tags units with specific firing patterns
     % Inputs:
     %   cellDataStruct: Nested structure containing unit data
-    %   frBefore: Firing rates before treatment
     %   binWidth: Width of time bins in seconds
     %   minFrRate: Minimum firing rate threshold (default 0.5 Hz)
     %   dataFolder: Optional path for saving results
@@ -11,8 +10,20 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     %   sparseUnitsList: Table containing identified units
     
     % Set default args
-    if nargin < 4 || isempty(minFrRate)
-        minFrRate = 0.5; % set min fr rate to 0.5Hz
+    if nargin < 3 || isempty(minFrRate)
+        minFrRate = 0.5;
+    end
+    
+    % Validate bin width
+    if binWidth <= 0
+        error('Bin width must be positive');
+    end
+    
+    % Add warning for very small or large bins
+    if binWidth < 1
+        warning('Small bin width (<1s) may affect detection sensitivity');
+    elseif binWidth > 60
+        warning('Large bin width (>60s) may miss brief square waves');
     end
     
     % Get total number of units for table initialization
@@ -26,20 +37,17 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
         end
     end
     
-    % Modified table structure to handle multiple square waves
-    unitTable = table('Size', [numFields, 11], ...
+    % Modified table structure to handle square waves
+    unitTable = table('Size', [numFields, 7], ...
                       'VariableTypes', {'string', 'string', 'string', ...
-                                        'double', 'double', 'logical', ...
-                                        'logical', 'cell', 'cell', ...
-                                        'cell', 'double'}, ...
+                                        'logical', 'cell', 'cell', 'cell'}, ...
                       'VariableNames', {'unitID', 'recordingName', 'groupName', ...
-                                        'peakFiringRate', 'silencePeriodRate', ...
-                                        'isSingleFiring', 'hasSquareWave', ...
-                                        'squareWaveStartTimes', 'squareWaveDurations', ...
-                                        'squareWaveAmplitudes', 'numSquareWaves'});
+                                        'hasSquareWave', 'squareWaveStartTimes', ...
+                                        'squareWaveDurations', 'squareWaveAmplitudes'});
     
     % Initialize counter for table rows
     rowCounter = 1;
+    minutesToSecs = 60;
 
     % Loop through groups, recordings, and units
     for g = 1:length(groupNames)
@@ -55,18 +63,17 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 % Get PSTH data
                 psthData = unitData.psthSmoothed;
                 timeVector = unitData.binEdges(1:end-1) + binWidth/2;
-                minutesToSecs = 60;
                 timeInMinutes = timeVector/minutesToSecs;
                 
                 % Square wave detection parameters
-                windowSize = 3;    % minutes (reduced for better detection)
-                stepSize = 0.5;    % minutes (smaller steps)
+                windowSize = 3;    % minutes
+                stepSize = 0.5;    % minutes
                 minSquareDuration = 1;  % minutes
-                maxSquareWaves = 10;    % increased maximum
-                cv_threshold = 0.2;     % stricter CV threshold
+                maxSquareWaves = 10;
+                cv_threshold = 0.2;
                 
                 % Convert time windows to indices
-                pointsPerMin = sum(timeInMinutes <= 1);
+                pointsPerMin = round(minutesToSecs/binWidth);
                 windowPoints = round(windowSize * pointsPerMin);
                 stepPoints = round(stepSize * pointsPerMin);
                 
@@ -129,9 +136,6 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 unitTable.recordingName(rowCounter) = string(recordingName);
                 unitTable.groupName(rowCounter) = string(groupName);
                 unitTable.hasSquareWave(rowCounter) = hasSquareWave;
-                unitTable.numSquareWaves(rowCounter) = length(squareWaves.startTime);
-                
-                % Store square wave data in cell arrays
                 unitTable.squareWaveStartTimes{rowCounter} = squareWaves.startTime;
                 unitTable.squareWaveDurations{rowCounter} = squareWaves.duration;
                 unitTable.squareWaveAmplitudes{rowCounter} = squareWaves.amplitude;
@@ -140,7 +144,6 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 cellDataStruct.(groupName).(recordingName).(unitID).hasSquareWave = hasSquareWave;
                 if hasSquareWave
                     cellDataStruct.(groupName).(recordingName).(unitID).squareWaves = squareWaves;
-                    
                     fprintf('Found square waves in unit %s:\n', unitID);
                     for w = 1:length(squareWaves.startTime)
                         fprintf('  Wave %d: %.1f-%.1f minutes, %.2f Hz\n', ...
@@ -162,11 +165,10 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     % Create output table of identified units
     sparseUnitsList = unitTable(unitTable.hasSquareWave, :);
     
-    % Sort by number of square waves and amplitude
+    % Sort and visualize results
     if ~isempty(sparseUnitsList)
-        sparseUnitsList = sortrows(sparseUnitsList, {'numSquareWaves', 'hasSquareWave'}, {'descend', 'descend'});
+        sparseUnitsList = sortrows(sparseUnitsList, 'hasSquareWave', 'descend');
         
-        % Create visualization
         figure('Position', [100 100 800 600]);
         for i = 1:min(5, height(sparseUnitsList))
             unitID = sparseUnitsList.unitID(i);
@@ -184,7 +186,7 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
             titleStr = sprintf('Unit %s (Square waves: n=%d)', ...
                 char(unitID), length(squareWaves.startTime));
             
-            % Highlight all square wave periods
+            % Highlight square wave periods
             hold on;
             ylims = ylim;
             for w = 1:length(squareWaves.startTime)
@@ -205,7 +207,7 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     end
 
     % Save results
-    if nargin > 4 && ~isempty(dataFolder) && ~isempty(sparseUnitsList)
+    if nargin > 3 && ~isempty(dataFolder) && ~isempty(sparseUnitsList)
         try
             timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
             saveDir = fullfile(dataFolder, 'sparseUnitTable');
@@ -213,16 +215,13 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 mkdir(saveDir);
             end
             
-            % Save table
             tablePath = fullfile(saveDir, sprintf('sparseUnitsTable_%s.csv', timeStamp));
             writetable(sparseUnitsList, tablePath);
             
-            % Save figure
             figPath = fullfile(saveDir, sprintf('sparseUnits_plot_%s.fig', timeStamp));
             savefig(gcf, figPath);
             
             fprintf('Results saved to: %s\n', saveDir);
-            
         catch ME
             fprintf('Error saving results:\n');
             fprintf('Message: %s\n', ME.message);
