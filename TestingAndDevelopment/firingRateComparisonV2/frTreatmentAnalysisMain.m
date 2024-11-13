@@ -12,19 +12,19 @@
 %       consistent with data structure below
 %
 %% Directory Structure
-% Project Folder: /home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/
+% ProjectFolder:~/frTreatmentAnalysisMain_figureResults/binWith(#)boxCar(#)
 % ├── projectData
 % │   ├── all_data.mat
 % │   ├── config.mat 
 % │   └── cellDataStruct.mat
 % └── projectFigures
-%     ├── 0.tbdFigures (e.g. experimental, ctrl)
+%     ├── 0.expFigures (e.g. experimental, ctrl)
 %     │   └── experimental_Figure-timestamp.fig
-%     └── groupName (e.g. Ctrl, Emx, Pvalb)
+%     └── groupName (e.g. Ctrl, Emx, Pvalb)S
 %         ├── 0.groupFigures
 %         │   └── Emx_Figure-timestamp.fig           
 %         └── recordingName (e.g emx_0001_rec1)
-%             ├── 0.recordingFigures
+%             ├── 0.recordingFiguresS
 %             │   └── emx_0001_rec1_Figure-timestamp.fig           
 %             └── unitID (e.g. cid214)
 %                 └── cid214_Figure-timestamp.fig
@@ -53,7 +53,7 @@ try
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 0.01);  % set binWidth in seconds
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);  % set binWidth in seconds
 
     fprintf('Data loaded and saved successfully!\n');
 catch ME
@@ -71,24 +71,26 @@ generateFigureDirectories(cellDataStruct, figureFolder);
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 20);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 5);
 
 % Calculate pre- and post-treatment firing rate
 cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
-    0.01, dataFolder); % Set bin-width to 60s
+    60, dataFolder, true); % Set bin-width to 60s
 
-% Filter unit data by group for outliers
+% Detect Outliers in Response Groups
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
     false, dataFolder);
 
 % Calculate PSTH percent change 
-cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
+cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
+
+% Filter tagged units from remaining analysis
+cellDataStruct = getCleanUnits(cellDataStruct);
 
 %% Plotting 
-
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
 % recording level
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
