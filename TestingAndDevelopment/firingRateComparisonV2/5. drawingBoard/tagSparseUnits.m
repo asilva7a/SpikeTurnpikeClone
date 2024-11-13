@@ -26,15 +26,17 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
         end
     end
     
-    % Initiate data table
-    unitTable = table('Size', [numFields, 9], ...
+    % Modified table structure to handle multiple square waves
+    unitTable = table('Size', [numFields, 11], ...
                       'VariableTypes', {'string', 'string', 'string', ...
                                         'double', 'double', 'logical', ...
-                                        'logical', 'double', 'double'}, ...
+                                        'logical', 'cell', 'cell', ...
+                                        'cell', 'double'}, ...
                       'VariableNames', {'unitID', 'recordingName', 'groupName', ...
                                         'peakFiringRate', 'silencePeriodRate', ...
                                         'isSingleFiring', 'hasSquareWave', ...
-                                        'squareWaveStartTime', 'squareWaveDuration'});
+                                        'squareWaveStartTimes', 'squareWaveDurations', ...
+                                        'squareWaveAmplitudes', 'numSquareWaves'});
     
     % Initialize counter for table rows
     rowCounter = 1;
@@ -50,131 +52,107 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                 
-                   % Get PSTH data
+                % Get PSTH data
                 psthData = unitData.psthSmoothed;
                 timeVector = unitData.binEdges(1:end-1) + binWidth/2;
                 minutesToSecs = 60;
                 timeInMinutes = timeVector/minutesToSecs;
                 
-                % Define time windows for analysis
-                earlyWindowMins = 30;
-                earlyIdx = timeInMinutes <= earlyWindowMins;
-                lateIdx = timeInMinutes > earlyWindowMins;
+                % Square wave detection parameters
+                windowSize = 3;    % minutes (reduced for better detection)
+                stepSize = 0.5;    % minutes (smaller steps)
+                minSquareDuration = 1;  % minutes
+                maxSquareWaves = 10;    % increased maximum
+                cv_threshold = 0.2;     % stricter CV threshold
                 
-                % Now we can safely calculate metrics
-                if ~isempty(earlyIdx) && ~isempty(lateIdx)
-                    % Single firing metrics
-                    peakRate = max(psthData(earlyIdx));
-                    silenceRate = mean(psthData(lateIdx));
-                    peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
+                % Convert time windows to indices
+                pointsPerMin = sum(timeInMinutes <= 1);
+                windowPoints = round(windowSize * pointsPerMin);
+                stepPoints = round(stepSize * pointsPerMin);
+                
+                % Initialize arrays for multiple square waves
+                squareWaves = struct('startTime', [], 'duration', [], 'amplitude', []);
+                hasSquareWave = false;
+                
+                % Scan through recording
+                for startIdx = 1:stepPoints:length(psthData)-windowPoints
+                    endIdx = startIdx + windowPoints - 1;
+                    windowData = psthData(startIdx:endIdx);
+                    windowTime = timeInMinutes(startIdx:endIdx);
                     
-                    % Calculate rate of decline after peak
-                    peakIndex = find(psthData == peakRate, 1, 'first');
-                    if peakIndex < length(psthData)-5  % Ensure enough points after peak
-                        % Calculate average rate of decline over next 5 minutes
-                        postPeakWindow = peakIndex:(peakIndex + round(5 * 60/binWidth));
-                        postPeakWindow = postPeakWindow(postPeakWindow <= length(psthData));
-                        rateOfDecline = abs(diff(psthData(postPeakWindow(1:min(end,10))))/binWidth);
-                        isAbruptDecline = mean(rateOfDecline) > 0.1; % Threshold for abrupt decline
-                    else
-                        isAbruptDecline = false;
-                    end
+                    % Calculate metrics
+                    meanRate = mean(windowData);
+                    cv = std(windowData)/meanRate;
                     
-                    % Modified single firing criteria
-                    hasSignificantPeak = peakRate > 0.3;
-                    hasLowLateFiring = silenceRate < 0.05;  % Stricter silence requirement
-                    peakToBaselineRatio = peakRate / (silenceRate + eps);
-                    hasGoodContrast = peakToBaselineRatio > 8;
-                    peakTimeCorrect = peakTimeInMins <= 20;
-                    
-                    % Combine criteria - must have abrupt decline
-                    isSingleFiring = hasSignificantPeak && hasLowLateFiring && ...
-                                     hasGoodContrast && peakTimeCorrect && isAbruptDecline;
-                                        
-                    % Square wave detection
-                    windowSize = 5; % minutes
-                    stepSize = 1;   % minutes
-                    minSquareDuration = 2; % minutes
-                    hasSquareWave = false;
-                    squareMetrics = struct('startTime', 0, 'duration', 0, 'amplitude', 0);
-                    
-                    % Convert time windows to indices
-                    pointsPerMin = sum(timeInMinutes <= 1);
-                    windowPoints = round(windowSize * pointsPerMin);
-                    stepPoints = round(stepSize * pointsPerMin);
-                    
-                    % Scan through recording
-                    for startIdx = 1:stepPoints:length(psthData)-windowPoints
-                        endIdx = startIdx + windowPoints - 1;
-                        windowData = psthData(startIdx:endIdx);
-                        windowTime = timeInMinutes(startIdx:endIdx);
-                        
-                        % Calculate metrics
-                        meanRate = mean(windowData);
-                        cv = std(windowData)/meanRate;
-                        
-                        % Check for square wave characteristics
-                        if meanRate > 0.2 && cv < 0.25 % Stable firing above threshold
-                            % Check edges
-                            if startIdx > 1 && endIdx < length(psthData)
-                                beforeRate = mean(psthData(max(1,startIdx-3):startIdx-1));
-                                afterRate = mean(psthData(endIdx+1:min(length(psthData),endIdx+3)));
+                    % Check for square wave characteristics
+                    if meanRate > 0.2 && cv < cv_threshold
+                        if startIdx > 1 && endIdx < length(psthData)
+                            beforeRate = mean(psthData(max(1,startIdx-3):startIdx-1));
+                            afterRate = mean(psthData(endIdx+1:min(length(psthData),endIdx+3)));
+                            
+                            onsetRatio = meanRate/max(beforeRate, eps);
+                            offsetRatio = meanRate/max(afterRate, eps);
+                            
+                            if onsetRatio > 2 && offsetRatio > 2 && ...
+                               (windowTime(end)-windowTime(1)) >= minSquareDuration
                                 
-                                % Calculate transition sharpness
-                                onsetRatio = meanRate/max(beforeRate, eps);
-                                offsetRatio = meanRate/max(afterRate, eps);
+                                % Check if this period overlaps with existing ones
+                                isOverlapping = false;
+                                if ~isempty(squareWaves.startTime)
+                                    for w = 1:length(squareWaves.startTime)
+                                        waveEnd = squareWaves.startTime(w) + squareWaves.duration(w);
+                                        if (windowTime(1) >= squareWaves.startTime(w) && windowTime(1) <= waveEnd) || ...
+                                           (windowTime(end) >= squareWaves.startTime(w) && windowTime(end) <= waveEnd)
+                                            isOverlapping = true;
+                                            break;
+                                        end
+                                    end
+                                end
                                 
-                                if onsetRatio > 3 && offsetRatio > 3 && ...
-                                   (windowTime(end)-windowTime(1)) >= minSquareDuration
+                                if ~isOverlapping
                                     hasSquareWave = true;
-                                    squareMetrics.startTime = windowTime(1);
-                                    squareMetrics.duration = windowTime(end)-windowTime(1);
-                                    squareMetrics.amplitude = meanRate;
-                                    break
+                                    squareWaves.startTime(end+1) = windowTime(1);
+                                    squareWaves.duration(end+1) = windowTime(end)-windowTime(1);
+                                    squareWaves.amplitude(end+1) = meanRate;
+                                    
+                                    if length(squareWaves.startTime) >= maxSquareWaves
+                                        break;
+                                    end
                                 end
                             end
                         end
                     end
-                    
-                    % Store results in table
-                    unitTable.unitID(rowCounter) = string(unitID);
-                    unitTable.recordingName(rowCounter) = string(recordingName);
-                    unitTable.groupName(rowCounter) = string(groupName);
-                    unitTable.peakFiringRate(rowCounter) = peakRate;
-                    unitTable.silencePeriodRate(rowCounter) = silenceRate;
-                    unitTable.isSingleFiring(rowCounter) = isSingleFiring;
-                    unitTable.hasSquareWave(rowCounter) = hasSquareWave;
-                    unitTable.squareWaveStartTime(rowCounter) = squareMetrics.startTime;
-                    unitTable.squareWaveDuration(rowCounter) = squareMetrics.duration;
-                    
-                    % Update unit structure
-                    cellDataStruct.(groupName).(recordingName).(unitID).isSingleFiring = isSingleFiring;
-                    cellDataStruct.(groupName).(recordingName).(unitID).hasSquareWave = hasSquareWave;
-                    
-                    if isSingleFiring
-                        cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics = struct(...
-                            'peakRate', peakRate, ...
-                            'silenceRate', silenceRate, ...
-                            'peakToSilenceRatio', peakToBaselineRatio, ...
-                            'peakTime', timeVector(find(psthData == peakRate, 1, 'first')));
-                            
-                        fprintf('Found single-firing unit: %s\n', unitID);
-                        fprintf('Peak rate: %.2f Hz at %.1f minutes\n', peakRate, peakTimeInMins);
-                        fprintf('Silence rate: %.2f Hz\n\n', silenceRate);
-                    end
-                    
-                    if hasSquareWave
-                        cellDataStruct.(groupName).(recordingName).(unitID).squareMetrics = squareMetrics;
-                        
-                        fprintf('Found square wave in unit: %s\n', unitID);
-                        fprintf('Time: %.1f-%.1f minutes\n', squareMetrics.startTime, ...
-                            squareMetrics.startTime + squareMetrics.duration);
-                        fprintf('Amplitude: %.2f Hz\n\n', squareMetrics.amplitude);
-                    end
-                    
-                    rowCounter = rowCounter + 1;
                 end
-            end     
+                
+                % Store results in table
+                unitTable.unitID(rowCounter) = string(unitID);
+                unitTable.recordingName(rowCounter) = string(recordingName);
+                unitTable.groupName(rowCounter) = string(groupName);
+                unitTable.hasSquareWave(rowCounter) = hasSquareWave;
+                unitTable.numSquareWaves(rowCounter) = length(squareWaves.startTime);
+                
+                % Store square wave data in cell arrays
+                unitTable.squareWaveStartTimes{rowCounter} = squareWaves.startTime;
+                unitTable.squareWaveDurations{rowCounter} = squareWaves.duration;
+                unitTable.squareWaveAmplitudes{rowCounter} = squareWaves.amplitude;
+                
+                % Update unit structure
+                cellDataStruct.(groupName).(recordingName).(unitID).hasSquareWave = hasSquareWave;
+                if hasSquareWave
+                    cellDataStruct.(groupName).(recordingName).(unitID).squareWaves = squareWaves;
+                    
+                    fprintf('Found square waves in unit %s:\n', unitID);
+                    for w = 1:length(squareWaves.startTime)
+                        fprintf('  Wave %d: %.1f-%.1f minutes, %.2f Hz\n', ...
+                            w, squareWaves.startTime(w), ...
+                            squareWaves.startTime(w) + squareWaves.duration(w), ...
+                            squareWaves.amplitude(w));
+                    end
+                    fprintf('\n');
+                end
+                
+                rowCounter = rowCounter + 1;
+            end
         end
     end
 
@@ -182,11 +160,11 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
     unitTable = unitTable(1:rowCounter-1, :);
 
     % Create output table of identified units
-    sparseUnitsList = unitTable(unitTable.isSingleFiring | unitTable.hasSquareWave, :);
+    sparseUnitsList = unitTable(unitTable.hasSquareWave, :);
     
-    % Sort by pattern type
+    % Sort by number of square waves and amplitude
     if ~isempty(sparseUnitsList)
-        sparseUnitsList = sortrows(sparseUnitsList, {'isSingleFiring', 'hasSquareWave'}, {'descend', 'descend'});
+        sparseUnitsList = sortrows(sparseUnitsList, {'numSquareWaves', 'hasSquareWave'}, {'descend', 'descend'});
         
         % Create visualization
         figure('Position', [100 100 800 600]);
@@ -202,26 +180,22 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
             subplot(min(5, height(sparseUnitsList)), 1, i);
             plot(timeInMinutes, psthData, 'LineWidth', 1.5);
             
-            if sparseUnitsList.hasSquareWave(i)
-                squareMetrics = cellDataStruct.(groupName).(recordingName).(unitID).squareMetrics;
-                titleStr = sprintf('Unit %s (Square wave: %.2f Hz, %.1f-%.1f min)', ...
-                    char(unitID), squareMetrics.amplitude, ...
-                    squareMetrics.startTime, squareMetrics.startTime + squareMetrics.duration);
-                
-                % Highlight square wave period
-                hold on;
-                ylims = ylim;
-                patch([squareMetrics.startTime, squareMetrics.startTime + squareMetrics.duration, ...
-                       squareMetrics.startTime + squareMetrics.duration, squareMetrics.startTime], ...
+            squareWaves = cellDataStruct.(groupName).(recordingName).(unitID).squareWaves;
+            titleStr = sprintf('Unit %s (Square waves: n=%d)', ...
+                char(unitID), length(squareWaves.startTime));
+            
+            % Highlight all square wave periods
+            hold on;
+            ylims = ylim;
+            for w = 1:length(squareWaves.startTime)
+                patch([squareWaves.startTime(w), ...
+                       squareWaves.startTime(w) + squareWaves.duration(w), ...
+                       squareWaves.startTime(w) + squareWaves.duration(w), ...
+                       squareWaves.startTime(w)], ...
                       [ylims(1) ylims(1) ylims(2) ylims(2)], ...
-                      'y', 'FaceAlpha', 0.1, 'EdgeColor', 'none');
-                hold off;
-            else
-                titleStr = sprintf('Unit %s (Single firing: Peak %.2f Hz at %.1f min)', ...
-                    char(unitID), ...
-                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakRate, ...
-                    cellDataStruct.(groupName).(recordingName).(unitID).firingMetrics.peakTime/minutesToSecs);
+                      'y', 'FaceAlpha', 0.2, 'EdgeColor', 'y');
             end
+            hold off;
             
             title(titleStr);
             ylabel('Firing Rate (Hz)');
