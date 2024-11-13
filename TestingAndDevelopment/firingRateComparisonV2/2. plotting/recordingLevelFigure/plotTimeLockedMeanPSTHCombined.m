@@ -25,7 +25,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
         treatmentTime = 1860; % Default treatment time in seconds
     end
 
-    % Define colors for each response type
+    % Define colors for each response typerecordingLevelFigure
     colors = struct('Increased', [1, 0, 0, 0.3], ...   % Red with transparency
                     'Decreased', [0, 0, 1, 0.3], ...   % Blue with transparency
                     'NoChange', [0.5, 0.5, 0.5, 0.3]); % Grey with transparency
@@ -75,7 +75,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
                     psth = unitData.psthSmoothed;
                     binWidth = unitData.binWidth;
                     binEdges = unitData.binEdges;
-                    timeVector = binEdges(1:end-1) + binWidth / 2; % Bin centers
+                    timeVector = binEdges(1:end-1) + binWidth / 2; % Bin recordingLevelFigurecenters
 
                     % Separate by response type
                     switch unitData.responseType
