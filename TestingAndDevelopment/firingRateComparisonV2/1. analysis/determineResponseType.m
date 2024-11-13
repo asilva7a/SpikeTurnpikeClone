@@ -58,11 +58,11 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 postIndices = timeVector >= postWindow(1) & timeVector <= postWindow(2);
 
                 % Get firing rates for pre- and post-treatment periods
-                FR_before = psthData(preIndices);
-                FR_after = psthData(postIndices);
+                frBefore = psthData(preIndices);
+                frAfter = psthData(postIndices);
                 
                 % Verify equal length windows
-                if length(FR_before) ~= length(FR_after)
+                if length(frBefore) ~= length(frAfter)
                     warning('Pre and post windows have different lengths for Unit %s in %s, %s.', unitID, groupName, recordingName);
                     unitData.unitFlags.isDataMissing = true;
                     responseType = 'Missing Data';
@@ -70,31 +70,31 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 end
 
                 % Calculate silence scores
-                [silence_score_before, silence_score_after] = calculateSilenceScore(FR_before, FR_after, binWidth, silence_threshold);
+                [silence_score_before, silence_score_after] = calculateSilenceScore(frBefore, frAfter, binWidth, silence_threshold);
 
                 % Main Processing block
-                if isempty(FR_before) || isempty(FR_after)
+                if isempty(frBefore) || isempty(frAfter)
                     warning('Insufficient data for Unit %s in %s, %s. Skipping statistical tests.', unitID, groupName, recordingName);
                     unitData.unitFlags.isDataMissing = true;
                     responseType = 'Missing Data';  
                 else
                     % Set flags but don't affect response type
-                    isMostlySilent = (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
-                    isMostlyZero = (sum(FR_before == 0) / numel(FR_before) >= 0.6 || sum(FR_after == 0) / numel(FR_after) >= 0.6);
+                    isMostlySilent= (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
+                    isSparselyFiring = ;
                     
                     % Store flags in unit data
                     unitData.unitFlags.isMostlySilent = isMostlySilent;
                     unitData.unitFlags.isMostlyZero = isMostlyZero;
 
                     % Perform statistical tests for all units
-                    [p_wilcoxon, ~] = signrank(FR_before, FR_after, 'alpha', 0.01);
-                    combinedData = [FR_before(:); FR_after(:)];
-                    groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))]; % swap Kruskall Wallis out whenever we have the chance
+                    [p_wilcoxon, ~] = signrank(frBefore, frAfter, 'alpha', 0.01);
+                    combinedData = [frBefore(:); frAfter(:)];
+                    groupLabels = [ones(size(frBefore(:))); 2 * ones(size(frAfter(:)))]; % swap Kruskall Wallis out whenever we have the chance
                     p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
                     
                     % Determine response type based on statistical tests
                     if p_wilcoxon < 0.01 
-                        if median(FR_after) > median(FR_before)
+                        if median(frAfter) > median(frBefore)
                             responseType = 'Increased';
                         else
                             responseType = 'Decreased';
@@ -106,14 +106,14 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     
                 
                 % Calculate additional metrics regardless of response type
-                frBaselineAvg = mean(FR_before);
-                frTreatmentAvg = mean(FR_after);
-                frBaselineStdDev = std(FR_before);
-                frTreatmentStdDev = std(FR_after);
-                frBaselineVariance = var(FR_before);
-                frTreatmentVariance = var(FR_after);
-                frBaselineSpikeCount = sum(FR_before) * binWidth;
-                frTreatmentSpikeCount = sum(FR_after) * binWidth;
+                frBaselineAvg = mean(frBefore);
+                frTreatmentAvg = mean(frAfter);
+                frBaselineStdDev = std(frBefore);
+                frTreatmentStdDev = std(frAfter);
+                frBaselineVariance = var(frBefore);
+                frTreatmentVariance = var(frAfter);
+                frBaselineSpikeCount = sum(frBefore) * binWidth;
+                frTreatmentSpikeCount = sum(frAfter) * binWidth;
                     
                 % Store results, including p-values and additional metrics
                 unitData.pValue = p_wilcoxon;
