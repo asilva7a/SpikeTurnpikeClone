@@ -75,7 +75,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     unitData.unitFlags.isMostlyZero = isMostlyZero;
 
                     % Perform statistical tests for all units
-                    [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
+                    [p_wilcoxon, ~] = signrank(FR_before, FR_after, 'alpha', 0.01);
                     combinedData = [FR_before(:); FR_after(:)];
                     groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))]; % swap Kruskall Wallis out whenever we have the chance
                     p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
