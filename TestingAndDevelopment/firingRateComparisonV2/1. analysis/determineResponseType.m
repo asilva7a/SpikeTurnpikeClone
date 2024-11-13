@@ -175,7 +175,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
             end
             
             % Call tagSparseUnits with complete firing rate data
-            [cellDataStruct, ~] = tagSparseUnits(cellDataStruct, frBefore, binWidth, 0.5, dataFolder);
+            [cellDataStruct, ~] = tagSparseUnits(cellDataStruct, binWidth, 0.5, dataFolder);
             fprintf('Sparse unit detection completed successfully.\n');
             
         catch ME
