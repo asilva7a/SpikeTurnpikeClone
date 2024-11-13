@@ -7,8 +7,12 @@ if nargin < 2 || isempty(minFrRate)
     minFrRate = 0.5; % set min fr rate to 0.5Hz
 end
 
-% Check if args present
-
+% Initiate data table
+unitTable = table('Size', [numFields, 4], ...
+                  'VariableTypes', {'string', 'string', 'string', ...
+                                    'double'}, ...
+                  'VariableNames', {'unitID', 'recordingName', 'groupName', ...
+                                    'sparseScore'});
 
 % Set window for sampling
 preTreatmentFr = frBefore;
@@ -30,14 +34,21 @@ preTreatmentFr = preTreatmentFr*binWidth;
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                    
+            
                     % Label sparsity
                     if preTreatmentFr > minFrRate
                         unitData.isSparseUnit = 1;
                     else 
                         unitData.isSparseUnit = 0;
                     end
+                    
+                    % Add unit to table
+
             end     
         end
-    end % Saving logic not included; output goes to function w/ save block
+    end % Saving for struct not included; output goes to function w/ save block
+    
+    % Save sparsity table
+
+
 end
