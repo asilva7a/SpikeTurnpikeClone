@@ -1,4 +1,4 @@
-function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, plotOutliers, dataFolder)
+function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, figureFolder, dataFolder)
     % flagOutliersInPooledData: Identifies and flags extreme outlier units based on smoothed PSTHs.
     % All units will have an isOutlierExperimental field where 1 indicates an outlier and 0 indicates non-outlier.
 
@@ -82,8 +82,8 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 Q1 = prctile(maxRatesGroup, 25);
                 Q3 = prctile(maxRatesGroup, 75);
                 IQR_value = Q3 - Q1;
-                upperFence = Q3 + 3.0 * IQR_value;
-                lowerFence = Q1 - 3.0 * IQR_value;
+                upperFence = Q3 + 1.5 * IQR_value;
+                lowerFence = Q1 - 1.5 * IQR_value;
 
                 % Store IQR information in groupIQRs
                 groupIQRs.(rType{1}).(grp{1}).IQR = IQR_value;
@@ -120,7 +120,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
     end
 
     % Optional: Plotting function if specified
-    if plotOutliers
+    if nargin > 3 || ~isempty(figureFolder)
         plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs);
     end
 end
