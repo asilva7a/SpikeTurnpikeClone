@@ -55,6 +55,13 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
     decreasedPSTHs = [];
     noChangePSTHs = [];
     timeVector = []; % Initialize in case it needs to be set from data
+    
+    % Define the directory for exp figures
+    saveDir = fullfile(figureFolder,'0. expFigures'); % Saves figure at exp level
+    if ~isfolder(saveDir)
+        mkdir(saveDir);
+        fprintf('Created directory for pooled experimental percent change PSTHs: %s\n', saveDir);
+    end
 
     % Loop through each experimental group (Emx and Pvalb) and their recordings to pool data
     groupNames = {'Emx', 'Pvalb'};
@@ -63,13 +70,6 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
         if ~isfield(cellDataStruct, groupName)
             fprintf('Warning: Group %s not found in cellDataStruct. Skipping.\n', groupName);
             continue;
-        end
-
-        % Define the directory for group figures
-        saveDir = fullfile(figureFolder, groupName,'0. expFigures'); % Saves figure at recording level
-        if ~isfolder(saveDir)
-            mkdir(saveDir);
-            fprintf('Created directory for %s combined PSTHs: %s\n',groupName, saveDir);
         end
         
         recordings = fieldnames(cellDataStruct.(groupName));
