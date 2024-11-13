@@ -14,7 +14,7 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
 
     % Default values for baselineWindow, treatmentTime, and postWindow if not provided
     if nargin < 3 || isempty(baselineWindow)
-        baselineWindow = [1500, 1800]; % Default baseline period
+        baselineWindow = [0, 1800]; % Default baseline period
         fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
     end
     if nargin < 4 || isempty(treatmentTime)
