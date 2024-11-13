@@ -44,10 +44,6 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                 % Inside the loop for each unit
 
-                % Display the unit being processed for debugging
-                fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
-                        groupName, recordingName, unitID);
-
                 % Initialize isOutlierExperimental field with a default value of 0
                 cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
                 
@@ -59,15 +55,13 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 end
                 
                 if isfield(unitData, 'responseType')
-                    % Convert responseType to string/char if it isn't already
-                    if ischar(unitData.responseType)
-                        responseType = strrep(unitData.responseType, ' ', '');
-                    elseif isstring(unitData.responseType)
-                        responseType = replace(unitData.responseType, ' ', '');
-                    else
-                        responseType = char(unitData.responseType);
-                        responseType = strrep(responseType, ' ', '');
+                    responseType = replace(unitData.responseType, ' ', ''); % Normalize 'No Change' to 'NoChange'
+                    % Skip 'Mostly Silent' and 'Mostly Zeroes' units
+                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZero')
+                        continue;
                     end
+                else
+                    continue; % Skip this unit if responseType is missing
                 end
                 
                 % Store PSTH data and unit info at the group level
@@ -116,12 +110,19 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
     end
     
     % Save the updated struct to the specified data file path
+    if nargin >= 4 && ~isempty(dataFolder)
         try
-            save(dataFolder, 'cellDataStruct', '-v7.3');
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             fprintf('Error saving the file: %s\n', ME.message);
-        end  
+        end
+    end
+
+    % Optional: Plotting function if specified
+    if plotOutliers
+        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs);
+    end
 end
 
 
