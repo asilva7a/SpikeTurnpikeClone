@@ -46,13 +46,16 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 psthData = unitData.psthSmoothed;
                 binEdges = unitData.binEdges;
 
+                % Define indices for analysis
+                preWindow = [0, 1800];    % 1800 second window before
+                postWindow = [2000, 3800]; % 1800 second window after
+                
                 % Calculate time vector for PSTH data
                 timeVector = binEdges(1:end-1) + binWidth / 2;
 
-                % Replace the existing pre/post indices section with this:
-                % Define specific time windows for analysis
-                preIndices = [0, 1800];    % 1800 second window before
-                postIndices = [2000, 3800]; % 1800 second window after
+                % Calculate bin indices based on time windows
+                preIndices = timeVector >= preWindow(1) & timeVector <= preWindow(2);
+                postIndices = timeVector >= postWindow(1) & timeVector <= postWindow(2);
 
                 % Get firing rates for pre- and post-treatment periods
                 FR_before = psthData(preIndices);
