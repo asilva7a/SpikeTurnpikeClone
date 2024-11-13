@@ -1,4 +1,4 @@
-function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs)
+function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs, figureFolder)
     % plotFlagOutliersInRecording: Plots smoothed PSTHs for flagged outliers and displays IQR with points for max firing rates.
     %
     % Inputs:
@@ -98,5 +98,27 @@ function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGrou
         
         % Set x-axis labels
         set(ax2, 'XTick', xPositions, 'XTickLabel', experimentGroups);
+        end
     end
+
+    % Main Saving Block
+    try
+        saveDir = fullfile(figureFolder, '0. expFigures');
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('allGroups_mean+sem_outlierRemoval_%s.fig', ...
+                            timeStamp);
+            
+        % Call the save function
+        savingFunction(gcf, saveDir, fileName);
+        
+    catch ME
+        fprintf('Critical error in figure saving:\n');
+        fprintf('Message: %s\n', ME.message);
+        fprintf('Stack:\n');
+        for k = 1:length(ME.stack)
+            fprintf('File: %s, Line: %d, Function: %s\n', ...
+                ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
+        end
+    end
+
 end
