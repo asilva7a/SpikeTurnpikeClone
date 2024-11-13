@@ -1,4 +1,4 @@
-function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth, dataFolder)
+function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, binWidth, dataFolder, tagSparse)
     % determineResponseType: Calculates pre- and post-treatment responses for units in cellDataStruct.
     % Determines whether each unit shows an "Increased", "Decreased", or "No Change" response.
     %
@@ -12,6 +12,11 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     if nargin < 2 || isempty(treatmentTime)
         treatmentTime = 1860;
         fprintf('No treatment time specified. Using default: %d seconds.\n', treatmentTime);
+    end
+
+    % Set default for tagSparse
+    if nargin < 5
+        tagSparse = false;
     end
 
     % Define silence score parameters
@@ -80,7 +85,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 else
                     % Set flags but don't affect response type
                     isMostlySilent= (silence_score_before >= silence_score_threshold || silence_score_after >= silence_score_threshold);
-                    isSparselyFiring = ;
                     
                     % Store flags in unit data
                     unitData.unitFlags.isMostlySilent = isMostlySilent;
@@ -144,6 +148,22 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
       
+            end
+        end
+    end
+
+    % Optional: Run sparse unit detection
+    if tagSparse
+        try
+            [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBefore, binWidth, [], dataFolder);
+            fprintf('Sparse unit detection completed successfully.\n');
+        catch ME
+            fprintf('Error in sparse unit detection:\n');
+            fprintf('Message: %s\n', ME.message);
+            fprintf('Stack:\n');
+            for k = 1:length(ME.stack)
+                fprintf('File: %s, Line: %d, Function: %s\n', ...
+                    ME.stack(k).file, ME.stack(k).line, ME.stack(k).name);
             end
         end
     end
