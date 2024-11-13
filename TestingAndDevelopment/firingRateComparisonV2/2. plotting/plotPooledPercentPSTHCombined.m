@@ -66,7 +66,7 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
         end
 
         % Define the directory for group figures
-        saveDir = fullfile(figureFolder, groupName,'0. groupFigures'); % Saves figure at recording level
+        saveDir = fullfile(figureFolder, groupName,'0. expFigures'); % Saves figure at recording level
         if ~isfolder(saveDir)
             mkdir(saveDir);
             fprintf('Created directory for %s combined PSTHs: %s\n',groupName, saveDir);
