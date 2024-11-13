@@ -49,13 +49,22 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                 % Calculate time vector for PSTH data
                 timeVector = binEdges(1:end-1) + binWidth / 2;
 
-                % Define pre- and post-treatment periods
-                preIndices = timeVector < treatmentTime;
-                postIndices = timeVector >= treatmentTime;
+                % Replace the existing pre/post indices section with this:
+                % Define specific time windows for analysis
+                preIndices = [0, 1800];    % 1800 second window before
+                postIndices = [2000, 3800]; % 1800 second window after
 
                 % Get firing rates for pre- and post-treatment periods
                 FR_before = psthData(preIndices);
                 FR_after = psthData(postIndices);
+                
+                % Verify equal length windows
+                if length(FR_before) ~= length(FR_after)
+                    warning('Pre and post windows have different lengths for Unit %s in %s, %s.', unitID, groupName, recordingName);
+                    unitData.unitFlags.isDataMissing = true;
+                    responseType = 'Missing Data';
+                    continue;
+                end
 
                 % Calculate silence scores
                 [silence_score_before, silence_score_after] = calculateSilenceScore(FR_before, FR_after, binWidth, silence_threshold);
