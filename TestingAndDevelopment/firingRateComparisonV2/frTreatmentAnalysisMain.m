@@ -53,7 +53,7 @@ try
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 60);  % set binWidth in seconds
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 0.01);  % set binWidth in seconds
 
     fprintf('Data loaded and saved successfully!\n');
 catch ME
@@ -71,14 +71,14 @@ generateFigureDirectories(cellDataStruct, figureFolder);
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
 % Generate PSTH with boxcar smoothing
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 5);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 20);
 
 % Calculate pre- and post-treatment firing rate
 cellDataStruct = calculateFiringRate(cellDataStruct);
 
 % Determine Unit response
 cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
-    60, dataFolder); % Set bin-width to 60s
+    0.01, dataFolder); % Set bin-width to 60s
 
 % Filter unit data by group for outliers
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
