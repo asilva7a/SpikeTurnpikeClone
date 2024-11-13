@@ -57,9 +57,12 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                 timeInMinutes = timeVector/minutesToSecs;
                 
                 % Single firing pattern detection
-                earlyWindowMins = 30;
-                earlyIdx = timeInMinutes <= earlyWindowMins;
-                lateIdx = timeInMinutes > earlyWindowMins;
+                peakRate = max(psthData(earlyIdx));
+                silenceRate = mean(psthData(lateIdx));
+                peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
+
+                postPeakData = psthData(find(psthData == peakRate, 1, 'first'):end);
+                continuityScore = mean(diff(postPeakData) > 0.1); % Measure abruptness of changes
                 
                 if ~isempty(earlyIdx) && ~isempty(lateIdx)
                     % Single firing metrics
@@ -68,15 +71,16 @@ function [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBe
                     peakTimeInMins = timeVector(find(psthData == peakRate, 1, 'first'))/minutesToSecs;
                     
                     % Single firing criteria
-                    hasSignificantPeak = peakRate > 0.5;
-                    hasLowLateFiring = silenceRate < 0.1;
+                    hasSignificantPeak = peakRate > 0.3;
+                    hasLowLateFiring = silenceRate < 0.05; % Stric silence requirement
                     peakToBaselineRatio = peakRate / (silenceRate + eps);
-                    hasGoodContrast = peakToBaselineRatio > 5;
+                    hasGoodContrast = peakToBaselineRatio > 8;
                     peakTimeCorrect = peakTimeInMins <= 20;
+                    isAbruptDecline = continuityScore < 0.2; % Criterion to detect abrupt vs gradual changes
                     
                     % Combine criteria
                     isSingleFiring = hasSignificantPeak && hasLowLateFiring && ...
-                                   hasGoodContrast && peakTimeCorrect;
+                    hasGoodContrast && peakTimeCorrect && isAbruptDecline;
                     
                     % Square wave detection
                     windowSize = 5; % minutes
