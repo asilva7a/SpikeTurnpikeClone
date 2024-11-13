@@ -1,4 +1,4 @@
-function cellDataStruct = removeTaggedUnits(cellDataStruct)
+function cellDataStruct = getCleanUnits(cellDataStruct)
     % Get all groups
     groupNames = fieldnames(cellDataStruct);
     
