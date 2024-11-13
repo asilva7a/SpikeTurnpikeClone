@@ -77,12 +77,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     % Perform statistical tests for all units
                     [p_wilcoxon, ~] = ranksum(FR_before, FR_after, 'alpha', 0.01);
                     combinedData = [FR_before(:); FR_after(:)];
-                    groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))];
+                    groupLabels = [ones(size(FR_before(:))); 2 * ones(size(FR_after(:)))]; % swap Kruskall Wallis out whenever we have the chance
                     p_kruskalwallis = kruskalwallis(combinedData, groupLabels, 'off');
                     
                     % Determine response type based on statistical tests
                     if p_wilcoxon < 0.01 && p_kruskalwallis < 0.01
-                        if mean(FR_after) > mean(FR_before)
+                        if median(FR_after) > median(FR_before)
                             responseType = 'Increased';
                         else
                             responseType = 'Decreased';
