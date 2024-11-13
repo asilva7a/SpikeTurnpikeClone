@@ -1,30 +1,37 @@
 function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, figureFolder, dataFolder)
-    % flagOutliersInPooledData: Identifies and flags extreme outlier units based on smoothed PSTHs.
-    % All units will have an isOutlierExperimental field where 1 indicates an outlier and 0 indicates non-outlier.
-
     % Define response types and groups
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
     experimentGroups = {'Emx', 'Pvalb', 'Control'};
     
-    % Initialize groupIQRs structure to store IQR and upper fence for each response type and group
+    % Initialize structures
     groupIQRs = struct();
     psthDataGroup = struct();
     unitInfoGroup = struct();
-
-    % Set up empty structures for each response type and group
+    
+    % Initialize metrics structure for each response type and group
     for rType = responseTypes
-        psthDataGroup.(rType{1}) = struct('Emx', [], 'Pvalb', [], 'Control', []);
-        unitInfoGroup.(rType{1}).Emx = {};
-        unitInfoGroup.(rType{1}).Pvalb = {};
-        unitInfoGroup.(rType{1}).Control = {};
-        groupIQRs.(rType{1}) = struct( ...
-            'Emx', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []), ...
-            'Pvalb', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []), ...
-            'Control', struct('IQR', [], 'Median', [], 'UpperFence', [], 'LowerFence', []) ...
-        );
+        psthDataGroup.(rType{1}) = struct();
+        unitInfoGroup.(rType{1}) = struct();
+        groupIQRs.(rType{1}) = struct();
+        
+        for grp = experimentGroups
+            psthDataGroup.(rType{1}).(grp{1}) = struct(...
+                'maxFiringRate', [], ...
+                'baselineRates', [], ...
+                'treatmentRates', [], ...
+                'cvValues', []);
+            
+            unitInfoGroup.(rType{1}).(grp{1}) = {};
+            
+            groupIQRs.(rType{1}).(grp{1}) = struct(...
+                'IQR', [], ...
+                'Median', [], ...
+                'UpperFence', [], ...
+                'LowerFence', []);
+        end
     end
 
-    % Loop through each experimental group and collect PSTH data
+    % Process each unit
     for g = 1:length(experimentGroups)
         groupName = experimentGroups{g};
         if ~isfield(cellDataStruct, groupName)
@@ -32,97 +39,206 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
         end
         
         recordings = fieldnames(cellDataStruct.(groupName));
-        
-        % Loop through each recording within the recording group
         for r = 1:length(recordings)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
-
-            % Collect data for each unit within the recording
+            
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                % Inside the loop for each unit
-
-                % Initialize isOutlierExperimental field with a default value of 0
+                
+                % Initialize outlier flag
                 cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
                 
-                % Apply unit filter
-                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
-                
-                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || (strcmp(unitFilter, 'multi') && isSingleUnit)
+                % Check required fields
+                if ~isfield(unitData, 'responseType') || ...
+                   ~isfield(unitData, 'psthSmoothed') || ...
+                   ~isfield(unitData, 'frBaselineAvg') || ...
+                   ~isfield(unitData, 'frTreatmentAvg')
                     continue;
                 end
                 
-                if isfield(unitData, 'responseType')
-                    responseType = replace(unitData.responseType, ' ', ''); % Normalize 'No Change' to 'NoChange'
-                    % Skip 'Mostly Silent' and 'Mostly Zeroes' units
-                    if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZero')
-                        continue;
-                    end
-                else
-                    continue; % Skip this unit if responseType is missing
+                % Get response type
+                responseType = replace(unitData.responseType, ' ', '');
+                if strcmp(responseType, 'MostlySilent') || strcmp(responseType, 'MostlyZero')
+                    continue;
                 end
                 
-                % Store PSTH data and unit info at the group level
-                if isfield(unitData, 'psthSmoothed')
-                    maxFiringRate = max(unitData.psthSmoothed);
-                    psthDataGroup.(responseType).(groupName) = [psthDataGroup.(responseType).(groupName); maxFiringRate];
-                    unitInfoGroup.(responseType).(groupName){end+1} = struct('group', groupName, 'recording', recordingName, 'id', unitID);
+                % Apply unit filter
+                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
+                   (strcmp(unitFilter, 'multi') && isSingleUnit)
+                    continue;
                 end
+                
+                % Calculate metrics
+                maxFiringRate = max(unitData.psthSmoothed);
+                baselineRate = unitData.frBaselineAvg;
+                treatmentRate = unitData.frTreatmentAvg;
+                cv = std(unitData.psthSmoothed) / (mean(unitData.psthSmoothed) + eps);
+                
+                % Store metrics
+                psthDataGroup.(responseType).(groupName).maxFiringRate(end+1) = maxFiringRate;
+                psthDataGroup.(responseType).(groupName).baselineRates(end+1) = baselineRate;
+                psthDataGroup.(responseType).(groupName).treatmentRates(end+1) = treatmentRate;
+                psthDataGroup.(responseType).(groupName).cvValues(end+1) = cv;
+                
+                % Store unit info
+                unitInfoGroup.(responseType).(groupName){end+1} = struct(...
+                    'group', groupName, ...
+                    'recording', recordingName, ...
+                    'id', unitID);
             end
         end
     end
 
-    % Calculate IQR, median, and thresholds for each response type and group
+    % Calculate thresholds and identify outliers
     for rType = responseTypes
         for grp = experimentGroups
-            maxRatesGroup = psthDataGroup.(rType{1}).(grp{1});
-            if ~isempty(maxRatesGroup)
-                Q1 = prctile(maxRatesGroup, 25);
-                Q3 = prctile(maxRatesGroup, 75);
-                IQR_value = Q3 - Q1;
-                upperFence = Q3 + 1.5 * IQR_value;
-                lowerFence = Q1 - 1.5 * IQR_value;
-
-                % Store IQR information in groupIQRs
-                groupIQRs.(rType{1}).(grp{1}).IQR = IQR_value;
-                groupIQRs.(rType{1}).(grp{1}).Median = median(maxRatesGroup);
+            if ~isempty(unitInfoGroup.(rType{1}).(grp{1}))
+                % Calculate IQR thresholds
+                maxRates = psthDataGroup.(rType{1}).(grp{1}).maxFiringRate;
+                Q1 = prctile(maxRates, 25);
+                Q3 = prctile(maxRates, 75);
+                IQR = Q3 - Q1;
+                upperFence = Q3 + 1.5 * IQR;
+                lowerFence = Q1 - 1.5 * IQR;
+                
+                % Store thresholds
+                groupIQRs.(rType{1}).(grp{1}).IQR = IQR;
+                groupIQRs.(rType{1}).(grp{1}).Median = median(maxRates);
                 groupIQRs.(rType{1}).(grp{1}).UpperFence = upperFence;
                 groupIQRs.(rType{1}).(grp{1}).LowerFence = lowerFence;
-            end
-        end
-    end
-
-    % Flag outliers in cellDataStruct based on strict IQR threshold
-    for rType = responseTypes
-        for grp = experimentGroups
-            for i = 1:length(unitInfoGroup.(rType{1}).(grp{1}))
-                unitInfo = unitInfoGroup.(rType{1}).(grp{1}){i};
-                maxFiringRate = psthDataGroup.(rType{1}).(grp{1})(i);
                 
-                % Flag as outlier if max firing rate exceeds upper or lower fence
-                if maxFiringRate > groupIQRs.(rType{1}).(grp{1}).UpperFence || maxFiringRate < groupIQRs.(rType{1}).(grp{1}).LowerFence
-                    cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = 1;
+                % Flag outliers
+                for i = 1:length(unitInfoGroup.(rType{1}).(grp{1}))
+                    unitInfo = unitInfoGroup.(rType{1}).(grp{1}){i};
+                    
+                    % Get metrics for this unit
+                    maxFiringRate = psthDataGroup.(rType{1}).(grp{1}).maxFiringRate(i);
+                    baselineRate = psthDataGroup.(rType{1}).(grp{1}).baselineRates(i);
+                    treatmentRate = psthDataGroup.(rType{1}).(grp{1}).treatmentRates(i);
+                    cv = psthDataGroup.(rType{1}).(grp{1}).cvValues(i);
+                    
+                    % Calculate outlier score
+                    outlierScore = 0;
+                    
+                    % Check max firing rate
+                    if maxFiringRate > upperFence || maxFiringRate < lowerFence
+                        outlierScore = outlierScore + 1;
+                    end
+                    
+                    % Check baseline to treatment change
+                    rateChange = abs(treatmentRate - baselineRate) / (baselineRate + eps);
+                    if rateChange > median(abs(diff([baselineRate, treatmentRate]))) + ...
+                       2 * std(abs(diff([baselineRate, treatmentRate])))
+                        outlierScore = outlierScore + 1;
+                    end
+                    
+                    % Check variability
+                    if cv > median(psthDataGroup.(rType{1}).(grp{1}).cvValues) + ...
+                       2 * std(psthDataGroup.(rType{1}).(grp{1}).cvValues)
+                        outlierScore = outlierScore + 1;
+                    end
+                    
+                    % Flag unit if multiple criteria are met
+                    if outlierScore >= 2
+                        cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = 1;
+                        cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).outlierMetrics = struct(...
+                            'maxFiringRate', maxFiringRate, ...
+                            'baselineRate', baselineRate, ...
+                            'treatmentRate', treatmentRate, ...
+                            'cv', cv, ...
+                            'outlierScore', outlierScore);
+                    end
                 end
             end
         end
     end
     
-    % Save the updated struct to the specified data file path
+    % Save results
     if nargin >= 4 && ~isempty(dataFolder)
         try
-            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7');
+            save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3');
             fprintf('Struct saved successfully to: %s\n', dataFolder);
         catch ME
             fprintf('Error saving the file: %s\n', ME.message);
         end
     end
 
-    % Optional: Plotting function if specified
-    if nargin > 3 || ~isempty(figureFolder)
-        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs);
+    % Optional plotting
+    if nargin > 2 && ~isempty(figureFolder)
+        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs, figureFolder);
     end
+end
+
+
+function metrics = calculateUnitMetrics(unitData)
+    % Calculate comprehensive unit metrics
+    psth = unitData.psthSmoothed;
+    
+    % Basic firing rate metrics
+    metrics.maxFiringRate = max(psth);
+    metrics.meanFiringRate = mean(psth);
+    
+    % Baseline (first 10 minutes)
+    baselineIdx = 1:round(10 * 60 / unitData.binWidth);
+    metrics.baselineRate = mean(psth(baselineIdx));
+    
+    % Variability metrics
+    metrics.cv = std(psth) / (mean(psth) + eps);
+    
+    % Burst detection (simplified)
+    metrics.burstIndex = sum(diff(psth) > std(psth)) / length(psth);
+end
+
+function thresholds = calculateGroupThresholds(groupMetrics)
+    % Calculate thresholds for each metric
+    thresholds = struct();
+    
+    for field = fieldnames(groupMetrics)'
+        values = groupMetrics.(field{1});
+        if ~isempty(values)
+            Q1 = prctile(values, 25);
+            Q3 = prctile(values, 75);
+            IQR = Q3 - Q1;
+            
+            thresholds.MetricThresholds.(field{1}) = struct(...
+                'Q1', Q1, ...
+                'Q3', Q3, ...
+                'IQR', IQR, ...
+                'UpperFence', Q3 + 2 * IQR, ...  % More conservative
+                'LowerFence', Q1 - 2 * IQR);     % More conservative
+        end
+    end
+end
+
+function isOutlier = isUnitOutlier(metrics, thresholds)
+    % Count how many metrics are outliers
+    outlierCount = 0;
+    totalMetrics = 0;
+    
+    for field = fieldnames(metrics)'
+        if isfield(thresholds.MetricThresholds, field{1})
+            totalMetrics = totalMetrics + 1;
+            value = metrics.(field{1});
+            thresh = thresholds.MetricThresholds.(field{1});
+            
+            if value > thresh.UpperFence || value < thresh.LowerFence
+                outlierCount = outlierCount + 1;
+            end
+        end
+    end
+    
+    % Unit is outlier if more than 1/3 of metrics are outliers
+    isOutlier = (outlierCount / totalMetrics) > 0.33;
+end
+
+function shouldProcess = shouldProcessUnit(unitData, unitFilter)
+    % Check if unit should be processed based on filter
+    isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+    shouldProcess = ~((strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
+                     (strcmp(unitFilter, 'multi') && isSingleUnit));
 end
 
 
