@@ -2,17 +2,19 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
     % Base directory path
     baseDir = figureFolder;
     
+    expFigures = fullfile(baseDir, '0. expFigures');
+    if ~exist(expFigures,'dir')
+        mkdir(expFigures);
+        fprintf('Created new exp figures folder: %s\n', baseDir);
+    end
+
     % Get group names
     groupNames = fieldnames(cellDataStruct);
     
-    if ~isfolder(baseDir)
-        mkdir(baseDir);
-        fprintf('Created new base figures folder: %s\n', baseDir);
-    end
-
     % Loop through each group
     for g = 1:length(groupNames)
         groupName = groupNames{g};
+
         % Create group directory
         groupPath = fullfile(baseDir, groupName);
         if ~exist(groupPath, 'dir')
@@ -21,7 +23,7 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
         end
 
         % Create group level figure folder
-        groupFigures = fullfile(groupPath, '0. projectFigures');
+        groupFigures = fullfile(groupPath, '0. groupFigures');
         if ~exist(groupFigures, 'dir')
             mkdir(groupFigures);
             fprintf('Created group figure folder: %s\n', groupFigures);
