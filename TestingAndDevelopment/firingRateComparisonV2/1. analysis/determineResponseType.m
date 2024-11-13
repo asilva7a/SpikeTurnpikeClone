@@ -138,11 +138,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     '| p-value (Wilcoxon): %.3f ' ...
                     '| p-value (KW): %.3f ' ...
                     '| Response: %s ' ...
-                    '| Flags: Silent=%d, Zero=%d\n'], ...
+                    '| Flags: Silent= %d\n'], ...
                     unitID, p_wilcoxon, p_kruskalwallis, ...
                     responseType, ...
-                    isMostlySilent, isMostlyZero);
-
+                    isMostlySilent);
     
                 % Save the updated unit data back to the structure
                 cellDataStruct.(groupName).(recordingName).(unitID) = unitData;
@@ -154,8 +153,31 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     % Optional: Run sparse unit detection
     if tagSparse
         try
-            [cellDataStruct, sparseUnitsList] = tagSparseUnits(cellDataStruct, frBefore, binWidth, [], dataFolder);
+            % Collect pre-treatment firing rates for all units
+            allFrBefore = [];
+            for g = 1:length(groupNames)
+                groupName = groupNames{g};
+                recordings = fieldnames(cellDataStruct.(groupName));
+                for r = 1:length(recordings)
+                    recordingName = recordings{r};
+                    units = fieldnames(cellDataStruct.(groupName).(recordingName));
+                    for u = 1:length(units)
+                        unitID = units{u};
+                        unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                        
+                        % Get pre-treatment firing rates using the same window as main analysis
+                        psthData = unitData.psthSmoothed;
+                        timeVector = unitData.binEdges(1:end-1) + binWidth/2;
+                        preIndices = timeVector >= preWindow(1) & timeVector <= preWindow(2);
+                        allFrBefore = [allFrBefore; mean(psthData(preIndices))];
+                    end
+                end
+            end
+            
+            % Call tagSparseUnits with complete firing rate data
+            [cellDataStruct, ~] = tagSparseUnits(cellDataStruct, frBefore, binWidth, 0.5, dataFolder);
             fprintf('Sparse unit detection completed successfully.\n');
+            
         catch ME
             fprintf('Error in sparse unit detection:\n');
             fprintf('Message: %s\n', ME.message);
@@ -182,5 +204,4 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
     else
         fprintf('Data folder not specified; struct not saved to disk.\n');
     end
-
 end
