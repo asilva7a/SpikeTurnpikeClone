@@ -88,7 +88,6 @@ function cellDataStruct = determineResponseType(cellDataStruct, treatmentTime, b
                     
                     % Store flags in unit data
                     unitData.unitFlags.isMostlySilent = isMostlySilent;
-                    unitData.unitFlags.isMostlyZero = isMostlyZero;
 
                     % Perform statistical tests for all units
                     [p_wilcoxon, ~] = signrank(frBefore, frAfter, 'alpha', 0.01);
