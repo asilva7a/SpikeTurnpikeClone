@@ -1,4 +1,4 @@
-function plotPooledPercentChangeFromStats(expStats, ctrlStats, figureFolder)
+function plotPooledPercentChangeBaselineVsPost(expStats, ctrlStats, figureFolder)
     % Constants
     COLORS = struct(...
         'Increased', [1, 0, 0, 0.3], ...    % Red
