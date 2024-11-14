@@ -93,6 +93,16 @@ cellDataStruct = getCleanUnits(cellDataStruct);
 % Calculate Exp vs. Ctrl stats
 [expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct, treatmentTime, unitFilter, outlierFilter);
 
+    % Save statistics if needed
+    save(fullfile(figureFolder, '0. expFigures', ...
+        'pooledBaselineVsPostStats.mat'), 'expStats', 'ctrlStats');
+
+% Calculate Exp vs. Ctrl % change stats
+[expStats, ctrlStats] = calculatePooledPercentChangeStats(cellDataStruct, treatmentTime, unitFilter, outlierFilter);
+
+    % Save statistics if needed
+    save(fullfile(figureFolder, '0. expFigures', ...
+        'pooledPercentChangeStats.mat'), 'expStats', 'ctrlStats');
 
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
@@ -129,6 +139,9 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 
 % Plot Pooled Unit PSTHs Exp and Ctrl
 plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder);
+
+% Plot Pooled Percent Change Exp and Ctrl
+plotPooledPercentChangeFromStats(expStats, ctrlStats, figureFolder);
 
 %% End of Script
 disp('Script finished...');
