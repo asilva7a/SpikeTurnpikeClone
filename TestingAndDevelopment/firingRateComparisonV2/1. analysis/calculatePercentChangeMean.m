@@ -1,112 +1,143 @@
-function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
-    % calculatePercentChange: Calculates percent change in firing rate for each unit's smoothed PSTH,
-    % relative to a baseline period before treatment. Tracks metadata for both baseline and post-treatment periods.
-    %
-    % Inputs:
-    %   - cellDataStruct: Main data structure containing all groups, recordings, and units.
-    %   - baselineWindow: 2-element vector [start, end] for the baseline period in seconds.
-    %   - treatmentTime: Scalar, indicating the treatment onset time in seconds.
-    %   - postWindow: 2-element vector [start, end] for the post-treatment period in seconds.
-    %
-    % Output:
-    %   - cellDataStruct: Updated structure with percent change values and metadata for each unit.
-
-
-    % Default values for baselineWindow, treatmentTime, and postWindow if not provided
-    if nargin < 3 || isempty(baselineWindow)
-        baselineWindow = [0, 1800]; % Default baseline period
-        fprintf('Default baselineWindow set to [%d, %d] seconds.\n', baselineWindow);
-    end
-    if nargin < 4 || isempty(treatmentTime)
-        treatmentTime = 1860; % Default treatment onset time
-        fprintf('Default treatmentTime set to %d seconds.\n', treatmentTime);
-    end
-    if nargin < 5 || isempty(postWindow)
-        postWindow = [2000, 5399]; % Default post-treatment period
-        fprintf('Default postWindow set to [%d, %d] seconds.\n', postWindow);
+function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
+    % Set default parameters
+    if nargin < 3
+        baselineWindow = [0, 1800];
+        treatmentTime = 1860;
+        postWindow = [2000, 5399];
     end
 
-    % Loop through each group, recording, and unit
+    % Validate windows relative to treatment time
+    if baselineWindow(2) >= treatmentTime
+        error('Baseline window must end before treatment time');
+    end
+    if postWindow(1) <= treatmentTime
+        error('Post window must start after treatment time');
+    end
+    
+    % Constants
+    SCALING_FACTOR = 0.5;
+    
+    % Process each unit
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordings = fieldnames(cellDataStruct.(groupName));
-
+        
         for r = 1:length(recordings)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
-
-            for u = 1:length(units)
-                unitID = units{u};
-                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-
-                 % Display the unit being processed for debugging
-                 fprintf('Processing Group: %s | Recording: %s | Unit: %s\n', ...
-                        groupName, recordingName, unitID);
-
-
-                % Check if unit is flagged as an outlier; skip if flagged
-                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-                    continue;
+            
+            % Pre-allocate cell array for parallel processing if needed
+            numUnits = length(units);
+            if numUnits > 100  % Only use parallel if many units
+                % Pre-allocate arrays to store results
+                tempResults = cell(numUnits, 1);
+                unitIDs = units;  % Store unit IDs for later reference
+                
+                % Extract unit data for parallel processing
+                unitDataArray = cell(numUnits, 1);
+                for u = 1:numUnits
+                    unitDataArray{u} = cellDataStruct.(groupName).(recordingName).(units{u});
                 end
-
-                % Ensure the unit has required fields: 'psthSmoothed' and time data
-                if isfield(unitData, 'psthSmoothed') && isfield(unitData, 'binEdges') && isfield(unitData, 'binWidth')
-                    psthSmoothed = unitData.psthSmoothed;
-                    binEdges = unitData.binEdges;
-                    binWidth = unitData.binWidth;
-                    binCenters = binEdges(1:end-1) + binWidth / 2;
-
-                    % Define baseline and post-treatment indices
-                    baselineIndices = binCenters >= baselineWindow(1) & binCenters < baselineWindow(2);
-                    postIndices = binCenters >= postWindow(1) & binCenters < postWindow(2);
-
-                    % Calculate baseline average firing rate
-                    baselineMean = mean(psthSmoothed(baselineIndices & psthSmoothed > 0), 'omitnan');
-                    
-                    disp("Calculated baseline mean:");
-                    disp(baselineMean);
-
-                     % Calculate percent change relative to baseline for the entire PSTH
-                    if isequal(baselineMean, 0)  % Conditional scaling based on presence of zeros in baseline
-                        scalingFactor = 0.0001;
-                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMean + scalingFactor)) / (baselineMean + scalingFactor)) * 100;
-                    elseif isnan(baselineMean)
-                        scalingFactor = 0.0001;
-                        baselineMean = 0.0001;
-                        psthPercentChange = (((psthSmoothed + scalingFactor) - (baselineMean + scalingFactor)) / (baselineMean + scalingFactor)) * 100;
-                    else
-                        psthPercentChange = ((psthSmoothed - baselineMean) / baselineMean) * 100;
+                
+                % Process in parallel
+                parfor u = 1:numUnits
+                    tempResults{u} = processUnit(unitDataArray{u}, baselineWindow, postWindow, SCALING_FACTOR);
+                end
+                
+                % Update structure after parallel loop
+                for u = 1:numUnits
+                    if ~isempty(tempResults{u})  % Only update if processing was done
+                        cellDataStruct.(groupName).(recordingName).(unitIDs{u}) = tempResults{u};
                     end
-
-                    % Store percent change array in unit data
-                    cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChange = psthPercentChange;
-
-                    % Compute and store metadata
-                    psthPercentChangeStats = struct();
-                    psthPercentChangeStats.baseline = struct( ...
-                        'median', baselineMean, ...
-                        'stdDev', std(psthSmoothed(baselineIndices), 'omitnan'), ...
-                        'range', range(psthSmoothed(baselineIndices)), ...
-                        'var', var(psthSmoothed(baselineIndices)));
-
-                    psthPercentChangeStats.postTreatment = struct( ...
-                        'median', mean(psthSmoothed(postIndices), 'omitnan'), ...
-                        'stdDev', std(psthSmoothed(postIndices), 'omitnan'), ...
-                        'range', range(psthSmoothed(postIndices)),...
-                        'var', var(psthSmoothed(postIndices)));
-    
-                    % Store metadata struct in unit data
-                    cellDataStruct.(groupName).(recordingName).(unitID).psthPercentChangeStats = psthPercentChangeStats;
+                end
+            else
+                % Original serial processing code
+                for u = 1:numUnits
+                    unitID = units{u};
+                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                    
+                    % Process unit directly
+                    processedData = processUnit(unitData, baselineWindow, postWindow, SCALING_FACTOR);
+                    if ~isempty(processedData)
+                        cellDataStruct.(groupName).(recordingName).(unitID) = processedData;
+                    end
                 end
             end
         end
     end
-        % Save the updated struct to the specified data file path
+    
+    % Save results
+    if nargin >= 2 && ~isempty(dataFolder)
         try
-            save(dataFolder, 'cellDataStruct', '-v7.3');
-            fprintf('Struct saved successfully to: %s\n', dataFolder);
+            save(dataFolder, 'cellDataStruct', '-v7.3', '-nocompression');
+            fprintf('Data saved successfully to: %s\n', dataFolder);
         catch ME
-            fprintf('Error saving the file: %s\n', ME.message);
-        end   
+            fprintf('Error saving data: %s\n', ME.message);
+        end
+    end
+end
+
+
+function stats = getStats(data)
+    % Efficient statistics calculation
+    stats = struct(...
+        'mean', mean(data, 'omitnan'), ...
+        'stdDev', std(data, 'omitnan'), ...
+        'range', range(data), ...
+        'var', var(data, 'omitnan'));
+end
+
+function unitData = processUnit(unitData, baselineWindow, postWindow, SCALING_FACTOR)
+    % Input validation
+    if (isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental) || ...
+       ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ...
+       ~isfield(unitData, 'binWidth') || ~isfield(unitData, 'responseType') || ...
+       strcmp(unitData.responseType, 'MostlySilent') || ...
+       strcmp(unitData.responseType, 'MostlyZero')
+        return;
+    end
+    
+    % Validate data dimensions
+    if length(unitData.psthSmoothed) ~= length(unitData.binEdges)-1
+        warning('PSTH length does not match bin edges');
+        return;
+    end
+    
+    % Get time vectors
+    binCenters = unitData.binEdges(1:end-1) + unitData.binWidth/2;
+    
+    % Get indices
+    baselineIdx = binCenters >= baselineWindow(1) & binCenters < baselineWindow(2);
+    postIdx = binCenters >= postWindow(1) & binCenters < postWindow(2);
+    
+    % Calculate baseline mean (only for non-zero values)
+    psth = unitData.psthSmoothed;
+    baselineMean = mean(psth(baselineIdx & psth > 0), 'omitnan');
+    
+    % Calculate percent change
+    if isnan(baselineMean) || baselineMean == 0
+        baselineMean = SCALING_FACTOR;
+        psthPercentChange = (((psth + SCALING_FACTOR) - SCALING_FACTOR) / SCALING_FACTOR) * 100;
+    else
+        psthPercentChange = ((psth - baselineMean) / baselineMean) * 100;
+    end
+    
+    % Calculate statistics efficiently
+    stats = struct();
+    stats.baseline = getStats(psth(baselineIdx));
+    stats.postTreatment = getStats(psth(postIdx));
+    stats.baseline.mean = baselineMean;
+    
+    % Add average firing rates if available
+    if isfield(unitData, 'frBaselineAvg')
+        stats.baseline.frAvg = unitData.frBaselineAvg;
+    end
+    if isfield(unitData, 'frTreatmentAvg')
+        stats.postTreatment.frAvg = unitData.frTreatmentAvg;
+    end
+    
+    % Update unit data
+    unitData.psthPercentChange = psthPercentChange;
+    unitData.psthPercentChangeStats = stats;
 end
