@@ -83,7 +83,7 @@ cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
 
 % Detect Outliers in Response Groups
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
-    true, dataFolder);
+    'multi', figureFolder, dataFolder);
 
 % Calculate PSTH percent change 
 cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
@@ -92,11 +92,10 @@ cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 cellDataStruct = getCleanUnits(cellDataStruct);
 
 % Calculate Exp vs. Ctrl psthSmoothed stats
-[expStats, ctrlStats] = calculatePooledBaselineVsPostStats( ...
-    cellDataStruct, treatmentTime, unitFilter, outlierFilter);
+[expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct);
 
     % Save statistics if needed
-    save(fullfile(figureFolder, '0. expFigures', ...
+    save(fullfile(dataFolder, '0. statistics', ...
         'pooledBaselineVsPostStats.mat'), 'expStats', 'ctrlStats');
 
 % Calculate Exp vs. Ctrl %-change stats
@@ -104,7 +103,7 @@ cellDataStruct = getCleanUnits(cellDataStruct);
     cellDataStruct, treatmentTime, unitFilter, outlierFilter);
 
     % Save statistics if needed
-    save(fullfile(figureFolder, '0. expFigures', ...
+    save(fullfile(dataFolder, '0. statistics', ...
         'pooledPercentChangeStats.mat'), 'expStats', 'ctrlStats');
 
 %% Plotting 
