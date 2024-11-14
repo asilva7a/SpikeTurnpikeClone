@@ -91,20 +91,6 @@ cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 % Filter tagged units from remaining analysis
 cellDataStruct = getCleanUnits(cellDataStruct);
 
-% Calculate Exp vs. Ctrl psthSmoothed stats
-[expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct);
-
-    % Save statistics if needed
-    save(fullfile(dataFolder, '0. statistics', ...
-        'pooledBaselineVsPostStats.mat'), 'expStats', 'ctrlStats');
-
-% Calculate Exp vs. Ctrl %-change stats
-[expStats, ctrlStats] = calculatePooledPercentChangeStats( ...
-    cellDataStruct, treatmentTime, unitFilter, outlierFilter);
-
-    % Save statistics if needed
-    save(fullfile(dataFolder, '0. statistics', ...
-        'pooledPercentChangeStats.mat'), 'expStats', 'ctrlStats');
 
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
@@ -139,11 +125,28 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
-% Plot Pooled Unit PSTHs Exp and Ctrl
-plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder);
+% Calculate Exp vs. Ctrl psthSmoothed stats
+[expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct);
 
-% Plot Pooled Percent Change Exp and Ctrl
-plotPooledPercentChangeFromStats(expStats, ctrlStats, figureFolder);
+    % Save statistics if needed
+    save(fullfile(dataFolder, ...
+        'pooledBaselineVsPostStats.mat'), 'expStats', 'ctrlStats');
+    
+    % Plot Pooled Unit PSTHs Exp and Ctrl
+    plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder);
+
+
+% Calculate Exp vs. Ctrl %-change stats
+[expStats, ctrlStats] = calculatePooledPercentChangeStats( ...
+    cellDataStruct);
+
+    % Save statistics if needed
+    save(fullfile(dataFolder, ...
+        'pooledPercentChangeStats.mat'), 'expStats', 'ctrlStats');
+
+    % Plot Pooled Percent Change Exp and Ctrl
+    plotPooledPercentChangeBaselineVsPost(expStats, ...
+        ctrlStats, figureFolder);
 
 %% End of Script
 disp('Script finished...');
