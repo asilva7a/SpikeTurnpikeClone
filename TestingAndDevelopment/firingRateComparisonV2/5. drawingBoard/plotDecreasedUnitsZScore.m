@@ -137,7 +137,7 @@ function plotGroupPSTH(psths, timeVector, color, titleStr, alpha, baselineStats)
     
     % Formatting
     xlabel('Time (s)');
-    ylabel('Z-scored Firing Rate (relative to group baseline)');
+    ylabel('Z-scored Firing Rate');
     
     % Add title with group baseline information
     if ~isempty(titleStr)
