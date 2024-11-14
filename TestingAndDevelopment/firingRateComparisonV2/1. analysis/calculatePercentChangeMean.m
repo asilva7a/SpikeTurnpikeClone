@@ -1,9 +1,9 @@
 function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
     % Set default parameters
     if nargin < 3
-        baselineWindow = [0, 1800];
+        baselineWindow = [1500, 1800];
         treatmentTime = 1860;
-        postWindow = [2000, 5399];
+        postWindow = [2000, 4000];
     end
 
     % Validate windows relative to treatment time
