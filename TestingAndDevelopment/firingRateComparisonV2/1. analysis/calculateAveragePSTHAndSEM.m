@@ -1,89 +1,131 @@
-function cellDataStruct = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder)
-    % calculateAveragePSTHAndSEM: Computes average and SEM of PSTHs for each recording.
-    % Adds the mean and SEM PSTH to cellDataStruct under the 'recordingData' field at the recording level.
-    %
-    % Inputs:
-    %   - cellDataStruct: Data structure containing group, recording, and unit data.
-    %   - dataFolder: Directory where the updated cellDataStruct will be saved.
-    %
-    % Outputs:
-    %   - cellDataStruct: Updated structure with mean and SEM PSTH stored under 'recordingData' for each recording.
-
-    % Verify the data folder path
-    if nargin < 2 || isempty(dataFolder)
-        error('Please specify a valid dataFolder path for saving the cellDataStruct.');
+function [expPSTH, ctrlPSTH, normPSTH] = calculateAveragePSTHAndSEM(cellDataStruct, dataFolder, unitFilter, outlierFilter)
+    % Set defaults
+    if nargin < 4, outlierFilter = true; end
+    if nargin < 3, unitFilter = 'both'; end
+    
+    % Initialize structures
+    expPSTH = struct('mean', [], 'sem', [], 'timeVector', []);
+    ctrlPSTH = struct('mean', [], 'sem', [], 'timeVector', []);
+    normPSTH = struct('mean', [], 'sem', [], 'timeVector', []);
+    
+    % Get PSTH length and time vector from first valid unit
+    [psthLength, timeVector] = getPSTHInfo(cellDataStruct);
+    if psthLength == 0
+        error('No valid units found for PSTH calculation');
     end
-
-    % Set full path for saving the struct
-    cellDataStructPath = fullfile(dataFolder, 'cellDataStruct.mat');
-
-    % Loop through each group and recording
-    groupNames = fieldnames(cellDataStruct);
-    for g = 1:length(groupNames)
-        groupName = groupNames{g};
-        fprintf('Processing Group: %s\n', groupName);  % Debug statement
-
-        recordings = fieldnames(cellDataStruct.(groupName));
-
-        for r = 1:length(recordings)
-            recordingName = recordings{r};
-            fprintf('  Processing Recording: %s\n', recordingName);  % Debug statement
-
-            units = fieldnames(cellDataStruct.(groupName).(recordingName));
-            numUnits = numel(units);  % Number of units for preallocation
-
-            % Preallocate PSTH data for calculations
-            psthLength = length(cellDataStruct.(groupName).(recordingName).(units{1}).psthSmoothed);
-            allPSTHs = NaN(numUnits, psthLength);  % Array to store all PSTHs for averaging
-
-            % Collect PSTHs for all units in the recording
-            for u = 1:numUnits
-                unitID = units{u};
-                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-
-                if isfield(unitData, 'psthSmoothed')
-                    psth = unitData.psthSmoothed;
-                    
-                    if length(psth) == psthLength  % Ensure consistent length
-                        allPSTHs(u, :) = psth;
-                        fprintf('    Processed Unit: %s\n', unitID);  % Debug statement
-                    else
-                        warning('PSTH length mismatch for Unit %s in Recording %s. Skipping this unit.', unitID, recordingName);
-                    end
-                else
-                    warning('No psthSmoothed field found for Unit %s in Recording %s. Skipping this unit.', unitID, recordingName);
-                end
-            end
-
-            % Calculate mean and SEM across units, ignoring NaNs
-            avgPSTH = mean(allPSTHs, 1, 'omitnan');
-            semPSTH = std(allPSTHs, 0, 1, 'omitnan') / sqrt(numUnits);
-
-            % Store average and SEM PSTH under 'recordingData' in the struct
-            cellDataStruct.(groupName).(recordingName).recordingData.avgPSTH = avgPSTH;
-            cellDataStruct.(groupName).(recordingName).recordingData.semPSTH = semPSTH;
-            fprintf('  Calculated avgPSTH and semPSTH for Recording: %s\n', recordingName);  % Debug statement
-        end
+    
+    % Calculate experimental PSTH (Emx and Pvalb)
+    expPSTHs = collectPSTHs(cellDataStruct, {'Emx', 'Pvalb'}, psthLength, unitFilter, outlierFilter);
+    expPSTH.mean = mean(expPSTHs, 1, 'omitnan');
+    expPSTH.sem = std(expPSTHs, 0, 1, 'omitnan') / sqrt(size(expPSTHs, 1));
+    expPSTH.timeVector = timeVector;
+    expPSTH.n = size(expPSTHs, 1);
+    
+    % Calculate control PSTH
+    if isfield(cellDataStruct, 'Control')
+        ctrlPSTHs = collectPSTHs(cellDataStruct, {'Control'}, psthLength, unitFilter, outlierFilter);
+        ctrlPSTH.mean = mean(ctrlPSTHs, 1, 'omitnan');
+        ctrlPSTH.sem = std(ctrlPSTHs, 0, 1, 'omitnan') / sqrt(size(ctrlPSTHs, 1));
+        ctrlPSTH.timeVector = timeVector;
+        ctrlPSTH.n = size(ctrlPSTHs, 1);
+        
+        % Calculate normalized PSTH (experimental/control)
+        normPSTH.mean = expPSTH.mean ./ ctrlPSTH.mean;
+        % Error propagation for division
+        normPSTH.sem = normPSTH.mean .* sqrt((expPSTH.sem./expPSTH.mean).^2 + ...
+                                            (ctrlPSTH.sem./ctrlPSTH.mean).^2);
+        normPSTH.timeVector = timeVector;
     end
-
-    % Try to save the struct and handle any errors
-    try
-        % Save the struct with optional compression (-v7.3 for large data)
-        save(cellDataStructPath, 'cellDataStruct', '-v7.3');
-        fprintf('Saved cellDataStruct to: %s\n', cellDataStructPath);
-
-        % Verify if the file was saved successfully
-        if ~isfile(cellDataStructPath)
-            error('SaveError:VerificationFailed', 'Failed to verify the saved file: %s', cellDataStructPath);
-        end
-
-    catch ME
-        % Handle and log any save-related errors
-        fprintf('Error occurred during saving: %s\n', ME.message);
-        fprintf('Identifier: %s\n', ME.identifier);
-        for k = 1:length(ME.stack)
-            fprintf('In %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
-        end
-        rethrow(ME);  % Rethrow the error after logging
+    
+    % Save results
+    if ~isempty(dataFolder)
+        saveResults(expPSTH, ctrlPSTH, normPSTH, dataFolder);
     end
 end
+
+function [psthLength, timeVector] = getPSTHInfo(cellDataStruct)
+    psthLength = 0;
+    timeVector = [];
+    
+    groupNames = fieldnames(cellDataStruct);
+    for g = 1:length(groupNames)
+        recordings = fieldnames(cellDataStruct.(groupNames{g}));
+        for r = 1:length(recordings)
+            units = fieldnames(cellDataStruct.(groupNames{g}).(recordings{r}));
+            for u = 1:length(units)
+                unitData = cellDataStruct.(groupNames{g}).(recordings{r}).(units{u});
+                if isfield(unitData, 'psthSmoothed') && ~isempty(unitData.psthSmoothed)
+                    psthLength = length(unitData.psthSmoothed);
+                    timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
+                    return;
+                end
+            end
+        end
+    end
+end
+
+function psths = collectPSTHs(cellDataStruct, groupNames, psthLength, unitFilter, outlierFilter)
+    psths = [];
+    
+    for g = 1:length(groupNames)
+        groupName = groupNames{g};
+        if ~isfield(cellDataStruct, groupName)
+            continue;
+        end
+        
+        recordings = fieldnames(cellDataStruct.(groupName));
+        for r = 1:length(recordings)
+            recordingName = recordings{r};
+            units = fieldnames(cellDataStruct.(groupName).(recordingName));
+            
+            for u = 1:length(units)
+                unitData = cellDataStruct.(groupName).(recordingName).(units{u});
+                
+                % Validate unit
+                if ~isValidUnit(unitData, unitFilter, outlierFilter)
+                    continue;
+                end
+                
+                % Add PSTH to collection
+                psths(end+1, :) = unitData.psthSmoothed;
+            end
+        end
+    end
+end
+
+function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
+    % Check outlier status
+    if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+        isValid = false;
+        return;
+    end
+    
+    % Check unit type
+    isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
+    if strcmp(unitFilter, 'single') && ~isSingleUnit || ...
+       strcmp(unitFilter, 'multi') && isSingleUnit
+        isValid = false;
+        return;
+    end
+    
+    % Check required fields
+    isValid = isfield(unitData, 'psthSmoothed') && ...
+              isfield(unitData, 'binEdges') && ...
+              isfield(unitData, 'binWidth');
+end
+
+function saveResults(expPSTH, ctrlPSTH, normPSTH, dataFolder)
+    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+    filename = sprintf('averagePSTHs_%s.mat', timestamp);
+    
+    % Create save directory if it doesn't exist
+    saveDir = fullfile(dataFolder, '0. expFigures');
+    if ~isfolder(saveDir)
+        mkdir(saveDir);
+    end
+    
+    % Save results
+    save(fullfile(saveDir, filename), 'expPSTH', 'ctrlPSTH', 'normPSTH', '-v7.3');
+    fprintf('Results saved to: %s\n', fullfile(saveDir, filename));
+end
+
