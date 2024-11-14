@@ -121,16 +121,19 @@ end
 
 function createFigure(data, groupTitle, colors, saveDir)
     fig = figure('Position', [100, 100, 1600, 500]);
+    
     sgtitle(sprintf('%s Groups: Baseline vs Post-Treatment', groupTitle));
-    
+
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
-    titles = {'Enhanced Units', 'Decreased Units', 'No Change Units'};
     
+    titles = {'Enhanced Units', 'Decreased Units', 'No Change Units'};
+
     for i = 1:length(responseTypes)
         subplot(1, 3, i);
         plotPanel(data.(responseTypes{i}), titles{i}, colors.(responseTypes{i}));
     end
     
+
     % Save figure
     timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
     filename = sprintf('%s_PercentChangeBaselineVsPost_%s.fig', groupTitle, timestamp);
