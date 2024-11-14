@@ -15,7 +15,7 @@ function cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolde
     end
     
     % Constants
-    SCALING_FACTOR = 0.0001;
+    SCALING_FACTOR = 0.5;
     
     % Process each unit
     groupNames = fieldnames(cellDataStruct);
