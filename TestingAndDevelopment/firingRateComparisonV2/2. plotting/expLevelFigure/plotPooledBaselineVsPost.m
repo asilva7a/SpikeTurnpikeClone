@@ -1,111 +1,10 @@
-function plotPooledBaselineVsPost(cellDataStruct, figureFolder, treatmentTime, unitFilter, outlierFilter)
-    % Set defaults
-    if nargin < 5, outlierFilter = true; end
-    if nargin < 4, unitFilter = 'both'; end
-    if nargin < 3, treatmentTime = 1860; end
-    
+function plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder)
     % Constants
     COLORS = struct(...
         'Increased', [1, 0, 0, 0.3], ...    % Red
         'Decreased', [0, 0, 1, 0.3], ...    % Blue
         'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
     
-    % Initialize data structures
-    expData = initializeDataStructure();
-    ctrlData = initializeDataStructure();
-    
-    % Process experimental groups (Emx, Pvalb)
-    expData = processExperimentalGroups(cellDataStruct, {'Emx', 'Pvalb'}, ...
-                                      treatmentTime, unitFilter, outlierFilter);
-    
-    % Process control group
-    if isfield(cellDataStruct, 'Control')
-        ctrlData = processExperimentalGroups(cellDataStruct, {'Control'}, ...
-                                           treatmentTime, unitFilter, outlierFilter);
-    end
-    
-    % Create figures
-    createAndSaveFigures(expData, ctrlData, COLORS, figureFolder);
-end
-
-function dataStruct = initializeDataStructure()
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
-    dataStruct = struct();
-    for rt = responseTypes
-        dataStruct.(rt{1}) = struct(...
-            'baseline', [], ...
-            'post', []);
-    end
-end
-
-function data = processExperimentalGroups(cellDataStruct, groupNames, treatmentTime, unitFilter, outlierFilter)
-    data = initializeDataStructure();
-    
-    for g = 1:length(groupNames)
-        groupName = groupNames{g};
-        if ~isfield(cellDataStruct, groupName)
-            continue;
-        end
-        
-        recordings = fieldnames(cellDataStruct.(groupName));
-        for r = 1:length(recordings)
-            recordingName = recordings{r};
-            units = fieldnames(cellDataStruct.(groupName).(recordingName));
-            
-            for u = 1:length(units)
-                unitData = cellDataStruct.(groupName).(recordingName).(units{u});
-                
-                % Validate unit
-                if ~isValidUnit(unitData, unitFilter, outlierFilter)
-                    continue;
-                end
-                
-                % Get response type
-                responseType = strrep(unitData.responseType, ' ', '');
-                if ~isfield(data, responseType)
-                    continue;
-                end
-                
-                % Calculate time indices
-                timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
-                baselineIdx = timeVector < treatmentTime;
-                postIdx = timeVector > treatmentTime;
-                
-                % Calculate mean firing rates
-                baselineFR = mean(unitData.psthSmoothed(baselineIdx), 'omitnan');
-                postFR = mean(unitData.psthSmoothed(postIdx), 'omitnan');
-                
-                % Store data
-                data.(responseType).baseline(end+1) = baselineFR;
-                data.(responseType).post(end+1) = postFR;
-            end
-        end
-    end
-end
-
-function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
-    % Check outlier status
-    if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-        isValid = false;
-        return;
-    end
-    
-    % Check unit type
-    isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
-    if strcmp(unitFilter, 'single') && ~isSingleUnit || ...
-       strcmp(unitFilter, 'multi') && isSingleUnit
-        isValid = false;
-        return;
-    end
-    
-    % Check required fields
-    isValid = isfield(unitData, 'psthSmoothed') && ...
-              isfield(unitData, 'responseType') && ...
-              isfield(unitData, 'binEdges') && ...
-              isfield(unitData, 'binWidth');
-end
-
-function createAndSaveFigures(expData, ctrlData, colors, figureFolder)
     % Create save directory
     saveDir = fullfile(figureFolder, '0. expFigures');
     if ~isfolder(saveDir)
@@ -113,13 +12,15 @@ function createAndSaveFigures(expData, ctrlData, colors, figureFolder)
     end
     
     % Create figures
-    createFigure(expData, 'Experimental', colors, saveDir);
-    if ~isempty(fieldnames(ctrlData))
-        createFigure(ctrlData, 'Control', colors, saveDir);
+    if ~isempty(fieldnames(expStats))
+        createFigureFromStats(expStats, 'Experimental', COLORS, saveDir);
+    end
+    if ~isempty(fieldnames(ctrlStats))
+        createFigureFromStats(ctrlStats, 'Control', COLORS, saveDir);
     end
 end
 
-function createFigure(data, groupTitle, colors, saveDir)
+function createFigureFromStats(groupStats, groupTitle, colors, saveDir)
     fig = figure('Position', [100, 100, 1600, 500]);
     sgtitle(sprintf('%s Groups: Baseline vs Post-Treatment', groupTitle));
     
@@ -128,7 +29,11 @@ function createFigure(data, groupTitle, colors, saveDir)
     
     for i = 1:length(responseTypes)
         subplot(1, 3, i);
-        plotPanel(data.(responseTypes{i}), titles{i}, colors.(responseTypes{i}));
+        if isfield(groupStats, responseTypes{i})
+            plotPanelFromStats(groupStats.(responseTypes{i}), titles{i}, colors.(responseTypes{i}));
+        else
+            title(sprintf('%s (No Data)', titles{i}));
+        end
     end
     
     % Save figure
@@ -138,19 +43,21 @@ function createFigure(data, groupTitle, colors, saveDir)
     close(fig);
 end
 
-function plotPanel(data, title_str, color)
-    if isempty(data.baseline) || isempty(data.post)
+function plotPanelFromStats(statsData, title_str, color)
+    if isempty(statsData.data.baseline) || isempty(statsData.data.post)
         title(sprintf('%s (No Data)', title_str));
         return;
     end
     
+    data = statsData.data;
+    
     % Create box plot with specific styling
     h = boxplot([data.baseline', data.post'], ...
                 'Labels', {'Baseline', 'Post'}, ...
-                'Colors', 'k', ...         % Black lines for box
-                'Width', 0.7, ...          % Wider boxes
-                'Symbol', '', ...          % No outlier symbols
-                'Whisker', 1.5);          % Standard whisker length
+                'Colors', 'k', ...
+                'Width', 0.7, ...
+                'Symbol', '', ...
+                'Whisker', 1.5);
     
     % Set all lines to be thinner
     set(findobj(gca, 'type', 'line'), 'LineWidth', 1);
@@ -174,12 +81,9 @@ function plotPanel(data, title_str, color)
     
     % Set y-axis limits and ticks based on response type
     if contains(title_str, 'Enhanced')
-        ylim([0 2.0]);
+        ylim([0 1.6]);
         yticks(0:0.2:1.6);
-    elseif contains(title_str, 'Decreased')
-        ylim([0 1.0]);
-        yticks(0:0.25:2.0);
-    else  % No Change
+    else  % Decreased and No Change
         ylim([0 2.0]);
         yticks(0:0.25:2.0);
     end
@@ -200,18 +104,11 @@ function plotPanel(data, title_str, color)
     % Add vertical dashed line at treatment time
     xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
     
-    % Add statistics
+    % Add p-value from Wilcoxon test
     if length(data.baseline) > 1 && length(data.post) > 1
-        [~, p] = ttest2(data.baseline, data.post);
-        if p < 0.05
-            text(1.5, max(ylim)*0.95, sprintf('p = %.3f *', p), ...
-                 'HorizontalAlignment', 'center', ...
-                 'FontSize', 10);
-        else
-            text(1.5, max(ylim)*0.95, sprintf('p = %.3f', p), ...
-                 'HorizontalAlignment', 'center', ...
-                 'FontSize', 10);
-        end
+        text(1.5, max(ylim)*0.95, sprintf('p = %.3f', statsData.testResults.wilcoxon.p), ...
+             'HorizontalAlignment', 'center', ...
+             'FontSize', 10);
     end
     
     hold off;

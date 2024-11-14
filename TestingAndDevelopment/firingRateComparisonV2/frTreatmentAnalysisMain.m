@@ -85,10 +85,14 @@ cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
     true, dataFolder);
 
 % Calculate PSTH percent change 
-cellDataStruct = calculatePercentChangeMedian(cellDataStruct, dataFolder);
+cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 
 % Filter tagged units from remaining analysis
 cellDataStruct = getCleanUnits(cellDataStruct);
+
+% Calculate Exp vs. Ctrl stats
+[expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct, treatmentTime, unitFilter, outlierFilter);
+
 
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
@@ -100,7 +104,6 @@ plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
      'mean+individual', 'both', true);
 
 % Plot Time Locked smoothed PSTHs for pooled data (mean + SEM); 
-% exp level
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem', 'both', true);
 
@@ -124,6 +127,8 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
+% Plot Pooled Unit PSTHs Exp and Ctrl
+plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder);
 
 %% End of Script
 disp('Script finished...');
