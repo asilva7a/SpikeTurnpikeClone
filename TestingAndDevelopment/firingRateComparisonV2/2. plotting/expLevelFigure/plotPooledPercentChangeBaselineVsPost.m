@@ -25,10 +25,27 @@ function createFigureFromStats(groupStats, groupTitle, colors, saveDir)
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
     titles = {'Enhanced Units', 'Decreased Units', 'No Change Units'};
     
+    % Find global y-limits across all panels
+    yMin = Inf;
+    yMax = -Inf;
+    for i = 1:length(responseTypes)
+        if isfield(groupStats, responseTypes{i}) && ~isempty(groupStats.(responseTypes{i}).data)
+            data = groupStats.(responseTypes{i}).data;
+            yMin = min(yMin, min([data.baseline(:); data.post(:)]));
+            yMax = max(yMax, max([data.baseline(:); data.post(:)]));
+        end
+    end
+    
+    % Add padding to y-limits
+    yRange = yMax - yMin;
+    yMin = yMin - 0.1 * yRange;
+    yMax = yMax + 0.1 * yRange;
+    
+    % Create subplots
     for i = 1:length(responseTypes)
         subplot(1, 3, i);
         if isfield(groupStats, responseTypes{i})
-            plotPanelFromStats(groupStats.(responseTypes{i}), titles{i}, colors.(responseTypes{i}));
+            plotPanelFromStats(groupStats.(responseTypes{i}), titles{i}, colors.(responseTypes{i}), yMin, yMax);
         else
             title(sprintf('%s (No Data)', titles{i}));
         end
@@ -41,7 +58,7 @@ function createFigureFromStats(groupStats, groupTitle, colors, saveDir)
     close(fig);
 end
 
-function plotPanelFromStats(statsData, title_str, color)
+function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
     if isempty(statsData.data.baseline) || isempty(statsData.data.post)
         title(sprintf('%s (No Data)', title_str));
         return;
@@ -77,17 +94,9 @@ function plotPanelFromStats(statsData, title_str, color)
     scatter(x1, data.baseline, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
     scatter(x2, data.post, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
     
-    % Set y-axis limits and ticks based on response type
-    if contains(title_str, 'Enhanced')
-        ylim([-100 400]);
-        yticks(-100:100:400);
-    elseif contains(title_str, 'Decreased')
-        ylim([-100 100]);
-        yticks(-100:50:100);
-    else  % No Change
-        ylim([-100 100]);
-        yticks(-100:50:100);
-    end
+    % Set consistent y-axis limits
+    ylim([yMin yMax]);
+    yticks(linspace(yMin, yMax, 6));
     
     % Add grid
     grid on;
@@ -105,9 +114,40 @@ function plotPanelFromStats(statsData, title_str, color)
     % Add vertical dashed line at treatment time
     xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
     
-    % Add p-value from Wilcoxon test
+    % Add p-value and effect size
     if length(data.baseline) > 1 && length(data.post) > 1
-        text(1.5, max(ylim)*0.95, sprintf('p = %.3f', statsData.testResults.wilcoxon.p), ...
+        p_value = statsData.testResults.wilcoxon.p;
+        cohens_d = statsData.testResults.cohens_d;
+        
+        % Position text
+        yRange = yMax - yMin;
+        topPos = yMax - 0.05*yRange;
+        midPos = yMax - 0.15*yRange;
+        
+        % Add p-value with significance indicator
+        if p_value < 0.05
+            text(1.5, topPos, sprintf('p = %.3f *', p_value), ...
+                 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10);
+        else
+            text(1.5, topPos, sprintf('p = %.3f', p_value), ...
+                 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10);
+        end
+        
+        % Add effect size with interpretation
+        effectSize = '';
+        if abs(cohens_d) < 0.2
+            effectSize = 'negligible';
+        elseif abs(cohens_d) < 0.5
+            effectSize = 'small';
+        elseif abs(cohens_d) < 0.8
+            effectSize = 'medium';
+        else
+            effectSize = 'large';
+        end
+        
+        text(1.5, midPos, sprintf('d = %.2f (%s)', cohens_d, effectSize), ...
              'HorizontalAlignment', 'center', ...
              'FontSize', 10);
     end
