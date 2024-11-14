@@ -92,12 +92,10 @@ cellDataStruct = getCleanUnits(cellDataStruct);
 
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
-% recording level
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
      'mean+sem', 'both', true);
 
 % Plot Time Locked smoothed PSTHs (mean + individual traces); 
-% recording level
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
      'mean+individual', 'both', true);
 
@@ -107,27 +105,22 @@ plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem', 'both', true);
 
 % Plot Time Locked smoothed PSTHs for indidividual units (mean + individual)
-% group level
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual', 'both', true);
 
 % Plot Time locked percent change PSTHs (mean + inidividual units)
-% recording level
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual', 'both', true);
 
 % Plot Time locked percent change PSTHs (mean + sem)
-% recording level
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
 % Plot Time locked percent change PSTHs Group (mean + individual units)
-% group level
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too similar to other function; differentiate somehow
     'mean+individual');
 
 % Plot Time locked percent change PSTHs Group (mean + sem)
-% group level
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
