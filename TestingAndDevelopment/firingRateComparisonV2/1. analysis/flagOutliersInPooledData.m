@@ -1,4 +1,14 @@
 function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, unitFilter, figureFolder, dataFolder)
+    % Set default arguments
+    if nargin < 2 || isempty(unitFilter)
+        unitFilter = 'both';  % Default to processing both single and multi units
+    end
+
+    % Input validation
+    if nargin < 1 || isempty(cellDataStruct)
+        error('cellDataStruct is required');
+    end
+
     % Define response types and groups
     responseTypes = {'Increased', 'Decreased', 'NoChange'};
     experimentGroups = {'Emx', 'Pvalb', 'Control'};
@@ -19,10 +29,9 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 'maxFiringRate', [], ...
                 'baselineRates', [], ...
                 'treatmentRates', [], ...
-                'cvValues', []);
-            
+                'cvValues', [], ...
+                'metrics', []);  % Added metrics field
             unitInfoGroup.(rType{1}).(grp{1}) = {};
-            
             groupIQRs.(rType{1}).(grp{1}) = struct(...
                 'IQR', [], ...
                 'Median', [], ...
@@ -30,7 +39,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 'LowerFence', []);
         end
     end
-
+    
     % Process each unit
     for g = 1:length(experimentGroups)
         groupName = experimentGroups{g};
@@ -50,11 +59,8 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                 % Initialize outlier flag
                 cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
                 
-                % Check required fields
-                if ~isfield(unitData, 'responseType') || ...
-                   ~isfield(unitData, 'psthSmoothed') || ...
-                   ~isfield(unitData, 'frBaselineAvg') || ...
-                   ~isfield(unitData, 'frTreatmentAvg')
+                % Use helper function to check if unit should be processed
+                if ~shouldProcessUnit(unitData, unitFilter)
                     continue;
                 end
                 
@@ -64,24 +70,20 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                     continue;
                 end
                 
-                % Apply unit filter
-                isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
-                if (strcmp(unitFilter, 'single') && ~isSingleUnit) || ...
-                   (strcmp(unitFilter, 'multi') && isSingleUnit)
-                    continue;
+                % Use helper function to calculate metrics
+                metrics = calculateUnitMetrics(unitData);
+                
+                % Store metrics and individual values
+                if ~isfield(psthDataGroup.(responseType).(groupName), 'metrics')
+                    psthDataGroup.(responseType).(groupName).metrics = [];
                 end
+                psthDataGroup.(responseType).(groupName).metrics = [psthDataGroup.(responseType).(groupName).metrics; metrics];
                 
-                % Calculate metrics
-                maxFiringRate = max(unitData.psthSmoothed);
-                baselineRate = unitData.frBaselineAvg;
-                treatmentRate = unitData.frTreatmentAvg;
-                cv = std(unitData.psthSmoothed) / (mean(unitData.psthSmoothed) + eps);
-                
-                % Store metrics
-                psthDataGroup.(responseType).(groupName).maxFiringRate(end+1) = maxFiringRate;
-                psthDataGroup.(responseType).(groupName).baselineRates(end+1) = baselineRate;
-                psthDataGroup.(responseType).(groupName).treatmentRates(end+1) = treatmentRate;
-                psthDataGroup.(responseType).(groupName).cvValues(end+1) = cv;
+                % Store individual metrics for plotting
+                psthDataGroup.(responseType).(groupName).maxFiringRate(end+1) = metrics.maxFiringRate;
+                psthDataGroup.(responseType).(groupName).baselineRates(end+1) = metrics.baselineRate;
+                psthDataGroup.(responseType).(groupName).treatmentRates(end+1) = unitData.frTreatmentAvg;
+                psthDataGroup.(responseType).(groupName).cvValues(end+1) = metrics.cv;
                 
                 % Store unit info
                 unitInfoGroup.(responseType).(groupName){end+1} = struct(...
@@ -91,65 +93,24 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             end
         end
     end
-
+    
     % Calculate thresholds and identify outliers
     for rType = responseTypes
         for grp = experimentGroups
             if ~isempty(unitInfoGroup.(rType{1}).(grp{1}))
-                % Calculate IQR thresholds
-                maxRates = psthDataGroup.(rType{1}).(grp{1}).maxFiringRate;
-                Q1 = prctile(maxRates, 25);
-                Q3 = prctile(maxRates, 75);
-                IQR = Q3 - Q1;
-                upperFence = Q3 + 1.5 * IQR;
-                lowerFence = Q1 - 1.5 * IQR;
+                % Use helper function to calculate thresholds
+                thresholds = calculateGroupThresholds(psthDataGroup.(rType{1}).(grp{1}).metrics);
+                groupIQRs.(rType{1}).(grp{1}) = thresholds;
                 
-                % Store thresholds
-                groupIQRs.(rType{1}).(grp{1}).IQR = IQR;
-                groupIQRs.(rType{1}).(grp{1}).Median = median(maxRates);
-                groupIQRs.(rType{1}).(grp{1}).UpperFence = upperFence;
-                groupIQRs.(rType{1}).(grp{1}).LowerFence = lowerFence;
-                
-                % Flag outliers
+                % Flag outliers using helper function
                 for i = 1:length(unitInfoGroup.(rType{1}).(grp{1}))
                     unitInfo = unitInfoGroup.(rType{1}).(grp{1}){i};
+                    metrics = psthDataGroup.(rType{1}).(grp{1}).metrics(i,:);
                     
-                    % Get metrics for this unit
-                    maxFiringRate = psthDataGroup.(rType{1}).(grp{1}).maxFiringRate(i);
-                    baselineRate = psthDataGroup.(rType{1}).(grp{1}).baselineRates(i);
-                    treatmentRate = psthDataGroup.(rType{1}).(grp{1}).treatmentRates(i);
-                    cv = psthDataGroup.(rType{1}).(grp{1}).cvValues(i);
-                    
-                    % Calculate outlier score
-                    outlierScore = 0;
-                    
-                    % Check max firing rate
-                    if maxFiringRate > upperFence || maxFiringRate < lowerFence
-                        outlierScore = outlierScore + 1;
-                    end
-                    
-                    % Check baseline to treatment change
-                    rateChange = abs(treatmentRate - baselineRate) / (baselineRate + eps);
-                    if rateChange > median(abs(diff([baselineRate, treatmentRate]))) + ...
-                       2 * std(abs(diff([baselineRate, treatmentRate])))
-                        outlierScore = outlierScore + 1;
-                    end
-                    
-                    % Check variability
-                    if cv > median(psthDataGroup.(rType{1}).(grp{1}).cvValues) + ...
-                       2 * std(psthDataGroup.(rType{1}).(grp{1}).cvValues)
-                        outlierScore = outlierScore + 1;
-                    end
-                    
-                    % Flag unit if multiple criteria are met
-                    if outlierScore >= 2
+                    % Use helper function to determine if unit is outlier
+                    if isUnitOutlier(metrics, thresholds)
                         cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = 1;
-                        cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).outlierMetrics = struct(...
-                            'maxFiringRate', maxFiringRate, ...
-                            'baselineRate', baselineRate, ...
-                            'treatmentRate', treatmentRate, ...
-                            'cv', cv, ...
-                            'outlierScore', outlierScore);
+                        cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).outlierMetrics = metrics;
                     end
                 end
             end
@@ -165,13 +126,12 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             fprintf('Error saving the file: %s\n', ME.message);
         end
     end
-
+    
     % Optional plotting
     if nargin > 2 && ~isempty(figureFolder)
         plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, figureFolder);
     end
 end
-
 
 function metrics = calculateUnitMetrics(unitData)
     % Calculate comprehensive unit metrics
