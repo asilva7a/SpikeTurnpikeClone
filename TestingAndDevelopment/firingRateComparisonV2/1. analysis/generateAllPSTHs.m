@@ -1,25 +1,24 @@
 function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
-    % Calculate total units for progress tracking
-    totalUnits = countTotalUnits(cellDataStruct);
-    processedUnits = 0;
+    % Constants
+    RECORDING_LENGTH = 5400;  % seconds
+    SAVE_INTERVAL = 100;      % units
     
-    % Generate bin edges once for all units
-    recordingLength = 5400; % Fixed recording duration in seconds
-    
-    % Get binWidth from first unit (assuming all units have same binWidth)
-    firstGroup = fieldnames(cellDataStruct);
-    firstRecording = fieldnames(cellDataStruct.(firstGroup{1}));
-    firstUnit = fieldnames(cellDataStruct.(firstGroup{1}).(firstRecording{1}));
-    binWidth = cellDataStruct.(firstGroup{1}).(firstRecording{1}).(firstUnit{1}).binWidth;
+    % Get first unit's binWidth and count total units
+    [binWidth, totalUnits] = initializeParameters(cellDataStruct);
+    if isempty(binWidth) || totalUnits == 0
+        warning('Initialize:NoData', 'No valid data found for processing');
+        return;
+    end
     
     % Generate bin edges once
-    binEdges = 0:binWidth:recordingLength;
+    binEdges = 0:binWidth:RECORDING_LENGTH;
     numBins = length(binEdges) - 1;
     
-    % Pre-allocate histcounts parameters
-    edges = binEdges; % Store edges for histcounts
+    % Process units
+    processedUnits = 0;
+    fprintf('Processing %d total units...\n', totalUnits);
     
-    % Main processing loop
+    % Process each group
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
         groupName = groupNames{g};
@@ -29,78 +28,128 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
             
+            % Process units in current recording
             for u = 1:length(units)
                 unitID = units{u};
-                processedUnits = processedUnits + 1;
-                
-                % Display progress
-                fprintf('Processing Unit %d/%d: %s | %s | %s\n', ...
-                    processedUnits, totalUnits, groupName, recordingName, unitID);
                 
                 try
-                    % Extract unit data
-                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                    % Process unit
+                    cellDataStruct.(groupName).(recordingName).(unitID) = ...
+                        processUnit(cellDataStruct.(groupName).(recordingName).(unitID), ...
+                                  binEdges, numBins);
                     
-                    % Extract and normalize spike times
-                    spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
-                    
-                    if isempty(spikeTimes)
-                        warning('Spike times empty for Unit: %s', unitID);
-                        fullPSTH = zeros(1, numBins);
-                    else
-                        % Use histcounts for faster binning
-                        [spikeCounts, ~] = histcounts(spikeTimes, edges);
-                        fullPSTH = spikeCounts / binWidth; % Convert to firing rate
+                    % Update and display progress
+                    processedUnits = processedUnits + 1;
+                    if mod(processedUnits, 10) == 0
+                        fprintf('Processed %d/%d units (%.1f%%)\n', ...
+                                processedUnits, totalUnits, ...
+                                (processedUnits/totalUnits)*100);
                     end
                     
-                    % Store results
-                    cellDataStruct.(groupName).(recordingName).(unitID).psthRaw = fullPSTH;
-                    cellDataStruct.(groupName).(recordingName).(unitID).binEdges = binEdges;
-                    cellDataStruct.(groupName).(recordingName).(unitID).numBins = numBins;
+                    % Save intermediate results
+                    if mod(processedUnits, SAVE_INTERVAL) == 0
+                        saveIntermediateResults(cellDataStruct, dataFolder, processedUnits);
+                    end
                     
                 catch ME
-                    warning('Error processing %s: %s', unitID, ME.message);
+                    warning('Process:UnitError', ...
+                            'Error processing unit %s in %s/%s: %s', ...
+                            unitID, groupName, recordingName, ME.message);
                 end
-            end
-            
-            % Optional: Save intermediate results
-            if mod(processedUnits, 100) == 0 % Save every 100 units
-                saveIntermediateResults(cellDataStruct, dataFolder, processedUnits);
             end
         end
     end
     
     % Final save
-    saveResults(cellDataStruct, dataFolder);
+    if processedUnits > 0
+        saveResults(cellDataStruct, dataFolder);
+        fprintf('Processing complete: %d units processed\n', processedUnits);
+    else
+        warning('Process:NoUnitsProcessed', 'No units were successfully processed');
+    end
 end
 
-function totalUnits = countTotalUnits(cellDataStruct)
+function [binWidth, totalUnits] = initializeParameters(cellDataStruct)
+    % Initialize outputs
+    binWidth = [];
     totalUnits = 0;
-    groups = fieldnames(cellDataStruct);
-    for g = 1:length(groups)
-        recordings = fieldnames(cellDataStruct.(groups{g}));
+    
+    % Get first unit's binWidth
+    groupNames = fieldnames(cellDataStruct);
+    if isempty(groupNames)
+        warning('Initialize:NoGroups', 'No groups found in cellDataStruct');
+        return;
+    end
+    
+    firstRecordings = fieldnames(cellDataStruct.(groupNames{1}));
+    if isempty(firstRecordings)
+        warning('Initialize:NoRecordings', 'No recordings found in group %s', groupNames{1});
+        return;
+    end
+    
+    firstUnits = fieldnames(cellDataStruct.(groupNames{1}).(firstRecordings{1}));
+    if isempty(firstUnits)
+        warning('Initialize:NoUnits', 'No units found in recording %s', firstRecordings{1});
+        return;
+    end
+    
+    % Get binWidth from first unit
+    firstUnit = cellDataStruct.(groupNames{1}).(firstRecordings{1}).(firstUnits{1});
+    if ~isfield(firstUnit, 'binWidth')
+        warning('Initialize:NoBinWidth', 'No binWidth field in first unit');
+        return;
+    end
+    binWidth = firstUnit.binWidth;
+    
+    % Count total units
+    for g = 1:length(groupNames)
+        recordings = fieldnames(cellDataStruct.(groupNames{g}));
         for r = 1:length(recordings)
-            totalUnits = totalUnits + length(fieldnames(cellDataStruct.(groups{g}).(recordings{r})));
+            totalUnits = totalUnits + length(fieldnames(cellDataStruct.(groupNames{g}).(recordings{r})));
         end
     end
+end
+
+function unitData = processUnit(unitData, binEdges, numBins)
+    % Check required fields
+    if ~isfield(unitData, 'SpikeTimesall') || ~isfield(unitData, 'SamplingFrequency')
+        warning('Process:MissingFields', 'Required fields missing for unit processing');
+        return;
+    end
+    
+    % Extract and normalize spike times
+    spikeTimes = double(unitData.SpikeTimesall) / unitData.SamplingFrequency;
+    
+    if isempty(spikeTimes)
+        warning('Process:EmptySpikes', 'No spike times found in unit data');
+        fullPSTH = zeros(1, numBins);
+    else
+        % Use histcounts for binning
+        [spikeCounts, ~] = histcounts(spikeTimes, binEdges);
+        fullPSTH = spikeCounts / unitData.binWidth;
+    end
+    
+    % Update unit data
+    unitData.psthRaw = fullPSTH;
+    unitData.binEdges = binEdges;
+    unitData.numBins = numBins;
 end
 
 function saveIntermediateResults(cellDataStruct, dataFolder, processedUnits)
     try
         backupFile = fullfile(dataFolder, sprintf('cellDataStruct_backup_%d.mat', processedUnits));
         save(backupFile, 'cellDataStruct', '-v7.3', '-nocompression');
-        fprintf('Intermediate save completed: %d units processed\n', processedUnits);
+        fprintf('Saved backup after %d units\n', processedUnits);
     catch ME
-        warning('Failed to save intermediate results: %s', ME.message);
+        warning('Save:BackupFailed', 'Failed to save backup: %s', ME.message);
     end
 end
 
 function saveResults(cellDataStruct, dataFolder)
     try
         save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3', '-nocompression');
-        fprintf('Final save completed successfully\n');
+        fprintf('Final save completed\n');
     catch ME
-        fprintf('Error saving final results: %s\n', ME.message);
+        warning('Save:FinalFailed', 'Error saving final results: %s', ME.message);
     end
 end
-
