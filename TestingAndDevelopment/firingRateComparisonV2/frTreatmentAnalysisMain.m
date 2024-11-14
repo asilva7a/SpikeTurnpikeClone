@@ -49,7 +49,8 @@ disp('Starting main script...');
 %% Set Up Directories
 % Get User Input for Directories
 try
-    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths(); % Generates file paths for the output variables and variables saves to config.mat
+    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = ...
+    loadDataAndPreparePaths(); % Generates file paths for the output variables and variables saves to config.mat
     load(dataFilePath, 'all_data');
 
     % Call the extract function with the user-specified save path
@@ -90,15 +91,17 @@ cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 % Filter tagged units from remaining analysis
 cellDataStruct = getCleanUnits(cellDataStruct);
 
-% Calculate Exp vs. Ctrl stats
-[expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct, treatmentTime, unitFilter, outlierFilter);
+% Calculate Exp vs. Ctrl psthSmoothed stats
+[expStats, ctrlStats] = calculatePooledBaselineVsPostStats( ...
+    cellDataStruct, treatmentTime, unitFilter, outlierFilter);
 
     % Save statistics if needed
     save(fullfile(figureFolder, '0. expFigures', ...
         'pooledBaselineVsPostStats.mat'), 'expStats', 'ctrlStats');
 
-% Calculate Exp vs. Ctrl % change stats
-[expStats, ctrlStats] = calculatePooledPercentChangeStats(cellDataStruct, treatmentTime, unitFilter, outlierFilter);
+% Calculate Exp vs. Ctrl %-change stats
+[expStats, ctrlStats] = calculatePooledPercentChangeStats( ...
+    cellDataStruct, treatmentTime, unitFilter, outlierFilter);
 
     % Save statistics if needed
     save(fullfile(figureFolder, '0. expFigures', ...
@@ -113,27 +116,27 @@ plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
      'mean+individual', 'both', true);
 
-% Plot Time Locked smoothed PSTHs for pooled data (mean + SEM); 
+% Plot Time Locked smoothed PSTHs for pooled data (mean+SEM); 
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem', 'both', true);
 
-% Plot Time Locked smoothed PSTHs for indidividual units (mean + individual)
+% Plot Time Locked smoothed PSTHs for indidividual units (mean+individual)
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual', 'both', true);
 
-% Plot Time locked percent change PSTHs (mean + inidividual units)
+% Plot Time locked percent change PSTHs (mean+inidividual units)
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+individual', 'both', true);
 
-% Plot Time locked percent change PSTHs (mean + sem)
+% Plot Time locked percent change PSTHs (mean+sem)
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
-% Plot Time locked percent change PSTHs Group (mean + individual units)
+% Plot Time locked percent change PSTHs Group (mean+individual units)
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too similar to other function; differentiate somehow
     'mean+individual');
 
-% Plot Time locked percent change PSTHs Group (mean + sem)
+% Plot Time locked percent change PSTHs Group (mean+sem)
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem');
 
