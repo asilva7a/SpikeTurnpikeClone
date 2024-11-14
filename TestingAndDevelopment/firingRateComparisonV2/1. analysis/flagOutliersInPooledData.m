@@ -168,7 +168,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
 
     % Optional plotting
     if nargin > 2 && ~isempty(figureFolder)
-        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, groupIQRs, figureFolder);
+        plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, figureFolder);
     end
 end
 
