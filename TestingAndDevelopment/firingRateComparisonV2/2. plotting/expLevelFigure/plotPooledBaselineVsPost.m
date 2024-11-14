@@ -144,46 +144,74 @@ function plotPanel(data, title_str, color)
         return;
     end
     
-    % Create box plot
-    boxplot([data.baseline', data.post'], ...
-            'Labels', {'Baseline', 'Post'}, ...
-            'Colors', color(1:3), ...
-            'Width', 0.5, ...
-            'Symbol', '');  % Hide outlier symbols since we'll plot points
+    % Create box plot with specific styling
+    h = boxplot([data.baseline', data.post'], ...
+                'Labels', {'Baseline', 'Post'}, ...
+                'Colors', 'k', ...         % Black lines for box
+                'Width', 0.7, ...          % Wider boxes
+                'Symbol', '', ...          % No outlier symbols
+                'Whisker', 1.5);          % Standard whisker length
+    
+    % Set all lines to be thinner
+    set(findobj(gca, 'type', 'line'), 'LineWidth', 1);
+    
+    % Color the boxes with transparency
+    h = findobj(gca, 'Tag', 'Box');
+    for j = 1:length(h)
+        patch(get(h(j), 'XData'), get(h(j), 'YData'), color(1:3), ...
+              'FaceAlpha', 0.3, ...
+              'EdgeColor', 'k');
+    end
     
     hold on;
     
     % Add individual points with jitter
-    jitterWidth = 0.1;
+    jitterWidth = 0.2;
     x1 = ones(size(data.baseline)) + (rand(size(data.baseline))-0.5)*jitterWidth;
     x2 = 2*ones(size(data.post)) + (rand(size(data.post))-0.5)*jitterWidth;
-    scatter(x1, data.baseline, 20, color(1:3), 'filled', 'MarkerFaceAlpha', 0.3);
-    scatter(x2, data.post, 20, color(1:3), 'filled', 'MarkerFaceAlpha', 0.3);
+    scatter(x1, data.baseline, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
+    scatter(x2, data.post, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
     
-    % Add statistics
-    [~, p] = ttest2(data.baseline, data.post);
-    text(1.5, max(ylim)*1.05, sprintf('p = %.3f', p), ...
-         'HorizontalAlignment', 'center');
-    
-    % Set y-axis limits based on response type
+    % Set y-axis limits and ticks based on response type
     if contains(title_str, 'Enhanced')
-        ylim([0 1.6]);
+        ylim([0 2.0]);
+        yticks(0:0.2:1.6);
     elseif contains(title_str, 'Decreased')
-        ylim([0 2.5]);
+        ylim([0 1.0]);
+        yticks(0:0.25:2.0);
     else  % No Change
-        ylim([-0.15 0.25]);
+        ylim([0 2.0]);
+        yticks(0:0.25:2.0);
     end
     
-    % Formatting
-    title(sprintf('%s (n=%d)', title_str, length(data.baseline)));
-    ylabel('Firing Rate (Hz)');
+    % Add grid
     grid on;
+    set(gca, 'Layer', 'top', ...      % Grid behind data
+            'GridAlpha', 0.15, ...     % Lighter grid lines
+            'FontSize', 10);           % Larger font
     
-    % Make box plot lines black
-    h = findobj(gca, 'Tag', 'Box');
-    for j=1:length(h)
-        patch(get(h(j), 'XData'), get(h(j), 'YData'), color(1:3), ...
-              'FaceAlpha', 0.3, 'EdgeColor', 'k');
+    % Add title with unit count
+    title(sprintf('%s (n=%d)', title_str, length(data.baseline)), ...
+          'FontSize', 11);
+    
+    % Add y-axis label
+    ylabel('Firing Rate (Hz)', 'FontSize', 10);
+    
+    % Add vertical dashed line at treatment time
+    xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+    
+    % Add statistics
+    if length(data.baseline) > 1 && length(data.post) > 1
+        [~, p] = ttest2(data.baseline, data.post);
+        if p < 0.05
+            text(1.5, max(ylim)*0.95, sprintf('p = %.3f *', p), ...
+                 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10);
+        else
+            text(1.5, max(ylim)*0.95, sprintf('p = %.3f', p), ...
+                 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10);
+        end
     end
     
     hold off;
