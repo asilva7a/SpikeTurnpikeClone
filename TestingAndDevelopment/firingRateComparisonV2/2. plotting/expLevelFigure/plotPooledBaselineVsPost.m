@@ -125,14 +125,10 @@ function plotPanelFromStats(statsData, title_str, color)
         scatter(x2, post_data, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
         
         % Set y-axis limits and ticks based on response type
-        if contains(title_str, 'Enhanced')
-            ylim([0 1.6]);
-            yticks(0:0.2:1.6);
-        else  % Decreased and No Change
-            ylim([0 2.0]);
-            yticks(0:0.25:2.0);
-        end
-        
+
+        ylim([0 3.0]);
+        yticks(0:0.25:3.0);
+      
         % Add grid
         grid on;
         set(gca, 'Layer', 'top', ...      % Grid behind data
@@ -149,29 +145,36 @@ function plotPanelFromStats(statsData, title_str, color)
         % Add vertical dashed line at treatment time
         xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
         
-        % Add p-value from Wilcoxon test with Holm-Bonferroni correction
-        if length(baseline_data) > 1 && length(post_data) > 1
-            % Debug: Print test results structure
-            fprintf('Test results fields: %s\n', strjoin(fieldnames(statsData.testResults), ', '));
-            fprintf('Wilcoxon fields: %s\n', strjoin(fieldnames(statsData.testResults.wilcoxon), ', '));
+        % Add p-value and confidence intervals
+        if length(data.baseline) > 1 && length(data.post) > 1
+            % Get statistics - use p instead of p_holm
+            p_value = statsData.testResults.wilcoxon.p;  % Changed from p_holm to p
             
-            p_holm = statsData.testResults.wilcoxon.p_holm;
-            if statsData.testResults.wilcoxon.significant_holm
-                text(1.5, max(ylim)*0.95, sprintf('p = %.3f *', p_holm), ...
+            % Position text
+            yRange = yMax - yMin;
+            topPos = yMax - 0.05*yRange;
+            midPos = yMax - 0.15*yRange;
+            
+            % Add p-value with significance indicator
+            if p_value < 0.05  % Using standard significance threshold
+                text(1.5, topPos, sprintf('p = %.3f *', p_value), ...
                      'HorizontalAlignment', 'center', ...
                      'FontSize', 10);
             else
-                text(1.5, max(ylim)*0.95, sprintf('p = %.3f', p_holm), ...
+                text(1.5, topPos, sprintf('p = %.3f', p_value), ...
+                     'HorizontalAlignment', 'center', ...
+                     'FontSize', 10);
+            end
+            
+            % Add confidence intervals if they exist
+            if isfield(statsData.stats, 'baseline') && isfield(statsData.stats, 'post') && ...
+               isfield(statsData.stats.baseline, 'CI') && isfield(statsData.stats.post, 'CI')
+                text(1.5, midPos, sprintf('CI: [%.1f, %.1f] vs [%.1f, %.1f]', ...
+                     statsData.stats.baseline.CI(1), statsData.stats.baseline.CI(2), ...
+                     statsData.stats.post.CI(1), statsData.stats.post.CI(2)), ...
                      'HorizontalAlignment', 'center', ...
                      'FontSize', 10);
             end
         end
-        
-        hold off;
-        
-    catch ME
-        fprintf('Error in boxplot: %s\n', ME.message);
-        fprintf('Error details:\n');
-        disp(ME.stack(1));
     end
 end
