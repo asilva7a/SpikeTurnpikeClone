@@ -1,6 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% To-Do
 %   [x] standardize saving logic for figures to follow directory structure
+%   [ ] plot avg smooth exp psth normalized to ctrl waveform
 %   [ ] make function or modify main script to create single param file for pipeline
 %   [ ] change names for functions so purpose is more unambiguous
 %   [ ] finalize figure naming convention
@@ -95,35 +96,35 @@ cellDataStruct = getCleanUnits(cellDataStruct);
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-     'mean+sem', 'both', true);
+     'mean+sem', 'single', true);
 
 % Plot Time Locked smoothed PSTHs (mean + individual traces); 
 plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-     'mean+individual', 'both', true);
+     'mean+individual', 'single', true);
 
 % Plot Time Locked smoothed PSTHs for pooled data (mean+SEM); 
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+sem', 'both', true);
+    'mean+sem', 'single', true);
 
 % Plot Time Locked smoothed PSTHs for indidividual units (mean+individual)
 plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+individual', 'both', true);
+    'mean+individual', 'single', true);
 
-% Plot Time locked percent change PSTHs (mean+inidividual units)
+% Plot Time locked percent change PSTHs (mean+individual units)
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+individual', 'both', true);
+    'mean+individual', 'single', true);
 
 % Plot Time locked percent change PSTHs (mean+sem)
 plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+sem');
+    'mean+sem', 'single', true);
 
 % Plot Time locked percent change PSTHs Group (mean+individual units)
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too similar to other function; differentiate somehow
-    'mean+individual');
+    'mean+individual', 'single', true);
 
 % Plot Time locked percent change PSTHs Group (mean+sem)
 plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
-    'mean+sem');
+    'mean+sem', 'single', true);
 
 % Calculate Exp vs. Ctrl psthSmoothed stats
 [expStats, ctrlStats] = calculatePooledBaselineVsPostStats(cellDataStruct);

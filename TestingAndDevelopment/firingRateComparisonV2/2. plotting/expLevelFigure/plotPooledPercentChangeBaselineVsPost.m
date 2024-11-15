@@ -64,10 +64,12 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
         return;
     end
     
-    data = statsData.data;
+    % Ensure data is in column format
+    baseline_data = statsData.data.baseline(:);
+    post_data = statsData.data.post(:);
     
     % Create box plot with specific styling
-    h = boxplot([data.baseline', data.post'], ...
+    h = boxplot([baseline_data, post_data], ...
                 'Labels', {'Baseline', 'Post'}, ...
                 'Colors', 'k', ...
                 'Width', 0.7, ...
@@ -89,10 +91,10 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
     
     % Add individual points with jitter
     jitterWidth = 0.2;
-    x1 = ones(size(data.baseline)) + (rand(size(data.baseline))-0.5)*jitterWidth;
-    x2 = 2*ones(size(data.post)) + (rand(size(data.post))-0.5)*jitterWidth;
-    scatter(x1, data.baseline, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
-    scatter(x2, data.post, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
+    x1 = ones(size(baseline_data)) + (rand(size(baseline_data))-0.5)*jitterWidth;
+    x2 = 2*ones(size(post_data)) + (rand(size(post_data))-0.5)*jitterWidth;
+    scatter(x1, baseline_data, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
+    scatter(x2, post_data, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
     
     % Set consistent y-axis limits
     ylim([yMin yMax]);
@@ -105,7 +107,7 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
             'FontSize', 10);           % Larger font
     
     % Add title with unit count
-    title(sprintf('%s (n=%d)', title_str, length(data.baseline)), ...
+    title(sprintf('%s (n=%d)', title_str, length(baseline_data)), ...
           'FontSize', 11);
     
     % Add y-axis label
@@ -114,10 +116,10 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
     % Add vertical dashed line at treatment time
     xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
     
-    % Add p-value and effect size
-    if length(data.baseline) > 1 && length(data.post) > 1
-        p_value = statsData.testResults.wilcoxon.p;
-        cohens_d = statsData.testResults.cohens_d;
+    % Add p-value and confidence intervals
+    if length(baseline_data) > 1 && length(post_data) > 1
+        % Get statistics
+        p_value = statsData.testResults.wilcoxon.p;  % Changed from p_holm to p
         
         % Position text
         yRange = yMax - yMin;
@@ -125,7 +127,7 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
         midPos = yMax - 0.15*yRange;
         
         % Add p-value with significance indicator
-        if p_value < 0.05
+        if p_value < 0.05  % Using standard significance level
             text(1.5, topPos, sprintf('p = %.3f *', p_value), ...
                  'HorizontalAlignment', 'center', ...
                  'FontSize', 10);
@@ -135,21 +137,15 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
                  'FontSize', 10);
         end
         
-        % Add effect size with interpretation
-        effectSize = '';
-        if abs(cohens_d) < 0.2
-            effectSize = 'negligible';
-        elseif abs(cohens_d) < 0.5
-            effectSize = 'small';
-        elseif abs(cohens_d) < 0.8
-            effectSize = 'medium';
-        else
-            effectSize = 'large';
+        % Add confidence intervals if available
+        if isfield(statsData.stats, 'baseline') && isfield(statsData.stats, 'post') && ...
+           isfield(statsData.stats.baseline, 'CI') && isfield(statsData.stats.post, 'CI')
+            text(1.5, midPos, sprintf('CI: [%.1f, %.1f] vs [%.1f, %.1f]', ...
+                 statsData.stats.baseline.CI(1), statsData.stats.baseline.CI(2), ...
+                 statsData.stats.post.CI(1), statsData.stats.post.CI(2)), ...
+                 'HorizontalAlignment', 'center', ...
+                 'FontSize', 10);
         end
-        
-        text(1.5, midPos, sprintf('d = %.2f (%s)', cohens_d, effectSize), ...
-             'HorizontalAlignment', 'center', ...
-             'FontSize', 10);
     end
     
     hold off;
