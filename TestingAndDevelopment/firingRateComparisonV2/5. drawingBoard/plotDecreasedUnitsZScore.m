@@ -4,7 +4,11 @@ function plotDecreasedUnitsZScore(cellDataStruct, figureFolder)
     pvalbPSTHs = [];
     timeVector = [];
     
-    % Extract data
+    % First, get ALL units' baseline statistics for each group
+    emxAllBaseline = getAllGroupBaseline(cellDataStruct.Emx);
+    pvalbAllBaseline = getAllGroupBaseline(cellDataStruct.Pvalb);
+    
+    % Extract decreased units
     if isfield(cellDataStruct, 'Emx')
         emxPSTHs = extractGroupPSTHs(cellDataStruct.Emx);
     end
@@ -20,12 +24,10 @@ function plotDecreasedUnitsZScore(cellDataStruct, figureFolder)
         timeVector = getTimeVector(cellDataStruct.Pvalb);
     end
     
-    % Calculate baseline period indices
-    baselineIdx = 1:find(timeVector <= 1860, 1, 'last');
-    
-    % Z-score against group baselines
-    emxPSTHs_z = zscore_against_group_baseline(emxPSTHs, baselineIdx);
-    pvalbPSTHs_z = zscore_against_group_baseline(pvalbPSTHs, baselineIdx);
+    % Z-score against ALL units baseline
+    emxPSTHs_z = (emxPSTHs - emxAllBaseline.mean) / emxAllBaseline.std;
+    pvalbPSTHs_z = (pvalbPSTHs - pvalbAllBaseline.mean) / pvalbAllBaseline.std;
+
     % Create figure
     fig = figure('Position', [100, 100, 800, 1200]);
     
@@ -50,7 +52,7 @@ function plotDecreasedUnitsZScore(cellDataStruct, figureFolder)
         plotGroupPSTH(pvalbPSTHs_z, timeVector, [1 0 1], '', 0.3);
         
         % Statistical comparison using time windows
-        windowSize = 300;  % 5-minute windows
+        windowSize = 60;  % 5-minute windows
         samplesPerWindow = round(windowSize / (timeVector(2) - timeVector(1)));
         numWindows = floor(length(timeVector) / samplesPerWindow);
         
@@ -96,7 +98,6 @@ function plotDecreasedUnitsZScore(cellDataStruct, figureFolder)
         
         hold off;
     end
-
     
     % Save figure
     saveDir = fullfile(figureFolder, '0. expFigures');
@@ -105,6 +106,37 @@ function plotDecreasedUnitsZScore(cellDataStruct, figureFolder)
     end
     savefig(fig, fullfile(saveDir, 'DecreasedUnits_PSTH_Zscored.fig'));
     close(fig);
+end
+
+%% Helper Function
+function baselineStats = getAllGroupBaseline(groupData)
+    % Initialize
+    allPSTHs = [];
+    baselineIdx = [];
+    
+    % Get first unit's time vector to find baseline period
+    recordings = fieldnames(groupData);
+    units = fieldnames(groupData.(recordings{1}));
+    firstUnit = groupData.(recordings{1}).(units{1});
+    timeVector = firstUnit.binEdges(1:end-1) + firstUnit.binWidth/2;
+    baselineIdx = 1:find(timeVector <= 1860, 1, 'last');
+    
+    % Collect ALL units' PSTHs regardless of response type
+    for r = 1:length(recordings)
+        units = fieldnames(groupData.(recordings{r}));
+        for u = 1:length(units)
+            unitData = groupData.(recordings{r}).(units{u});
+            if isfield(unitData, 'psthSmoothed')
+                allPSTHs(end+1,:) = unitData.psthSmoothed;
+            end
+        end
+    end
+    
+    % Calculate baseline statistics from ALL units
+    baselineData = allPSTHs(:,baselineIdx);
+    baselineStats.mean = mean(baselineData(:));
+    baselineStats.std = std(baselineData(:));
+    baselineStats.n = size(allPSTHs,1);
 end
 
 function zscoredData = zscore_against_group_baseline(psths, baselineIdx)
