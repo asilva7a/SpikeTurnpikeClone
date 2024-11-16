@@ -1,25 +1,18 @@
 function [params, paths] = initializeAnalysis()
+    % Main initialization function that coordinates the setup process
     fprintf('\n=== Firing Rate Analysis Initialization ===\n\n');
     
     % Get project directory from user
-    projectDir = uigetdir('~/', 'Select Project Directory containing SpikeStuff folder');
-    if projectDir == 0
-        error('User cancelled directory selection');
-    end
+    projectDir = getProjectDirectory();
     
-    % Verify SpikeStuff and all_data.mat exist
-    spikeStuffDir = fullfile(projectDir, 'SpikeStuff');
-    allDataPath = fullfile(spikeStuffDir, 'all_data.mat');
+    % Verify project structure
+    validateProjectStructure(projectDir);
     
-    if ~isfolder(spikeStuffDir) || ~isfile(allDataPath)
-        error('Invalid project directory structure. Missing SpikeStuff folder or all_data.mat');
-    end
-    
-    % Get analysis parameters
+    % Get analysis parameters from user
     params = getAnalysisParams();
     
-    % Create frTreatment directory structure
-    paths = createDirectoryStructure(projectDir, params);
+    % Create directory structure and set paths
+    paths = setupDirectoryStructure(projectDir, params);
     
     % Save configuration
     saveConfiguration(params, paths);
@@ -28,7 +21,29 @@ function [params, paths] = initializeAnalysis()
     displayConfiguration(params, paths);
 end
 
+function projectDir = getProjectDirectory()
+    % Get and validate project directory
+    projectDir = uigetdir('~/', 'Select Project Directory containing SpikeStuff folder');
+    if projectDir == 0
+        error('User cancelled directory selection');
+    end
+end
+
+function validateProjectStructure(projectDir)
+    % Verify required folders and files exist
+    spikeStuffDir = fullfile(projectDir, 'SpikeStuff');
+    allDataPath = fullfile(spikeStuffDir, 'all_data.mat');
+    
+    if ~isfolder(spikeStuffDir)
+        error('Invalid project structure: Missing SpikeStuff folder');
+    end
+    if ~isfile(allDataPath)
+        error('Invalid project structure: Missing all_data.mat');
+    end
+end
+
 function params = getAnalysisParams()
+    % Collect analysis parameters from user
     fprintf('Setting Analysis Parameters:\n');
     fprintf('----------------------------\n');
     
@@ -37,6 +52,7 @@ function params = getAnalysisParams()
     params.treatmentTime = getValidNumericInput('Enter treatment time (seconds): ', 0);
     params.recordingPeriod = getValidNumericInput('Enter total recording period (seconds): ', params.treatmentTime);
     
+    % Get unit type selection
     while true
         unitType = input('Select unit type (1: Single, 2: Multi, 3: Both): ', 's');
         switch unitType
@@ -57,32 +73,29 @@ function params = getAnalysisParams()
     params.analysisStartTime = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
 end
 
-function paths = createDirectoryStructure(projectDir, ~)
-    % Create frTreatment directory at same level as SpikeStuff
+function paths = setupDirectoryStructure(projectDir, params)
+    % Create analysis directories and set paths
     parentDir = fileparts(projectDir);
-    frTreatmentDir = fullfile(parentDir, 'frTreatmentAnalysis');
-    
-    % Create main directories
-    if ~isfolder(frTreatmentDir)
-        mkdir(frTreatmentDir);
-    end
-    
-    % Set up paths structure
-    paths = struct();
     paths.projectDir = projectDir;
-    paths.frTreatmentDir = frTreatmentDir;
+    paths.frTreatmentDir = fullfile(parentDir, 'frTreatmentAnalysis');
     paths.dataFile = fullfile(projectDir, 'SpikeStuff', 'all_data.mat');
-    paths.cellDataStructPath = fullfile(frTreatmentDir, 'cellDataStruct.mat');
-    paths.figureFolder = fullfile(frTreatmentDir, 'figures');
+    paths.cellDataStructPath = fullfile(paths.frTreatmentDir, 'data', 'cellDataStruct.mat');
+    paths.figureFolder = fullfile(paths.frTreatmentDir, 'figures');
     
-    % Create figure directory
+    % Create directories
+    if ~isfolder(paths.frTreatmentDir)
+        mkdir(paths.frTreatmentDir);
+    end
+    if ~isfolder(fullfile(paths.frTreatmentDir, 'data'))
+        mkdir(fullfile(paths.frTreatmentDir, 'data'));
+    end
     if ~isfolder(paths.figureFolder)
         mkdir(paths.figureFolder);
     end
 end
 
 function saveConfiguration(params, paths)
-    % Save configuration file in frTreatment directory
+    % Save configuration file
     configFile = fullfile(paths.frTreatmentDir, ...
                          sprintf('analysisConfig_%s.mat', ...
                          char(params.analysisStartTime)));
@@ -93,24 +106,6 @@ function saveConfiguration(params, paths)
     % Make parameters globally accessible
     global analysisParams
     analysisParams = params;
-end
-
-function displayConfiguration(params, paths)
-    fprintf('\n=== Analysis Configuration Summary ===\n');
-    fprintf('Analysis Parameters:\n');
-    fprintf('  Bin Width: %.1f seconds\n', params.binWidth);
-    fprintf('  Box Car Window: %d seconds\n', params.boxCarWindow);
-    fprintf('  Treatment Time: %d seconds\n', params.treatmentTime);
-    fprintf('  Recording Period: %d seconds\n', params.recordingPeriod);
-    fprintf('  Unit Filter: %s\n', params.unitFilter);
-    fprintf('  Start Time: %s\n\n', char(params.analysisStartTime));
-    
-    fprintf('Directory Structure:\n');
-    fprintf('  Project Directory: %s\n', paths.projectDir);
-    fprintf('  Analysis Directory: %s\n', paths.frTreatmentDir);
-    fprintf('  Data File: %s\n', paths.dataFile);
-    fprintf('  Cell Data Structure: %s\n', paths.cellDataStructPath);
-    fprintf('  Figure Folder: %s\n\n', paths.figureFolder);
 end
 
 function value = getValidNumericInput(prompt, minValue)
