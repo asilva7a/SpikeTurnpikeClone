@@ -57,7 +57,7 @@ function params = getAnalysisParams()
     params.analysisStartTime = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
 end
 
-function paths = createDirectoryStructure(projectDir, params)
+function paths = createDirectoryStructure(projectDir, ~)
     % Create frTreatment directory at same level as SpikeStuff
     parentDir = fileparts(projectDir);
     frTreatmentDir = fullfile(parentDir, 'frTreatmentAnalysis');
