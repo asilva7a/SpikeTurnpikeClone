@@ -204,15 +204,4 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     isValid = true;
 end
 
-function saveFigure(fig, saveDir, groupName, recordingName, plotType)
-    try
-        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('%s_%s_%s_timeLockedPercentChangeCombined_%s.fig', ...
-                         groupName, recordingName, plotType, timeStamp);
-        savefig(fig, fullfile(saveDir, fileName));
-        close(fig);
-    catch ME
-        fprintf('Error saving figure: %s\n', ME.message);
-    end
-end
 
