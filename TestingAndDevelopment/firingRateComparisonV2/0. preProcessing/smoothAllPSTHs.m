@@ -1,15 +1,7 @@
-function cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, windowSize)
-    % Set defaults and validate inputs
-    if nargin < 3 || isempty(windowSize)
-        windowSize = 5;
-    end
-    
-    % Constants
-    SAVE_INTERVAL = 100; % Save backup every 100 units
-    
+function cellDataStruct = smoothAllPSTHs(cellDataStruct, paths, params)
     try
         % Pre-compute boxcar filter
-        boxcar = ones(1, windowSize) / windowSize;
+        boxcar = ones(1, params.boxCarWindow) / params.boxCarWindow;
         
         % Count total units for progress tracking
         totalUnits = countTotalUnits(cellDataStruct);
@@ -58,9 +50,9 @@ function cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, windowSize)
                                     (processedUnits/totalUnits)*100);
                         end
                         
-                        % Save intermediate results
-                        if mod(processedUnits, SAVE_INTERVAL) == 0
-                            saveIntermediateResults(cellDataStruct, dataFolder, processedUnits);
+                        % Save intermediate results every 100 units
+                        if mod(processedUnits, 100) == 0
+                            saveIntermediateResults(cellDataStruct, paths, processedUnits);
                         end
                         
                     catch ME
@@ -74,7 +66,7 @@ function cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, windowSize)
         
         % Final save
         if processedUnits > 0
-            saveResults(cellDataStruct, dataFolder);
+            saveResults(cellDataStruct, paths);
             fprintf('Processing complete: %d units processed\n', processedUnits);
         else
             warning('Smooth:NoProcessed', 'No units were successfully processed');
@@ -97,9 +89,10 @@ function totalUnits = countTotalUnits(cellDataStruct)
     end
 end
 
-function saveIntermediateResults(cellDataStruct, dataFolder, processedUnits)
+function saveIntermediateResults(cellDataStruct, paths, processedUnits)
     try
-        backupFile = fullfile(dataFolder, sprintf('cellDataStruct_backup_%d.mat', processedUnits));
+        backupFile = fullfile(paths.frTreatmentDir, 'data', ...
+            sprintf('cellDataStruct_backup_%d.mat', processedUnits));
         save(backupFile, 'cellDataStruct', '-v7.3', '-nocompression');
         fprintf('Saved backup after %d units\n', processedUnits);
     catch ME
@@ -107,9 +100,9 @@ function saveIntermediateResults(cellDataStruct, dataFolder, processedUnits)
     end
 end
 
-function saveResults(cellDataStruct, dataFolder)
+function saveResults(cellDataStruct, paths)
     try
-        save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3', '-nocompression');
+        save(paths.cellDataStructPath, 'cellDataStruct', '-v7.3', '-nocompression');
         fprintf('Final save completed\n');
     catch ME
         warning('Save:FinalFailed', 'Error saving final results: %s', ME.message);
