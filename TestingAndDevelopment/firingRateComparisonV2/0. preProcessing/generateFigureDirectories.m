@@ -1,7 +1,7 @@
-function generateFigureDirectories(cellDataStruct, figureFolder)
+function generateFigureDirectories(cellDataStruct, paths)
     % Initialize structure with all fields
     dirPaths = struct(...
-        'exp', fullfile(figureFolder, '0. expFigures'), ...
+        'exp', fullfile(paths.figureFolder, '0. expFigures'), ...
         'groups', {cell(0)}, ...
         'groupFigs', {cell(0)}, ...
         'recordings', {cell(0)}, ...
@@ -30,7 +30,7 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
         groupName = groupNames{g};
         
         % Build group paths
-        groupPath = fullfile(figureFolder, groupName);
+        groupPath = fullfile(paths.figureFolder, groupName);
         groupFigsPath = fullfile(groupPath, '0. groupFigures');
         
         % Store paths
@@ -94,5 +94,7 @@ function generateFigureDirectories(cellDataStruct, figureFolder)
             end
         end
     end
+    
+    % Add directory paths to the paths structure
+    paths.dirPaths = dirPaths;
 end
-
