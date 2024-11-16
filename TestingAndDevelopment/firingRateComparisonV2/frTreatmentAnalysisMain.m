@@ -48,43 +48,26 @@ disp('Starting main script...');
 clear; clc;
 
 try
-    % Initialize analysis
+    % Initialize analysis (get params and paths)
     [params, paths] = initializeAnalysis();
-    
-    % Debug print to verify structures
-    fprintf('\nVerifying initialization:\n');
-    fprintf('Params structure fields:\n');
-    disp(params);
-    fprintf('\nPaths structure fields:\n');
-    disp(paths);
     
     % Load data
-    fprintf('\nLoading data...\n');
+    fprintf('Loading data...\n');
     load(paths.dataFile, 'all_data');
     
-catch ME
-    fprintf('Error during initialization:\n%s\n', ME.message);
+    % Extract unit data
+    fprintf('Extracting unit data...\n');
+    cellDataStruct = extractUnitData(all_data, paths, params);
+    clear all_data;  % Clear to save memory
+    
+    % Generate directory structure
+    fprintf('Creating directory structure...\n');
+    generateFigureDirectories(cellDataStruct, paths);
+
+   catch ME
+    fprintf('Error: %s\n', ME.message);
+    fprintf('In: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
     rethrow(ME);
-end
-
-clear all_data; % Clear all_data from workspace to free memory
-
-generateFigureDirectories(cellDataStruct, paths); % Generates file directory structure automatically
-
-% Initialize or load configuration for global env
-if isfile('currentConfig.mat')
-    [params, paths] = loadConfiguration('currentConfig.mat');
-else
-    [params, paths] = initializeAnalysis();
-end
-
-% After initialization in main script
-if ~isfield(params, 'binWidth') || ~isfield(params, 'boxCarWindow')
-    error('Initialization failed: Missing required parameters');
-end
-
-if ~isfield(paths, 'dataFile') || ~isfile(paths.dataFile)
-    error('Initialization failed: Invalid data file path');
 end
 
 %% Data Analysis
