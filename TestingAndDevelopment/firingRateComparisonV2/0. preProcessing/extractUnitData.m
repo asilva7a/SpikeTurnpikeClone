@@ -31,7 +31,8 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath, binWid
                 fieldsToCopy = {
                     'SpikeTimes_all', 'Sampling_Frequency', 'Cell_Type', ...
                     'IsSingleUnit', 'Recording_Duration', 'Depth', ...
-                    'Template_Channel', 'Template_Channel_Position'
+                    'Template_Channel', 'Template_Channel_Position',... 
+                    'Normalized_Template_Waveform'
                 };
 
                 % Initialize an empty struct for the new unit
