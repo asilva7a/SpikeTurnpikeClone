@@ -71,7 +71,7 @@ end
 function success = generatePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
     try
         % Create figure
-        f = figure('Position', [100, 100, 800, 600]);
+        f = figure('Visible', 'on','Position', [100, 100, 800, 600]);
         
         % Plot PSTH
         bar(unitData.binEdges(1:end-1), unitData.psthSmoothed, 'FaceColor', 'k', 'EdgeColor', 'k');
