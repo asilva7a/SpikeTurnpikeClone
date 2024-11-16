@@ -1,16 +1,27 @@
-function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
-    % Set default parameters
-    if nargin < 6, outlierFilter = true; end
-    if nargin < 5, unitFilter = 'both'; end
-    if nargin < 4, plotType = 'mean+sem'; end
-    if nargin < 3, treatmentTime = 1860; end
-    
-    % Define colors for response types
-    colors = struct(...
-        'Decreased', [0, 0, 1, 0.3], ...     % Blue
-        'Increased', [1, 0, 0, 0.3], ...     % Red
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);   % Grey
-    
+function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, boxCarWindow, varargin)
+    % Parse optional parameters
+    p = inputParser;
+    addRequired(p, 'cellDataStruct');
+    addRequired(p, 'figureFolder');
+    addRequired(p, 'boxCarWindow', @isnumeric);
+    addParameter(p, 'TreatmentTime', 1860, @isnumeric);
+    addParameter(p, 'UnitFilter', 'both', @ischar);
+    addParameter(p, 'OutlierFilter', true, @islogical);
+    addParameter(p, 'PlotType', 'mean+sem', @ischar);
+    addParameter(p, 'ShowGrid', true, @islogical);
+    addParameter(p, 'LineWidth', 1.5, @isnumeric);
+    addParameter(p, 'TraceAlpha', 0.2, @(x) isnumeric(x) && x >= 0 && x <= 1);
+    addParameter(p, 'YLimits', [], @(x) isempty(x) || (isnumeric(x) && length(x) == 2));
+    addParameter(p, 'FontSize', 10, @isnumeric);
+    parse(p, cellDataStruct, figureFolder, boxCarWindow, varargin{:});
+    opts = p.Results;
+
+    % Constants with improved colors
+    COLORS = struct(...
+        'Increased', [1, 0, 1], ...    % Magenta
+        'Decreased', [0, 1, 1], ...    % Cyan
+        'NoChange', [0.7, 0.7, 0.7]); % Grey
+
     % Process each group and recording
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
@@ -19,80 +30,138 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, treat
         
         for r = 1:length(recordings)
             recordingName = recordings{r};
+            
+            % Create save directory
             saveDir = fullfile(figureFolder, groupName, recordingName, '0. recordingFigures');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
             
-            % Get all unique response types from the data
-            units = fieldnames(cellDataStruct.(groupName).(recordingName));
-            responseTypes = {};
-            for u = 1:length(units)
-                unitData = cellDataStruct.(groupName).(recordingName).(units{u});
-                if isfield(unitData, 'responseType')
-                    responseType = strrep(unitData.responseType, ' ', '');
-                    if ~ismember(responseType, responseTypes) && ...
-                       ~strcmp(responseType, 'MostlySilent') && ...
-                       ~strcmp(responseType, 'MostlyZero')
-                        responseTypes{end+1} = responseType;
-                    end
-                end
+            % Collect and organize unit data
+            [responseData, timeVector] = collectUnitData(cellDataStruct.(groupName).(recordingName), ...
+                                                       opts.UnitFilter, opts.OutlierFilter, boxCarWindow);
+            
+            if isempty(timeVector)
+                warning('Plot:NoData', 'No valid units found in %s/%s', groupName, recordingName);
+                continue;
             end
             
-            % Initialize data structures for each response type
-            responseData = struct();
-            for rt = 1:length(responseTypes)
-                responseData.(responseTypes{rt}) = [];
-            end
-            timeVector = [];
-            
-            % Collect data by response type
-            for u = 1:length(units)
-                unitID = units{u};
-                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                
-                % Apply filters
-                if ~isValidUnit(unitData, unitFilter, outlierFilter)
-                    continue;
-                end
-                
-                % Process valid units
-                if isfield(unitData, 'psthPercentChange') && isfield(unitData, 'responseType')
-                    responseType = strrep(unitData.responseType, ' ', '');
-                    if ~ismember(responseType, {'MostlySilent', 'MostlyZero'})
-                        % Get time vector if not set
-                        if isempty(timeVector)
-                            timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
-                        end
-                        
-                        % Add data to appropriate response type
-                        responseData.(responseType) = [responseData.(responseType); unitData.psthPercentChange];
-                    end
-                end
-            end
-            
-            % Create figure
-            fig = figure('Position', [100, 100, 1600, 500]);
-            sgtitle(sprintf('%s - %s - %s (%s units)', groupName, recordingName, plotType, unitFilter));
-            
-            % Plot each response type
-            for rt = 1:length(responseTypes)
-                subplot(1, length(responseTypes), rt);
-                responseType = responseTypes{rt};
-                data = responseData.(responseType);
-                
-                if ~isempty(data)
-                    plotResponseType(timeVector, data, colors.(responseType), ...
-                                   responseType, treatmentTime, plotType);
-                else
-                    title(sprintf('%s (No Data)', responseType));
-                end
-            end
-            
-            % Save figure
-            saveFigure(fig, saveDir, groupName, recordingName, plotType);
+            % Create and save figure
+            createAndSaveFigure(responseData, timeVector, opts, ...
+                              COLORS, groupName, recordingName, saveDir);
         end
     end
+end
+
+function [responseData, timeVector] = collectUnitData(recordingData, unitFilter, outlierFilter, boxCarWindow)
+    % Initialize data structures
+    responseData = struct(...
+        'Increased', [], ...
+        'Decreased', [], ...
+        'NoChange', []);
+    timeVector = [];
+    
+    units = fieldnames(recordingData);
+    for u = 1:length(units)
+        unitData = recordingData.(units{u});
+        
+        % Check unit validity
+        if ~isValidUnit(unitData, unitFilter, outlierFilter)
+            continue;
+        end
+        
+        % Process valid unit
+        if isfield(unitData, 'psthPercentChange') && isfield(unitData, 'responseType')
+            % Get time vector if not set
+            if isempty(timeVector) && isfield(unitData, 'binEdges') && isfield(unitData, 'binWidth')
+                timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
+            end
+            
+            % Smooth data with boxcar window
+            smoothedPSTH = smoothdata(unitData.psthPercentChange, 'movmean', boxCarWindow);
+            
+            % Add data to appropriate response type
+            responseType = strrep(unitData.responseType, ' ', '');
+            if isfield(responseData, responseType)
+                responseData.(responseType) = [responseData.(responseType); smoothedPSTH];
+            end
+        end
+    end
+end
+
+function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, recordingName, saveDir)
+    fig = figure('Position', [100, 100, 1200, 400]);
+    t = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    
+    title(t, sprintf('%s - %s (Box Car: %ds)', groupName, recordingName, opts.boxCarWindow), ...
+          'FontSize', opts.FontSize + 4);
+    
+    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    for i = 1:length(responseTypes)
+        nexttile
+        plotResponseType(responseData.(responseTypes{i}), timeVector, ...
+                        colors.(responseTypes{i}), responseTypes{i}, opts);
+    end
+    
+    % Save figure
+    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+    filename = sprintf('%s_%s_PercentChange_BoxCar%ds_%s', ...
+                      groupName, recordingName, opts.boxCarWindow, timestamp);
+    savefig(fig, fullfile(saveDir, [filename '.fig']));
+    saveas(fig, fullfile(saveDir, [filename '.png']));
+    close(fig);
+end
+
+function plotResponseType(data, timeVector, color, titleStr, opts)
+    if isempty(data)
+        title(sprintf('%s (No Data)', titleStr));
+        return;
+    end
+    
+    hold on;
+    
+    % Plot individual traces if enabled
+    if strcmp(opts.PlotType, 'mean+individual')
+        for i = 1:size(data, 1)
+            plot(timeVector, data(i,:), 'Color', [color opts.TraceAlpha], ...
+                 'LineWidth', opts.LineWidth/3);
+        end
+    end
+    
+    % Calculate and plot mean ± SEM
+    meanData = mean(data, 1, 'omitnan');
+    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
+    
+    % Plot shaded error bars
+    fill([timeVector, fliplr(timeVector)], ...
+         [meanData + semData, fliplr(meanData - semData)], ...
+         color, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    
+    % Plot mean line
+    plot(timeVector, meanData, 'Color', color, 'LineWidth', opts.LineWidth);
+    
+    % Add treatment line
+    xline(opts.TreatmentTime, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+    
+    % Set axis properties
+    if ~isempty(opts.YLimits)
+        ylim(opts.YLimits);
+    end
+    xlim([0 max(timeVector)]);
+    
+    if opts.ShowGrid
+        grid on;
+        set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
+    end
+    
+    % Add labels
+    title(sprintf('%s Units (n=%d)', titleStr, size(data, 1)), ...
+          'FontSize', opts.FontSize + 1);
+    xlabel('Time (s)', 'FontSize', opts.FontSize);
+    ylabel('% Change from Baseline', 'FontSize', opts.FontSize);
+    
+    set(gca, 'FontSize', opts.FontSize);
+    hold off;
 end
 
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
@@ -111,40 +180,4 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     end
     
     isValid = true;
-end
-
-function plotResponseType(timeVector, data, color, titleStr, treatmentTime, plotType)
-    meanData = mean(data, 1, 'omitnan');
-    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
-    
-    if strcmp(plotType, 'mean+individual')
-        plot(timeVector, data', 'Color', [color(1:3), 0.1], 'LineWidth', 0.5);
-        hold on;
-    end
-    
-    % Plot SEM patch
-    patch([timeVector, fliplr(timeVector)], ...
-          [meanData + semData, fliplr(meanData - semData)], ...
-          color(1:3), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    hold on;
-    
-    plot(timeVector, meanData, 'Color', color(1:3), 'LineWidth', 2);
-    xline(treatmentTime, '--k', 'Treatment');
-    
-    title(sprintf('%s (n=%d)', titleStr, size(data, 1)));
-    xlabel('Time (s)');
-    ylabel('% Change from Baseline');
-    grid on;
-end
-
-function saveFigure(fig, saveDir, groupName, recordingName, plotType)
-    try
-        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('%s_%s_%s_timeLockedPercentChangeCombined_%s.fig', ...
-                         groupName, recordingName, plotType, timeStamp);
-        savefig(fig, fullfile(saveDir, fileName));
-        close(fig);
-    catch ME
-        fprintf('Error saving figure: %s\n', ME.message);
-    end
 end
