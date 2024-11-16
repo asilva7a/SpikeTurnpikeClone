@@ -1,6 +1,6 @@
-function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
+function cellDataStruct = generateAllPSTHs(cellDataStruct, paths, params)
     % Constants
-    RECORDING_LENGTH = 5400;  % seconds
+    RECORDING_LENGTH = params.recordingPeriod;  % Use from params
     SAVE_INTERVAL = 100;      % units
     
     % Get first unit's binWidth and count total units
@@ -48,7 +48,7 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
                     
                     % Save intermediate results
                     if mod(processedUnits, SAVE_INTERVAL) == 0
-                        saveIntermediateResults(cellDataStruct, dataFolder, processedUnits);
+                        saveIntermediateResults(cellDataStruct, paths.frTreatmentDir, processedUnits);
                     end
                     
                 catch ME
@@ -62,7 +62,7 @@ function cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder)
     
     % Final save
     if processedUnits > 0
-        saveResults(cellDataStruct, dataFolder);
+        saveResults(cellDataStruct, paths.frTreatmentDir);
         fprintf('Processing complete: %d units processed\n', processedUnits);
     else
         warning('Process:NoUnitsProcessed', 'No units were successfully processed');
@@ -135,9 +135,9 @@ function unitData = processUnit(unitData, binEdges, numBins)
     unitData.numBins = numBins;
 end
 
-function saveIntermediateResults(cellDataStruct, dataFolder, processedUnits)
+function saveIntermediateResults(cellDataStruct, frTreatmentDir, processedUnits)
     try
-        backupFile = fullfile(dataFolder, sprintf('cellDataStruct_backup_%d.mat', processedUnits));
+        backupFile = fullfile(frTreatmentDir, sprintf('cellDataStruct_backup_%d.mat', processedUnits));
         save(backupFile, 'cellDataStruct', '-v7.3', '-nocompression');
         fprintf('Saved backup after %d units\n', processedUnits);
     catch ME
@@ -145,9 +145,9 @@ function saveIntermediateResults(cellDataStruct, dataFolder, processedUnits)
     end
 end
 
-function saveResults(cellDataStruct, dataFolder)
+function saveResults(cellDataStruct, frTreatmentDir)
     try
-        save(fullfile(dataFolder, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3', '-nocompression');
+        save(fullfile(frTreatmentDir, 'cellDataStruct.mat'), 'cellDataStruct', '-v7.3', '-nocompression');
         fprintf('Final save completed\n');
     catch ME
         warning('Save:FinalFailed', 'Error saving final results: %s', ME.message);
