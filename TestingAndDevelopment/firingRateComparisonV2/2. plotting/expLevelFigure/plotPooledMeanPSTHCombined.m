@@ -139,7 +139,7 @@ function plotResponseType(data, timeVector, color, plotTitle, treatmentTime, plo
     xlabel('Time (s)');
     ylabel('Firing Rate (spikes/s)');
     title(sprintf('%s (n=%d)', plotTitle, size(data, 1)));
-    ylim([0 inf]);
+    ylim([0 2.0]);
     xlim([0 5400]);
     grid on;
     hold off;
