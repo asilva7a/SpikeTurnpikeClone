@@ -81,7 +81,10 @@ cellDataStruct = smoothAllPSTHs(cellDataStruct, paths, params);
 % Calculate pre- and post-treatment firing rate 
 cellDataStruct = calculateFiringRate(cellDataStruct, paths, params);
 
-% Determine unit response type (Wilcoxon-Rank)
+% Determine unit response type (Wilcoxon-Rank) #
+% params.preWindow/postWindow aren't being passed to classify unit
+% response: function is confused and taking the global params instead of
+% the parse options (i.e. opts.preWindow)
 cellDataStruct = determineResponseType(cellDataStruct, paths, params, ...
     'tagSparse', true, ...
     'preWindow', [0, 1800], ...

@@ -58,7 +58,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
                     
                     processedUnit = processUnit(unitData, opts.preWindow, opts.postWindow, ...
                                              opts.silenceThreshold, opts.silenceScoreThreshold, ...
-                                             params.binWidth);
+                                             params.binWidth, params);
                     if ~isempty(processedUnit)
                         cellDataStruct.(groupName).(recordingName).(unitID) = processedUnit;
                     end
@@ -86,7 +86,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
 end
 
 
-function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth)
+function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth, params)
     % Skip processing if required fields are missing
     if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ...
        ~isfield(unitData, 'binWidth')
@@ -124,7 +124,7 @@ function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshol
                                         silenceScoreAfter >= silenceScoreThreshold);
     
     % Determine response type using enhanced criteria
-    [responseType, responseMetrics] = classifyResponse(stats);
+    [responseType, responseMetrics] = classifyUnitResponse(unitData,params);
     
     % Store results
     unitData.pValue = stats.p_value;
