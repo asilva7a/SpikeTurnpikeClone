@@ -46,23 +46,10 @@ disp('Starting main script...');
 
 %% Get User Input for Directories
 % Initialize analysis
-[params, paths] = initializeAnalysis();
-load(paths.dataFile, 'all_data');
-cellDataStruct = extractUnitData(all_data, paths, params);
-
-
-% Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 1);  % set binWidth in seconds
-
-
 try
-    [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = ...
-    loadDataAndPreparePaths(); % Generates file paths for the output variables and variables saves to config.mat
-    load(dataFilePath, 'all_data');
-
-    % Call the extract function with the user-specified save path
-    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 1);  % set binWidth in seconds
-
+    [params, paths] = initializeAnalysis();
+    load(paths.dataFile, 'all_data');
+    cellDataStruct = extractUnitData(all_data, paths, params);
     fprintf('Data loaded and saved successfully!\n');
 catch ME
     fprintf('An error occurred: %s\n', ME.message);
