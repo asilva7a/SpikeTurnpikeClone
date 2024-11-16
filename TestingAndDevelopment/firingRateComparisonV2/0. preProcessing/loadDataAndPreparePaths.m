@@ -1,55 +1,17 @@
-function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = loadDataAndPreparePaths()
-    % Constants
-    DEFAULT_PATHS = struct(...
-        'dataFolder', '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/binWidth1.0s_boxCar10/projectData', ...
-        'dataFile', 'all_data.mat', ...
-        'figureFolder', '/home/silva7a-local/Documents/MATLAB/SpikeTurnpikeClone/TestData/binWidth1.0s_boxCar10/projectFigures', ...
-        'cellStructFile', 'cellDataStruct.mat');
-    
-    try
-        % Get user input
-        paths = getUserInput(DEFAULT_PATHS);
-        
-        % Generate and validate paths
-        [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = validateAndCreatePaths(paths);
-        
-        % Save configuration
-        savePathConfig(paths, dataFolder);
-        
-        % Display paths
-        displayPaths(dataFilePath, figureFolder);
-        
-    catch ME
-        handleError(ME);
-    end
-end
-
-function paths = getUserInput(defaults)
-    % Define prompts
-    prompts = {'Enter Data Folder:', 'Enter Data File Name:', 'Enter Figures Folder:'};
-    defaultValues = {defaults.dataFolder, defaults.dataFile, defaults.figureFolder};
-    
-    % Get user input
-    userInput = inputdlg(prompts, 'Select Data and Figures Paths', [1 50], defaultValues);
-    
-    % Check for cancellation
-    if isempty(userInput)
-        error('UserInput:Cancelled', 'User cancelled the input. Exiting script.');
-    end
-    
-    % Store paths
-    paths = struct(...
-        'dataFolder', userInput{1}, ...
-        'dataFile', userInput{2}, ...
-        'figureFolder', userInput{3}, ...
-        'cellStructFile', defaults.cellStructFile);
-end
-
 function [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = validateAndCreatePaths(paths)
     % Generate file paths
     dataFilePath = fullfile(paths.dataFolder, paths.dataFile);
     dataFolder = paths.dataFolder;
-    cellDataStructPath = fullfile(paths.dataFolder, paths.cellStructFile);
+    
+    % Create data folder for cellDataStruct and backups
+    dataDir = fullfile(dataFolder, 'data');
+    if ~isfolder(dataDir)
+        mkdir(dataDir);
+        fprintf('Created data directory: %s\n', dataDir);
+    end
+    
+    % Update cellDataStruct path to be in data folder
+    cellDataStructPath = fullfile(dataDir, paths.cellStructFile);
     figureFolder = paths.figureFolder;
     
     % Validate data file
@@ -66,11 +28,13 @@ end
 
 function savePathConfig(paths, dataFolder)
     % Create config structure
+    dataDir = fullfile(dataFolder, 'data');  % Use data subdirectory
     pathConfig = struct(...
         'dataFilePath', fullfile(paths.dataFolder, paths.dataFile), ...
         'dataFolder', paths.dataFolder, ...
-        'cellDataStructPath', fullfile(paths.dataFolder, paths.cellStructFile), ...
-        'figureFolder', paths.figureFolder);
+        'cellDataStructPath', fullfile(dataDir, paths.cellStructFile), ...  % Updated path
+        'figureFolder', paths.figureFolder, ...
+        'dataDir', dataDir);  % Add data directory to config
     
     % Create config directory
     configDir = fullfile(dataFolder, 'config');
@@ -88,18 +52,7 @@ end
 function displayPaths(dataFilePath, figureFolder)
     fprintf('Data File: %s\n', dataFilePath);
     fprintf('Figure Folder: %s\n', figureFolder);
+    fprintf('Data Directory: %s\n', fullfile(fileparts(dataFilePath), 'data'));
     fprintf('\n');
-end
-
-function handleError(ME)
-    fprintf('Error: %s\n', ME.message);
-    fprintf('In: %s\n', ME.identifier);
-    
-    % Print stack trace
-    for k = 1:length(ME.stack)
-        fprintf('  %s (line %d)\n', ME.stack(k).file, ME.stack(k).line);
-    end
-    
-    rethrow(ME);
 end
 

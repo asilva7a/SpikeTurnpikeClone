@@ -57,13 +57,12 @@ end
 
 clear all_data;
 
-% Generate Figure Directories
-generateFigureDirectories(cellDataStruct, figureFolder);
+generateFigureDirectories(cellDataStruct, paths);
 
 %% Data Processing
 
 % Generate PTSH for single unit
-cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
+cellDataStruct = generateAllPSTHs(cellDataStruct, paths, params);
 
 % Smooth PSTH with boxcar sliding window
 cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
