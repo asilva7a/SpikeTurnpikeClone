@@ -75,7 +75,7 @@ function [cellDataStruct] = extractUnitData(all_data, cellDataStructPath, binWid
         % Check if the file already exists
         if isfile(cellDataStructPath)
             % Create a backup of the existing file
-            backupPath = strrep(cellDataStructPath, '.mat', ['_backup_' datestr(now, 'yyyy-mm-dd_HH-MM-SS') '.mat']);
+            backupPath = strrep(cellDataStructPath, '.mat', ['_backup_' datetime('now', 'yyyy-mm-dd_HH-MM-SS') '.mat']);
             movefile(cellDataStructPath, backupPath);
             fprintf('Existing file backed up as: %s\n', backupPath);
         end
