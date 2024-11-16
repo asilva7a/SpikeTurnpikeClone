@@ -1,29 +1,34 @@
-function [cellDataStruct] = calculateFiringRate(cellDataStruct, treatmentTime, preWindow, postWindow)
-    % calculateAndPlotFiringRateStats: Calculates firing rate statistics before and after treatment
-    % and generates ladder plots to visualize results if plotFlag is true.
-    %
-    % Inputs:
-    %   - cellDataStruct: Data structure containing the smoothed PSTH data.
-    %   - treatmentTime: The time in seconds when luciferin was administered.
-    %   - preWindow: Duration in seconds to consider before treatment.
-    %   - postWindow: Duration in seconds to consider after treatment.
-    %   - plotFlag: Boolean to enable/disable plotting (default is true).
+function [cellDataStruct] = calculateFiringRate(cellDataStruct, paths, params, varargin)
+    % Parse input parameters
+    p = inputParser;
+    
+    % Required inputs
+    addRequired(p, 'cellDataStruct', @isstruct);
+    addRequired(p, 'paths', @isstruct);
+    addRequired(p, 'params', @isstruct);
+    
+    % Optional parameters with defaults
+    addParameter(p, 'preWindow', 1859, @isnumeric);
+    addParameter(p, 'postWindow', 3540, @isnumeric);
+    addParameter(p, 'verbose', true, @islogical);
+    
+    % Parse inputs
+    parse(p, cellDataStruct, paths, params, varargin{:});
+    opts = p.Results;
+    
+    % Extract parameters
+    treatmentTime = params.treatmentTime;
+    preWindow = opts.preWindow;
+    postWindow = opts.postWindow;
+    
+    if opts.verbose
+        fprintf('Calculating firing rates:\n');
+        fprintf('Treatment time: %d seconds\n', treatmentTime);
+        fprintf('Pre-treatment window: %d seconds\n', preWindow);
+        fprintf('Post-treatment window: %d seconds\n', postWindow);
+    end
 
-    % Default values for treatment time, window sizes, and plot flag
-    if nargin < 2 || isempty(treatmentTime)
-        treatmentTime = 1860; % Default treatment time in seconds
-        disp('No treatment time specified; defaulting to 1860 seconds.');
-    end
-    if nargin < 3 || isempty(preWindow)
-        preWindow = 1859;  % Default pre-treatment window in seconds
-        disp('No pre-treatment window specified; defaulting to 1000 seconds.');
-    end
-    if nargin < 4 || isempty(postWindow)
-        postWindow = 3540;  % Default post-treatment window in seconds
-        disp('No post-treatment window specified; defaulting to 3000 seconds.');
-    end
-
-    % Loop to determine the total number of units for preallocation
+    % Loop to determine total units (unchanged)
     totalUnits = 0;
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
@@ -34,14 +39,12 @@ function [cellDataStruct] = calculateFiringRate(cellDataStruct, treatmentTime, p
         end
     end
 
-    % Preallocate arrays to store pre- and post-treatment statistics for all units
+    % Preallocate arrays
     preRates = NaN(totalUnits, 1);
     postRates = NaN(totalUnits, 1);
-
-    % Initialize counter for indexing the preallocated arrays
     unitIndex = 0;
 
-    % Main loop over groups, recordings, and units to calculate statistics
+    % Main processing loop
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordings = fieldnames(cellDataStruct.(groupName));
@@ -55,51 +58,61 @@ function [cellDataStruct] = calculateFiringRate(cellDataStruct, treatmentTime, p
                 try
                     % Extract unit data
                     unitData = cellDataStruct.(groupName).(recordingName).(unitID);
-                    fprintf('Processing: Group: %s | Recording: %s | Unit: %s\n', groupName, recordingName, unitID);
+                    if opts.verbose
+                        fprintf('Processing: Group: %s | Recording: %s | Unit: %s\n', ...
+                            groupName, recordingName, unitID);
+                    end
 
-                    % Check for necessary fields
+                    % Validate required fields
                     if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binWidth')
                         warning('Skipping Unit %s: Missing psthSmoothed or binWidth.', unitID);
                         continue;
                     end
 
-                    % Increment unit index for each unit
+                    % Process unit
                     unitIndex = unitIndex + 1;
-
-                    % Load PSTH data and bin width
                     psthData = unitData.psthSmoothed;
                     binWidth = unitData.binWidth;
 
-                    % Calculate time vector for PSTH data based on bin width
+                    % Calculate time vector
                     numBins = numel(psthData);
                     timeVector = (0:numBins - 1) * binWidth;
 
-                    % Define pre- and post-treatment windows
+                    % Define windows
                     preTreatmentStart = max(0, treatmentTime - preWindow);
                     preTreatmentEnd = treatmentTime;
                     postTreatmentStart = treatmentTime;
                     postTreatmentEnd = treatmentTime + postWindow;
 
-                    % Find indices for pre- and post-treatment windows
+                    % Find indices
                     preIndices = timeVector >= preTreatmentStart & timeVector < preTreatmentEnd;
                     postIndices = timeVector >= postTreatmentStart & timeVector < postTreatmentEnd;
 
-                    % Calculate statistics for window
+                    % Calculate rates
                     preTreatmentRate = mean(psthData(preIndices), 'omitnan');
                     postTreatmentRate = mean(psthData(postIndices), 'omitnan');
 
-                    % Store calculated statistics in the preallocated arrays
+                    % Store results
                     preRates(unitIndex) = preTreatmentRate;
                     postRates(unitIndex) = postTreatmentRate;
-
-                    % Store results in the cellDataStruct
                     cellDataStruct.(groupName).(recordingName).(unitID).frBaselineAvg = preTreatmentRate;
                     cellDataStruct.(groupName).(recordingName).(unitID).frTreatmentAvg = postTreatmentRate;
                     
                 catch ME
-                    fprintf('Error processing unit %s in %s/%s: %s\n', unitID, groupName, recordingName, ME.message);
+                    fprintf('Error processing unit %s in %s/%s: %s\n', ...
+                        unitID, groupName, recordingName, ME.message);
                 end
             end
         end
     end
-
+    
+    % Save intermediate results
+    if isfield(paths, 'frTreatmentDir')
+        saveFile = fullfile(paths.frTreatmentDir, 'data', ...
+            sprintf('firingRates_%s.mat', char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'))));
+        save(saveFile, 'preRates', 'postRates');
+        if opts.verbose
+            fprintf('Saved firing rates to: %s\n', saveFile);
+        end
+    end
+end
