@@ -1,16 +1,49 @@
-function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
-    % Set defaults
-    if nargin < 6, outlierFilter = true; end
-    if nargin < 5, unitFilter = 'both'; end
-    if nargin < 4, plotType = 'mean+sem'; end
-    if nargin < 3, treatmentTime = 1860; end
-    
-    % Constants
+function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, boxCarWindow, varargin)
+
+%% Example Use:
+% Basic usage
+% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 10);
+%  *Input: 
+%       * CellDataStruct
+%       * figureFolder
+%       * boxCar Width
+% 
+% With optional parameters
+% plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, 10, ...
+%     'TreatmentTime', 1860, ...
+%     'UnitFilter', 'single', ...
+%     'OutlierFilter', true, ...
+%     'PlotType', 'mean+sem', ...
+%     'ShowGrid', true, ...
+%     'LineWidth', 2, ...
+%     'TraceAlpha', 0.3, ...
+%     'YLimits', [0 5], ...
+%     'FontSize', 12);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Parse optional parameters
+    p = inputParser;
+    addRequired(p, 'cellDataStruct');
+    addRequired(p, 'figureFolder');
+    addRequired(p, 'boxCarWindow', @isnumeric);
+    addParameter(p, 'TreatmentTime', 1860, @isnumeric);
+    addParameter(p, 'UnitFilter', 'both', @ischar);
+    addParameter(p, 'OutlierFilter', true, @islogical);
+    addParameter(p, 'PlotType', 'mean+sem', @ischar);
+    addParameter(p, 'ShowGrid', true, @islogical);
+    addParameter(p, 'LineWidth', 1.5, @isnumeric);
+    addParameter(p, 'TraceAlpha', 0.2, @(x) isnumeric(x) && x >= 0 && x <= 1);
+    addParameter(p, 'YLimits', [], @(x) isempty(x) || (isnumeric(x) && length(x) == 2));
+    addParameter(p, 'FontSize', 10, @isnumeric);
+    parse(p, cellDataStruct, figureFolder, boxCarWindow, varargin{:});
+    opts = p.Results;
+
+    % Constants with improved colors
     COLORS = struct(...
-        'Increased', [1, 0, 0, 0.3], ...    % Red
-        'Decreased', [0, 0, 1, 0.3], ...    % Blue
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
-    
+        'Increased', [1, 0, 1], ...    % Magenta
+        'Decreased', [0, 1, 1], ...    % Cyan
+        'NoChange', [0.7, 0.7, 0.7]); % Grey
+
     % Process each group and recording
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
@@ -28,7 +61,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             
             % Collect and organize unit data
             [responseData, timeVector] = collectUnitData(cellDataStruct.(groupName).(recordingName), ...
-                                                       unitFilter, outlierFilter);
+                                                       opts.UnitFilter, opts.OutlierFilter, boxCarWindow);
             
             if isempty(timeVector)
                 warning('Plot:NoData', 'No valid units found in %s/%s', groupName, recordingName);
@@ -36,13 +69,13 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, treatmentT
             end
             
             % Create and save figure
-            createAndSaveFigure(responseData, timeVector, treatmentTime, plotType, ...
-                              COLORS, groupName, recordingName, unitFilter, saveDir);
+            createAndSaveFigure(responseData, timeVector, opts, ...
+                              COLORS, groupName, recordingName, saveDir);
         end
     end
 end
 
-function [responseData, timeVector] = collectUnitData(recordingData, unitFilter, outlierFilter)
+function [responseData, timeVector] = collectUnitData(recordingData, unitFilter, outlierFilter, boxCarWindow)
     % Initialize data structures
     responseData = struct(...
         'Increased', [], ...
@@ -66,13 +99,91 @@ function [responseData, timeVector] = collectUnitData(recordingData, unitFilter,
                 timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
             end
             
+            % Smooth data with boxcar window
+            smoothedPSTH = smoothdata(unitData.psthSmoothed, 'movmean', boxCarWindow);
+            
             % Add data to appropriate response type
             responseType = strrep(unitData.responseType, ' ', '');
             if isfield(responseData, responseType)
-                responseData.(responseType) = [responseData.(responseType); unitData.psthSmoothed];
+                responseData.(responseType) = [responseData.(responseType); smoothedPSTH];
             end
         end
     end
+end
+
+function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, recordingName, saveDir)
+    fig = figure('Position', [100, 100, 1200, 400]);
+    t = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    
+    title(t, sprintf('%s - %s (Box Car: %ds)', groupName, recordingName, opts.boxCarWindow), ...
+          'FontSize', opts.FontSize + 4);
+    
+    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    for i = 1:length(responseTypes)
+        nexttile
+        plotResponseType(responseData.(responseTypes{i}), timeVector, ...
+                        colors.(responseTypes{i}), responseTypes{i}, opts);
+    end
+    
+    % Save figure
+    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+    filename = sprintf('%s_%s_PSTH_BoxCar%ds_%s', ...
+                      groupName, recordingName, opts.boxCarWindow, timestamp);
+    savefig(fig, fullfile(saveDir, [filename '.fig']));
+    saveas(fig, fullfile(saveDir, [filename '.png']));
+    close(fig);
+end
+
+function plotResponseType(data, timeVector, color, titleStr, opts)
+    if isempty(data)
+        title(sprintf('%s (No Data)', titleStr));
+        return;
+    end
+    
+    hold on;
+    
+    % Plot individual traces if enabled
+    if strcmp(opts.PlotType, 'mean+individual')
+        for i = 1:size(data, 1)
+            plot(timeVector, data(i,:), 'Color', [color opts.TraceAlpha], ...
+                 'LineWidth', opts.LineWidth/3);
+        end
+    end
+    
+    % Calculate and plot mean ± SEM
+    meanData = mean(data, 1, 'omitnan');
+    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
+    
+    % Plot shaded error bars
+    fill([timeVector, fliplr(timeVector)], ...
+         [meanData + semData, fliplr(meanData - semData)], ...
+         color, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    
+    % Plot mean line
+    plot(timeVector, meanData, 'Color', color, 'LineWidth', opts.LineWidth);
+    
+    % Add treatment line
+    xline(opts.TreatmentTime, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+    
+    % Set axis properties
+    if ~isempty(opts.YLimits)
+        ylim(opts.YLimits);
+    end
+    xlim([0 max(timeVector)]);
+    
+    if opts.ShowGrid
+        grid on;
+        set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
+    end
+    
+    % Add labels
+    title(sprintf('%s Units (n=%d)', titleStr, size(data, 1)), ...
+          'FontSize', opts.FontSize + 1);
+    xlabel('Time (s)', 'FontSize', opts.FontSize);
+    ylabel('Firing Rate (Hz)', 'FontSize', opts.FontSize);
+    
+    set(gca, 'FontSize', opts.FontSize);
+    hold off;
 end
 
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
@@ -93,61 +204,15 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     isValid = true;
 end
 
-function createAndSaveFigure(responseData, timeVector, treatmentTime, plotType, colors, groupName, recordingName, unitFilter, saveDir)
-    fig = figure('Position', [100, 100, 1600, 500]);
-    sgtitle(sprintf('%s - %s - %s (%s units)', groupName, recordingName, plotType, unitFilter));
-    
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
-    for i = 1:length(responseTypes)
-        subplot(1, 3, i);
-        plotResponseType(responseData.(responseTypes{i}), timeVector, ...
-                        colors.(responseTypes{i}), responseTypes{i}, ...
-                        treatmentTime, plotType);
-    end
-    
-    % Save figure
+function saveFigure(fig, saveDir, groupName, recordingName, plotType)
     try
         timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('%s_%s_%s_recordingSmoothedPSTH_%s.fig', ...
+        fileName = sprintf('%s_%s_%s_timeLockedPercentChangeCombined_%s.fig', ...
                          groupName, recordingName, plotType, timeStamp);
         savefig(fig, fullfile(saveDir, fileName));
         close(fig);
     catch ME
-        warning('Save:Error', 'Error saving figure: %s', ME.message);
+        fprintf('Error saving figure: %s\n', ME.message);
     end
-end
-
-function plotResponseType(data, timeVector, color, titleStr, treatmentTime, plotType)
-    if isempty(data)
-        title(sprintf('%s (No Data)', titleStr));
-        return;
-    end
-    
-    meanData = mean(data, 1, 'omitnan');
-    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
-    
-    hold on;
-    if strcmp(plotType, 'mean+sem')
-        % Plot SEM using shadedErrorBar
-        shadedErrorBar(timeVector, meanData, semData, ...
-                      'lineprops', {'Color', color(1:3), 'LineWidth', 2});
-    elseif strcmp(plotType, 'mean+individual')
-        % Plot individual traces
-        for i = 1:size(data, 1)
-            plot(timeVector, data(i,:), 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
-        end
-        % Plot mean on top
-        plot(timeVector, meanData, 'Color', color(1:3), 'LineWidth', 2);
-    end
-    
-    % Add treatment line and formatting
-    xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5);
-    xlabel('Time (s)');
-    ylabel('Firing Rate (spikes/s)');
-    title(sprintf('%s (n=%d)', titleStr, size(data, 1)));
-    ylim([0 inf]);
-    xlim([0 5400]);
-    grid on;
-    hold off;
 end
 
