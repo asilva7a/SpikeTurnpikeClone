@@ -13,18 +13,17 @@
 %       consistent with data structure below
 %
 %% Directory Structure
-%  parentDirectory/
-%     ├── projectDirectory/
-%     │   ├── Ks_config.m
-%     │   └── SpikeStuff/
-%     │       ├── recordingDataFolder(s)
-%     │       └── all_data.mat
-%     └── frTreatmentAnalysis/
-%         ├── analysisConfig_timestamp.mat
-%         ├── cellDataStruct.mat
-%         ├── figures/
-%         └── [statistics files]
-    
+% % projectFolder/
+% ├── SpikeStuff/
+% │   ├── recordingDataFolder(s)
+% │   └── all_data.mat
+% └── frTreatmentAnalysis/
+%     ├── config/
+%     │   └── path_config_timestamp.mat
+%     ├── data/
+%     │   ├── cellDataStruct.mat
+%     │   └── cellDataStruct_backup_timestamp.mat
+%     └── figures/   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear; clc;
@@ -45,36 +44,68 @@ disp('Starting main script...');
 
 
 %% Get User Input for Directories
-% Initialize analysis
+% In main script
+clear; clc;
+
 try
+    % Initialize analysis
     [params, paths] = initializeAnalysis();
+    
+    % Debug print to verify structures
+    fprintf('\nVerifying initialization:\n');
+    fprintf('Params structure fields:\n');
+    disp(params);
+    fprintf('\nPaths structure fields:\n');
+    disp(paths);
+    
+    % Load data
+    fprintf('\nLoading data...\n');
     load(paths.dataFile, 'all_data');
-    cellDataStruct = extractUnitData(all_data, paths, params);
-    fprintf('Data loaded and saved successfully!\n');
+    
 catch ME
-    fprintf('An error occurred: %s\n', ME.message);
+    fprintf('Error during initialization:\n%s\n', ME.message);
+    rethrow(ME);
 end
 
-clear all_data;
+clear all_data; % Clear all_data from workspace to free memory
 
-generateFigureDirectories(cellDataStruct, paths);
+generateFigureDirectories(cellDataStruct, paths); % Generates file directory structure automatically
 
-%% Data Processing
+% Initialize or load configuration for global env
+if isfile('currentConfig.mat')
+    [params, paths] = loadConfiguration('currentConfig.mat');
+else
+    [params, paths] = initializeAnalysis();
+end
 
-% Generate PTSH for single unit
+% After initialization in main script
+if ~isfield(params, 'binWidth') || ~isfield(params, 'boxCarWindow')
+    error('Initialization failed: Missing required parameters');
+end
+
+if ~isfield(paths, 'dataFile') || ~isfile(paths.dataFile)
+    error('Initialization failed: Invalid data file path');
+end
+
+%% Data Analysis
+
+% Generate PTSH for each unit using param file
 cellDataStruct = generateAllPSTHs(cellDataStruct, paths, params);
 
 % Smooth PSTH with boxcar sliding window
-cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
+cellDataStruct = smoothAllPSTHs(cellDataStruct, paths, params);
 
-% Calculate pre- and post-treatment firing rate
-cellDataStruct = calculateFiringRate(cellDataStruct);
+% Calculate pre- and post-treatment firing rate 
+cellDataStruct = calculateFiringRate(cellDataStruct, paths, params);
 
-% Determine Unit response
-cellDataStruct = determineResponseType(cellDataStruct, 1860, ...
-    1, dataFolder, true); % Set bin-width to 60s
+% Determine unit response type (Wilcoxon-Rank)
+cellDataStruct = determineResponseType(cellDataStruct, paths, params, ...
+    'tagSparse', true, ...
+    'preWindow', [0, 1800], ...
+    'postWindow', [2000, 3800]);
 
-% Detect Outliers in Response Groups
+
+% Detect Outliers in Response Groups (CV and 1.5*IQR of max firing rate)
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
     'multi', figureFolder, dataFolder);
 

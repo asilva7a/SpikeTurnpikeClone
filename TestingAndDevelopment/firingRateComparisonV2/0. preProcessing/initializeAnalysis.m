@@ -1,35 +1,56 @@
 function [params, paths] = initializeAnalysis()
-    % Main initialization function that coordinates the setup process
     fprintf('\n=== Firing Rate Analysis Initialization ===\n\n');
     
-    % Get project directory from user
+    % Get project directory and validate
     projectDir = getProjectDirectory();
-    
-    % Verify project structure
     validateProjectStructure(projectDir);
     
-    % Get analysis parameters from user
+    % Get analysis parameters
     params = getAnalysisParams();
     
-    % Create directory structure and set paths
+    % Setup directories
     paths = setupDirectoryStructure(projectDir, params);
     
-    % Save configuration
+    % Save configuration to analysis directory
     saveConfiguration(params, paths);
     
-    % Display summary
+    % Display configuration summary
     displayConfiguration(params, paths);
 end
 
 function projectDir = getProjectDirectory()
-    % Get and validate project directory
+    % Check for saved default directory
+    defaultFile = 'defaultProjectDir.mat';
+    
+    if isfile(defaultFile)
+        load(defaultFile, 'lastUsedDir');
+        
+        % Ask user if they want to use the last directory
+        fprintf('\nLast used directory: %s\n', lastUsedDir);
+        useLastDir = input('Use this directory? (y/n): ', 's');
+        
+        if strcmpi(useLastDir, 'y')
+            projectDir = lastUsedDir;
+            return;
+        end
+    end
+    
+    % Get new directory if no default or user wants new
     projectDir = uigetdir('~/', 'Select Project Directory containing SpikeStuff folder');
     if projectDir == 0
         error('User cancelled directory selection');
     end
+    
+    % Ask if user wants to save this as default
+    saveAsDefault = input('Save this as default directory? (y/n): ', 's');
+    if strcmpi(saveAsDefault, 'y')
+        lastUsedDir = projectDir;
+        save(defaultFile, 'lastUsedDir');
+        fprintf('Directory saved as default.\n');
+    end
 end
 
-function validateProjectStructure(projectDir)
+function valid = validateProjectStructure(projectDir)
     % Verify required folders and files exist
     spikeStuffDir = fullfile(projectDir, 'SpikeStuff');
     allDataPath = fullfile(spikeStuffDir, 'all_data.mat');
@@ -40,6 +61,7 @@ function validateProjectStructure(projectDir)
     if ~isfile(allDataPath)
         error('Invalid project structure: Missing all_data.mat');
     end
+    valid = true;
 end
 
 function params = getAnalysisParams()
@@ -74,7 +96,11 @@ function params = getAnalysisParams()
 end
 
 function paths = setupDirectoryStructure(projectDir, params)
-    % Create analysis directories and set paths
+    % Add debug prints
+    fprintf('\nSetting up directory structure...\n');
+    fprintf('Project directory: %s\n', projectDir);
+    
+    % Create paths
     parentDir = fileparts(projectDir);
     paths.projectDir = projectDir;
     paths.frTreatmentDir = fullfile(parentDir, 'frTreatmentAnalysis');
@@ -82,30 +108,49 @@ function paths = setupDirectoryStructure(projectDir, params)
     paths.cellDataStructPath = fullfile(paths.frTreatmentDir, 'data', 'cellDataStruct.mat');
     paths.figureFolder = fullfile(paths.frTreatmentDir, 'figures');
     
-    % Create directories
-    if ~isfolder(paths.frTreatmentDir)
-        mkdir(paths.frTreatmentDir);
-    end
-    if ~isfolder(fullfile(paths.frTreatmentDir, 'data'))
-        mkdir(fullfile(paths.frTreatmentDir, 'data'));
-    end
-    if ~isfolder(paths.figureFolder)
-        mkdir(paths.figureFolder);
+    % Print paths before creating directories
+    fprintf('Paths to be created:\n');
+    disp(paths);
+    
+    % Create directories with verification
+    dirs = {paths.frTreatmentDir, ...
+           fullfile(paths.frTreatmentDir, 'data'), ...
+           paths.figureFolder};
+    
+    for i = 1:length(dirs)
+        if ~isfolder(dirs{i})
+            fprintf('Creating directory: %s\n', dirs{i});
+            [success, msg] = mkdir(dirs{i});
+            if ~success
+                error('Failed to create directory: %s\nError: %s', dirs{i}, msg);
+            end
+        end
     end
 end
 
+
 function saveConfiguration(params, paths)
-    % Save configuration file
+    % Save in analysis directory with timestamp
     configFile = fullfile(paths.frTreatmentDir, ...
                          sprintf('analysisConfig_%s.mat', ...
                          char(params.analysisStartTime)));
+    save(configFile, 'params', 'paths');
     
-    config = struct('params', params, 'paths', paths);
-    save(configFile, 'config');
+    % Also save as current config
+    currentConfigFile = fullfile(paths.frTreatmentDir, 'currentConfig.mat');
+    save(currentConfigFile, 'params', 'paths');
     
-    % Make parameters globally accessible
-    global analysisParams
-    analysisParams = params;
+    fprintf('Configuration saved to:\n%s\n', configFile);
+end
+
+function [params, paths] = loadConfiguration(configFile)
+    if isfile(configFile)
+        loaded = load(configFile);
+        params = loaded.params;
+        paths = loaded.paths;
+    else
+        error('Configuration file not found: %s', configFile);
+    end
 end
 
 function value = getValidNumericInput(prompt, minValue)
@@ -117,4 +162,30 @@ function value = getValidNumericInput(prompt, minValue)
             fprintf('Please enter a valid number greater than %g.\n', minValue);
         end
     end
+end
+
+function displayConfiguration(params, paths)
+    fprintf('\n=== Analysis Configuration Summary ===\n\n');
+    
+    % Display Analysis Parameters
+    fprintf('Analysis Parameters:\n');
+    fprintf('-------------------\n');
+    fprintf('  Bin Width: %.1f seconds\n', params.binWidth);
+    fprintf('  Box Car Window: %d seconds\n', params.boxCarWindow);
+    fprintf('  Treatment Time: %d seconds\n', params.treatmentTime);
+    fprintf('  Recording Period: %d seconds\n', params.recordingPeriod);
+    fprintf('  Unit Filter: %s\n', params.unitFilter);
+    fprintf('  Start Time: %s\n\n', char(params.analysisStartTime));
+    
+    % Display Directory Structure
+    fprintf('Directory Structure:\n');
+    fprintf('-------------------\n');
+    fprintf('  Project Directory: %s\n', paths.projectDir);
+    fprintf('  Analysis Directory: %s\n', paths.frTreatmentDir);
+    fprintf('  Data File: %s\n', paths.dataFile);
+    fprintf('  Cell Data Structure: %s\n', paths.cellDataStructPath);
+    fprintf('  Figure Directory: %s\n', paths.figureFolder);
+    
+    % Add separator for readability
+    fprintf('\nConfiguration saved and ready for analysis.\n\n');
 end
