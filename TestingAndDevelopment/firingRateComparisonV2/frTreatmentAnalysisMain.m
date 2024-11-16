@@ -13,23 +13,20 @@
 %       consistent with data structure below
 %
 %% Directory Structure
-% ProjectFolder:~/frTreatmentAnalysisMain_figureResults/binWith(#)boxCar(#)
-% ├── projectData
-% │   ├── all_data.mat
-% │   ├── config.mat 
-% │   └── cellDataStruct.mat
-% └── projectFigures
-%     ├── 0.expFigures (e.g. experimental, ctrl)
-%     │   └── experimental_Figure-timestamp.fig
-%     └── groupName (e.g. Ctrl, Emx, Pvalb)S
-%         ├── 0.groupFigures
-%         │   └── Emx_Figure-timestamp.fig           
-%         └── recordingName (e.g emx_0001_rec1)
-%             ├── 0.recordingFiguresS
-%             │   └── emx_0001_rec1_Figure-timestamp.fig           
-%             └── unitID (e.g. cid214)
-%                 └── cid214_Figure-timestamp.fig
+%  parentDirectory/
+%     ├── projectDirectory/
+%     │   ├── Ks_config.m
+%     │   └── SpikeStuff/
+%     │       ├── recordingDataFolder(s)
+%     │       └── all_data.mat
+%     └── frTreatmentAnalysis/
+%         ├── analysisConfig_timestamp.mat
+%         ├── cellDataStruct.mat
+%         ├── figures/
+%         └── [statistics files]
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 clear; clc;
 
 %%  Main script for analysing the single unit data
@@ -47,8 +44,17 @@ disp('Starting main script...');
 % end
 
 
-%% Set Up Directories
-% Get User Input for Directories
+%% Get User Input for Directories
+% Initialize analysis
+[params, paths] = initializeAnalysis();
+load(paths.dataFile, 'all_data');
+cellDataStruct = extractUnitData(all_data, paths, params);
+
+
+% Call the extract function with the user-specified save path
+    cellDataStruct = extractUnitData(all_data, cellDataStructPath, 1);  % set binWidth in seconds
+
+
 try
     [dataFilePath, dataFolder, cellDataStructPath, figureFolder] = ...
     loadDataAndPreparePaths(); % Generates file paths for the output variables and variables saves to config.mat
@@ -72,7 +78,7 @@ generateFigureDirectories(cellDataStruct, figureFolder);
 % Generate PTSH for single unit
 cellDataStruct = generateAllPSTHs(cellDataStruct, dataFolder);
 
-% Generate PSTH with boxcar smoothing
+% Smooth PSTH with boxcar sliding window
 cellDataStruct = smoothAllPSTHs(cellDataStruct, dataFolder, 10);
 
 % Calculate pre- and post-treatment firing rate
@@ -148,6 +154,13 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
     % Plot Pooled Percent Change Exp and Ctrl
     plotPooledPercentChangeBaselineVsPost(expStats, ...
         ctrlStats, figureFolder);
+
+% Plot Wave-forms
+plotAllMeanWaveforms(cellDataStruct);
+
+% Plot Time Series with aesthetic binning
+% Do in Cmd Line
+
 
 %% End of Script
 disp('Script finished...');
