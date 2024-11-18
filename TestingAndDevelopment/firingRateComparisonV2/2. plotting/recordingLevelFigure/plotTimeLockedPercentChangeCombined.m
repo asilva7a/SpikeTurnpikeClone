@@ -96,7 +96,7 @@ function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, 
     title(t, sprintf('%s - %s (Box Car: %ds)', groupName, recordingName, opts.boxCarWindow), ...
           'FontSize', opts.FontSize + 4);
     
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     for i = 1:length(responseTypes)
         nexttile
         plotResponseType(responseData.(responseTypes{i}), timeVector, ...

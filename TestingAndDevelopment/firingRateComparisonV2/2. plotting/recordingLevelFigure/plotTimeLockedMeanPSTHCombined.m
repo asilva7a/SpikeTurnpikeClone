@@ -42,7 +42,7 @@ function plotTimeLockedMeanPSTHCombined(cellDataStruct, figureFolder, boxCarWind
     COLORS = struct(...
         'Increased', [1, 0, 1], ...    % Magenta
         'Decreased', [0, 1, 1], ...    % Cyan
-        'NoChange', [0.7, 0.7, 0.7]); % Grey
+        'No_Change', [0.7, 0.7, 0.7]); % Grey
 
     % Process each group and recording
     groupNames = fieldnames(cellDataStruct);
@@ -80,7 +80,7 @@ function [responseData, timeVector] = collectUnitData(recordingData, unitFilter,
     responseData = struct(...
         'Increased', [], ...
         'Decreased', [], ...
-        'NoChange', []);
+        'No_Change', []);
     timeVector = [];
     
     units = fieldnames(recordingData);
@@ -118,7 +118,7 @@ function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, 
     title(t, sprintf('%s - %s (Box Car: %ds)', groupName, recordingName, opts.boxCarWindow), ...
           'FontSize', opts.FontSize + 4);
     
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     for i = 1:length(responseTypes)
         nexttile
         plotResponseType(responseData.(responseTypes{i}), timeVector, ...
