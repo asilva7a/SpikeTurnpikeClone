@@ -1,4 +1,4 @@
-function plotDecreasedUnitsZScoreByRecording(cellDataStruct, figureFolder)
+function plotUnitsZScoreByRecording(cellDataStruct, figureFolder)
     % Process each experimental group
     experimentalGroups = {'Emx', 'Pvalb','Control'};
     
