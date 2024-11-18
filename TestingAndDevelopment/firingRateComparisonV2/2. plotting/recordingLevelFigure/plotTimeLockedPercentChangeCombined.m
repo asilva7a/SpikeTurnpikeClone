@@ -20,7 +20,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, boxCa
     COLORS = struct(...
         'Increased', [1, 0, 1], ...    % Magenta
         'Decreased', [0, 1, 1], ...    % Cyan
-        'NoChange', [0.7, 0.7, 0.7]); % Grey
+        'No_Change', [0.7, 0.7, 0.7]); % Grey
 
     % Process each group and recording
     groupNames = fieldnames(cellDataStruct);
@@ -58,7 +58,7 @@ function [responseData, timeVector] = collectUnitData(recordingData, unitFilter,
     responseData = struct(...
         'Increased', [], ...
         'Decreased', [], ...
-        'NoChange', []);
+        'No_Change', []);
     timeVector = [];
     
     units = fieldnames(recordingData);
