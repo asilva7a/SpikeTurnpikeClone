@@ -10,7 +10,7 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder, treatmentTime
     end
 
     % Define color mapping for each response type
-    colorMap = containers.Map({'Increased', 'Decreased', 'No Change'}, ...
+    colorMap = containers.Map({'Increased', 'Decreased', 'No_Change'}, ...
                               {[1, 0, 0, 0.3], [0, 0, 1, 0.3], [0.5, 0.5, 0.5, 0.3]}); % RGBA format with transparency
 
     % Loop through groups and recordings
@@ -37,7 +37,7 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder, treatmentTime
 
             % Create dummy plots for each response type to include in the legend
             legendHandles = [];
-            legendLabels = {'Increased', 'Decreased', 'No Change'};
+            legendLabels = {'Increased', 'Decreased', 'No_Change'};
             for k = 1:numel(legendLabels)
                 responseType = legendLabels{k};
                 colorVal = colorMap(responseType);  % Get RGBA color
@@ -98,7 +98,7 @@ function plotAveragePSTHWithResponse(cellDataStruct, figureFolder, treatmentTime
             ylabel('Firing Rate (spikes/s)');
             title(sprintf('Average Smoothed PSTH with Individual Responses\n%s - %s', groupName, recordingName));
             legend([plot(NaN, NaN, 'k-', 'LineWidth', 2), legendHandles], ...
-                   {'Average PSTH', 'Increased', 'Decreased', 'No Change'}, ...
+                   {'Average PSTH', 'Increased', 'Decreased', 'No_Change'}, ...
                    'Location', 'Best');
 
             % Display metadata information along the bottom within valid range
