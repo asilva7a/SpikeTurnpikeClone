@@ -1,4 +1,15 @@
 function [params, paths] = initializeAnalysis()
+% initializeAnalysis - Set up the analysis environment and parameters
+    %
+    % This function initializes the analysis by setting up the project directory,
+    % collecting analysis parameters, creating necessary directories, and saving
+    % the configuration.
+    %
+    % Outputs:
+    %   params - Structure containing analysis parameters
+    %   paths - Structure containing file and directory paths
+
+%% Main Function
     fprintf('\n=== Firing Rate Analysis Initialization ===\n\n');
     
     % Get project directory and validate
@@ -18,6 +29,7 @@ function [params, paths] = initializeAnalysis()
     displayConfiguration(params, paths);
 end
 
+% Get Project Directory and Defaults
 function projectDir = getProjectDirectory()
     % Check for saved default directory
     defaultFile = 'defaultProjectDir.mat';
@@ -50,19 +62,7 @@ function projectDir = getProjectDirectory()
     end
 end
 
-function valid = validateProjectStructure(projectDir)
-    % Verify required folders and files exist
-    spikeStuffDir = fullfile(projectDir, 'SpikeStuff');
-    allDataPath = fullfile(spikeStuffDir, 'all_data.mat');
-    
-    if ~isfolder(spikeStuffDir)
-        error('Invalid project structure: Missing SpikeStuff folder');
-    end
-    if ~isfile(allDataPath)
-        error('Invalid project structure: Missing all_data.mat');
-    end
-    valid = true;
-end
+
 
 function params = getAnalysisParams()
     % Collect analysis parameters from user
@@ -73,6 +73,18 @@ function params = getAnalysisParams()
     params.boxCarWindow = getValidNumericInput('Enter smoothing window size (seconds): ', 0);
     params.treatmentTime = getValidNumericInput('Enter treatment time (seconds): ', 0);
     params.recordingPeriod = getValidNumericInput('Enter total recording period (seconds): ', params.treatmentTime);
+
+    % Get Baseline Window
+    defaultPreWindow = [300 1800];
+    fprintf('Enter Baseline Window [start end] (default: [%d %d]): ', ...
+        defaultPreWindow(1), defaultPreWindow(2));
+    params.preWindow = getValidWindowInput(defaultPreWindow);
+    
+    % Get Post-Treatment Window
+    defaultPostWindow = [2000 3800];
+    fprintf('Enter Post-Treatment Window [start end] (default: [%d %d]): ', ...
+        defaultPostWindow(1), defaultPostWindow(2));
+    params.postWindow = getValidWindowInput(defaultPostWindow);
     
     % Get unit type selection
     while true
@@ -95,7 +107,9 @@ function params = getAnalysisParams()
     params.analysisStartTime = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
 end
 
-function paths = setupDirectoryStructure(projectDir, params)
+
+%% Helper Functions
+function paths = setupDirectoryStructure(projectDir, ~)
     % Add debug prints
     fprintf('\nSetting up directory structure...\n');
     fprintf('Project directory: %s\n', projectDir);
@@ -128,7 +142,7 @@ function paths = setupDirectoryStructure(projectDir, params)
     end
 end
 
-
+% Save and Display Configuration Results
 function saveConfiguration(params, paths)
     % Save in analysis directory with timestamp
     configFile = fullfile(paths.frTreatmentDir, ...
@@ -150,17 +164,6 @@ function [params, paths] = loadConfiguration(configFile)
         paths = loaded.paths;
     else
         error('Configuration file not found: %s', configFile);
-    end
-end
-
-function value = getValidNumericInput(prompt, minValue)
-    while true
-        value = input(prompt);
-        if isnumeric(value) && isscalar(value) && value > minValue
-            break;
-        else
-            fprintf('Please enter a valid number greater than %g.\n', minValue);
-        end
     end
 end
 
@@ -188,4 +191,53 @@ function displayConfiguration(params, paths)
     
     % Add separator for readability
     fprintf('\nConfiguration saved and ready for analysis.\n\n');
+end
+
+% Validate User Input
+function value = getValidNumericInput(prompt, minValue)
+    while true
+        value = input(prompt);
+        if isnumeric(value) && isscalar(value) && value > minValue
+            break;
+        else
+            fprintf('Please enter a valid number greater than %g.\n', minValue);
+        end
+    end
+end
+
+% Validate Project Structure
+function valid = validateProjectStructure(projectDir)
+    % Verify required folders and files exist
+    spikeStuffDir = fullfile(projectDir, 'SpikeStuff');
+    allDataPath = fullfile(spikeStuffDir, 'all_data.mat');
+    
+    if ~isfolder(spikeStuffDir)
+        error('Invalid project structure: Missing SpikeStuff folder');
+    end
+    if ~isfile(allDataPath)
+        error('Invalid project structure: Missing all_data.mat');
+    end
+    valid = true;
+end
+
+% Validate Window Input
+function window = getValidWindowInput(defaultWindow)
+    while true
+        input_str = input('', 's');
+        if isempty(input_str)
+            window = defaultWindow;
+            break;
+        else
+            try
+                window = str2num(input_str);
+                if numel(window) == 2 && window(1) < window(2)
+                    break;
+                else
+                    fprintf('Please enter two numbers where the first is less than the second.\n');
+                end
+            catch
+                fprintf('Invalid input. Please enter two numbers or press Enter for default.\n');
+            end
+        end
+    end
 end
