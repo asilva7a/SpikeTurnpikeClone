@@ -33,16 +33,12 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
     
     % Optional parameters with defaults
     addParameter(p, 'tagSparse', false, @islogical);
-    addParameter(p, 'preWindow', [300, 1800], @(x) isnumeric(x) && length(x) == 2);
-    addParameter(p, 'postWindow', [2000, 3500], @(x) isnumeric(x) && length(x) == 2);
     addParameter(p, 'silenceThreshold', 0.0001, @isnumeric);
     addParameter(p, 'silenceScoreThreshold', 0.95, @isnumeric);
     
     % Parse inputs
     parse(p, cellDataStruct, paths, params, varargin{:});
     opts = p.Results;
-    params.preWindow = opts.preWindow;
-    params.postWindow = opts.postWindow;
 
     %% Main Processing Loop
     % Process each group
@@ -68,9 +64,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
                 
                 % Process units in parallel
                 parfor u = 1:numUnits
-                    unitResults{u} = processUnit(unitData{u}, opts.preWindow, opts.postWindow, ...
-                                              opts.silenceThreshold, opts.silenceScoreThreshold, ...
-                                              params.binWidth);
+
+                    unitResults{u} = processUnit(unitData{u}, params.preWindow, params.postWindow, ...
+                          opts.silenceThreshold, opts.silenceScoreThreshold, ...
+                          params.binWidth, params.treatmentTime);
                 end
                 
                     % Update cellDataStruct
@@ -85,9 +82,10 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
                     unitID = units{u};
                     unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                     
-                    processedUnit = processUnit(unitData, opts.preWindow, opts.postWindow, ...
-                                             opts.silenceThreshold, opts.silenceScoreThreshold, ...
-                                             params.binWidth);
+                    processedUnit = processUnit(unitData, params.preWindow, params.postWindow, ...
+                         opts.silenceThreshold, opts.silenceScoreThreshold, ...
+                         params.binWidth, params.treatmentTime);
+
                     if ~isempty(processedUnit)
                         cellDataStruct.(groupName).(recordingName).(unitID) = processedUnit;
                     end
@@ -115,7 +113,9 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
 end
 
 
-function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth, params, opts)
+function unitData  = processUnit(unitData, preWindow, postWindow, ...
+    silenceThreshold, silenceScoreThreshold, binWidth, treatmentTime)
+
     % Skip processing if required fields are missing
     if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ...
        ~isfield(unitData, 'binWidth')
@@ -152,8 +152,9 @@ function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshol
     unitData.unitFlags.isMostlySilent = (silenceScoreBefore >= silenceScoreThreshold || ...
                                         silenceScoreAfter >= silenceScoreThreshold);
     
-    % Determine response type using enhanced criteria
-    [responseType, responseMetrics] = classifyResponse(stats);
+    % Determine response type 
+    [responseType, responseMetrics] = classifyResponse(stats, ...
+        unitData.psthSmoothed, treatmentTime, binWidth);
     
     % Store results
     unitData.pValue = stats.p_value;
