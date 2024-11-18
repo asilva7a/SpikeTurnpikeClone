@@ -4,39 +4,40 @@ function [responseType, responseMetrics] = classifyResponse(stats, psth, treatme
     responseMetrics.stats = stats;
     
     % Initialize response classification
-    responseType = struct('type', '', 'subtype', '');
+    responseType = '';
+    responseMetrics.subtype = '';
     
     % Classify response based on multiple criteria
     if stats.p_value < 0.01  % Statistically significant change
         if stats.reliability > 0.7  % High reliability
             if stats.percent_change > 20 && stats.cohens_d > 0.8
-                responseType.type = 'Increased';
-                responseType.subtype = 'Strong';
+                responseType = 'Increased';
+                responseMetrics.subtype = 'Strong';
             elseif stats.percent_change < -20 && stats.cohens_d < -0.8
-                responseType.type = 'Decreased';
-                responseType.subtype = 'Strong';
+                responseType = 'Decreased';
+                responseMetrics.subtype = 'Strong';
             elseif stats.cohens_d > 0.5
-                responseType.type = 'Increased';
-                responseType.subtype = 'Moderate';
+                responseType = 'Increased';
+                responseMetrics.subtype = 'Moderate';
             elseif stats.cohens_d < -0.5
-                responseType.type = 'Decreased';
-                responseType.subtype = 'Moderate';
+                responseType = 'Decreased';
+                responseMetrics.subtype = 'Moderate';
             else
-                responseType.type = 'Changed';
-                responseType.subtype = 'Weak';
+                responseType = 'Changed';
+                responseMetrics.subtype = 'Weak';
             end
         else  % Lower reliability
             if stats.mean_post > stats.mean_pre
-                responseType.type = 'Increased';
-                responseType.subtype = 'Variable';
+                responseType = 'Increased';
+                responseMetrics.subtype = 'Variable';
             else
-                responseType.type = 'Decreased';
-                responseType.subtype = 'Variable';
+                responseType = 'Decreased';
+                responseMetrics.subtype = 'Variable';
             end
         end
     else  % Not statistically significant
-        responseType.type = 'No_Change';
-        responseType.subtype = 'None';
+        responseType = 'No_Change';
+        responseMetrics.subtype = 'None';
     end
     
     % Add response strength metrics
