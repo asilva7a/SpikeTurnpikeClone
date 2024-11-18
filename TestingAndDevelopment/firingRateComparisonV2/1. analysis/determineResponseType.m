@@ -1,4 +1,30 @@
 function cellDataStruct = determineResponseType(cellDataStruct, paths, params, varargin)
+% determineResponseType - Determines the response type for each unit in the cellDataStruct
+%
+% Inputs:
+%   cellDataStruct - Structure containing cell data
+%   paths - Structure containing file paths
+%   params - Structure containing analysis parameters
+%   varargin - Optional name-value pair arguments
+%
+% Outputs:
+%   cellDataStruct - Updated structure with response types added
+%
+% Nested Functions:
+%   1. processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth, params, opts)
+%      Inputs: Unit data and various parameters
+%      Outputs: Processed unit data with response type and metrics
+%
+%   2. calculateResponseStats(preRate, postRate, binWidth)
+%      Inputs: Pre and post firing rates, bin width
+%      Outputs: Structure containing various statistical measures
+%
+%   3. classifyResponse(stats)
+%      Inputs: Statistics structure from calculateResponseStats
+%      Outputs: Response type and response metrics
+
+%% Parse Input
+
     % Parse input parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct', @isstruct);
@@ -7,15 +33,18 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
     
     % Optional parameters with defaults
     addParameter(p, 'tagSparse', false, @islogical);
-    addParameter(p, 'preWindow', [0, 1800], @(x) isnumeric(x) && length(x) == 2);
-    addParameter(p, 'postWindow', [2000, 3800], @(x) isnumeric(x) && length(x) == 2);
+    addParameter(p, 'preWindow', [300, 1800], @(x) isnumeric(x) && length(x) == 2);
+    addParameter(p, 'postWindow', [2000, 3500], @(x) isnumeric(x) && length(x) == 2);
     addParameter(p, 'silenceThreshold', 0.0001, @isnumeric);
     addParameter(p, 'silenceScoreThreshold', 0.95, @isnumeric);
     
     % Parse inputs
     parse(p, cellDataStruct, paths, params, varargin{:});
     opts = p.Results;
-    
+    params.preWindow = opts.preWindow;
+    params.postWindow = opts.postWindow;
+
+    %% Main Processing Loop
     % Process each group
     groupNames = fieldnames(cellDataStruct);
     for g = 1:length(groupNames)
@@ -58,7 +87,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
                     
                     processedUnit = processUnit(unitData, opts.preWindow, opts.postWindow, ...
                                              opts.silenceThreshold, opts.silenceScoreThreshold, ...
-                                             params.binWidth, params);
+                                             params.binWidth);
                     if ~isempty(processedUnit)
                         cellDataStruct.(groupName).(recordingName).(unitID) = processedUnit;
                     end
@@ -86,7 +115,7 @@ function cellDataStruct = determineResponseType(cellDataStruct, paths, params, v
 end
 
 
-function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth, params)
+function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshold, silenceScoreThreshold, binWidth, params, opts)
     % Skip processing if required fields are missing
     if ~isfield(unitData, 'psthSmoothed') || ~isfield(unitData, 'binEdges') || ...
        ~isfield(unitData, 'binWidth')
@@ -124,7 +153,7 @@ function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshol
                                         silenceScoreAfter >= silenceScoreThreshold);
     
     % Determine response type using enhanced criteria
-    [responseType, responseMetrics] = classifyUnitResponse(unitData,params);
+    [responseType, responseMetrics] = classifyResponse(stats);
     
     % Store results
     unitData.pValue = stats.p_value;
@@ -132,84 +161,3 @@ function unitData = processUnit(unitData, preWindow, postWindow, silenceThreshol
     unitData.responseMetrics = responseMetrics;
     unitData.stats = stats;
 end
-
-function stats = calculateResponseStats(preRate, postRate, binWidth)
-    % Calculate comprehensive statistics
-    stats = struct();
-    
-    % Basic statistics
-    stats.mean_pre = mean(preRate, 'omitnan');
-    stats.mean_post = mean(postRate, 'omitnan');
-    stats.std_pre = std(preRate, 'omitnan');
-    stats.std_post = std(postRate, 'omitnan');
-    
-    % Effect size (Cohen's d)
-    pooled_std = sqrt((var(preRate, 'omitnan') + var(postRate, 'omitnan'))/2);
-    stats.cohens_d = (stats.mean_post - stats.mean_pre) / pooled_std;
-    
-    % Wilcoxon signed rank test
-    [stats.p_value, stats.h_wilcox] = signrank(preRate, postRate, 'alpha', 0.01);
-    
-    % Bootstrap confidence intervals
-    nBootstraps = 1000;
-    bootstat_pre = bootstrp(nBootstraps, @mean, preRate);
-    bootstat_post = bootstrp(nBootstraps, @mean, postRate);
-    stats.ci_pre = prctile(bootstat_pre, [2.5 97.5]);
-    stats.ci_post = prctile(bootstat_post, [2.5 97.5]);
-    
-    % Percent change
-    stats.percent_change = ((stats.mean_post - stats.mean_pre) / stats.mean_pre) * 100;
-    
-    % Signal-to-Noise Ratio
-    stats.snr = abs(stats.mean_post - stats.mean_pre) / ...
-                sqrt(stats.std_pre^2 + stats.std_post^2);
-    
-    % Reliability score (combines effect size and significance)
-    stats.reliability = abs(stats.cohens_d) * (1 - stats.p_value);
-    
-    % Additional metrics
-    stats.spike_count_pre = sum(preRate) * binWidth;
-    stats.spike_count_post = sum(postRate) * binWidth;
-    stats.variance_pre = var(preRate, 'omitnan');
-    stats.variance_post = var(postRate, 'omitnan');
-    stats.kruskal_p = kruskalwallis([preRate(:); postRate(:)], ...
-        [ones(size(preRate(:))); 2*ones(size(postRate(:)))], 'off');
-end
-
-function [responseType, responseMetrics] = classifyResponse(stats)
-    % Initialize response metrics
-    responseMetrics = struct();
-    responseMetrics.stats = stats;
-    
-    % Classify response based on multiple criteria
-    if stats.p_value < 0.01  % Statistically significant change
-        if stats.reliability > 0.7  % High reliability
-            if stats.percent_change > 20 && stats.cohens_d > 0.8
-                responseType = 'Strong_Increase';
-            elseif stats.percent_change < -20 && stats.cohens_d < -0.8
-                responseType = 'Strong_Decrease';
-            elseif stats.cohens_d > 0.5
-                responseType = 'Moderate_Increase';
-            elseif stats.cohens_d < -0.5
-                responseType = 'Moderate_Decrease';
-            else
-                responseType = 'Weak_Change';
-            end
-        else  % Lower reliability
-            if stats.mean_post > stats.mean_pre
-                responseType = 'Variable_Increase';
-            else
-                responseType = 'Variable_Decrease';
-            end
-        end
-    else  % Not statistically significant
-        responseType = 'No_Change';
-    end
-    
-    % Add response strength metrics
-    responseMetrics.strength = struct(...
-        'reliability', stats.reliability, ...
-        'effect_size', stats.cohens_d, ...
-        'percent_change', stats.percent_change);
-end
-
