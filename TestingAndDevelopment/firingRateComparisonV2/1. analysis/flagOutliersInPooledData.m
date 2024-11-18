@@ -55,6 +55,15 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+
+                fprintf('Debug - Unit %s data:\n', unitID);
+                disp(fieldnames(unitData));
+                if isfield(unitData, 'responseType')
+                    fprintf('  responseType exists: %s (class: %s)\n', ...
+                        string(unitData.responseType), class(unitData.responseType));
+                else
+                    fprintf('  No responseType field\n');
+                end
                 
                 % Initialize outlier flag
                 cellDataStruct.(groupName).(recordingName).(unitID).isOutlierExperimental = 0;
@@ -103,8 +112,11 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                     end
                     
                     % Calculate metrics
+                    fprintf('Debug - Calculating metrics for unit %s\n', unitID);
                     metrics = calculateUnitMetrics(unitData, params);
-                    
+                    fprintf('Debug - Calculated metrics:\n');
+                    disp(metrics);
+
                     % Initialize response type structures if needed
                     if ~isfield(psthDataGroup, responseType)
                         psthDataGroup.(responseType) = struct();
@@ -128,6 +140,13 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                     end
                     
                     % Store metrics
+                    fprintf('Debug - Storing metrics for response type: %s, group: %s\n', ...
+                        responseType, groupName);
+                    fprintf('Debug - Current metrics structure:\n');
+                    if isfield(psthDataGroup, responseType) && isfield(psthDataGroup.(responseType), groupName)
+                        disp(psthDataGroup.(responseType).(groupName));
+                    end
+
                     psthDataGroup.(responseType).(groupName).metrics = [psthDataGroup.(responseType).(groupName).metrics; struct2array(metrics)];
                     psthDataGroup.(responseType).(groupName).maxFiringRate(end+1) = metrics.maxFiringRate;
                     psthDataGroup.(responseType).(groupName).baselineRates(end+1) = metrics.baselineRate;
@@ -147,7 +166,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
         end
     end
     
-    % Calculate thresholds and identify outliers
+   % Calculate thresholds and identify outliers
     fprintf('\nCalculating thresholds and identifying outliers...\n');
     responseTypes = fieldnames(psthDataGroup);
     for rt = 1:length(responseTypes)
@@ -160,14 +179,21 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             if isfield(unitInfoGroup.(responseType), groupName) && ...
                ~isempty(unitInfoGroup.(responseType).(groupName))
                 try
+                    % Get the metrics matrix
+                    currentMetrics = psthDataGroup.(responseType).(groupName).metrics;
+                    
+                    % Debug output
+                    fprintf('Debug - Processing group %s metrics of size: [%d, %d]\n', ...
+                        groupName, size(currentMetrics, 1), size(currentMetrics, 2));
+                    
                     % Calculate thresholds
-                    thresholds = calculateGroupThresholds(psthDataGroup.(responseType).(groupName).metrics);
+                    thresholds = calculateGroupThresholds(currentMetrics);
                     groupIQRs.(responseType).(groupName) = thresholds;
                     
                     % Flag outliers
                     for i = 1:length(unitInfoGroup.(responseType).(groupName))
                         unitInfo = unitInfoGroup.(responseType).(groupName){i};
-                        metrics = psthDataGroup.(responseType).(groupName).metrics(i,:);
+                        metrics = currentMetrics(i,:);
                         
                         if isUnitOutlier(metrics, thresholds, params)
                             cellDataStruct.(unitInfo.group).(unitInfo.recording).(unitInfo.id).isOutlierExperimental = 1;
@@ -176,12 +202,24 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
                     end
                 catch ME
                     fprintf('Error processing group %s: %s\n', groupName, ME.message);
+                    fprintf('Debug - Error stack:\n');
+                    disp(ME.stack);
                     continue;
                 end
             end
         end
     end
-    
+
+    % Optional plotting
+    if isfield(paths, 'figureFolder') && ~isempty(paths.figureFolder)
+        try
+            plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, paths.figureFolder);
+            fprintf('Plotting complete\n');
+        catch ME
+            fprintf('Error during plotting: %s\n', ME.message);
+        end
+    end
+        
     % Save results
     if isfield(paths, 'output') && isfield(paths.output, 'dataFolder') && ...
        ~isempty(paths.output.dataFolder)
@@ -219,18 +257,23 @@ function metrics = calculateUnitMetrics(unitData, params)
     metrics.burstIndex = sum(diff(psth) > std(psth)) / length(psth);
 end
 
-function thresholds = calculateGroupThresholds(groupMetrics)
-    % Calculate thresholds for each metric
+function thresholds = calculateGroupThresholds(metricsMatrix)
+    % Calculate thresholds for each metric column
     thresholds = struct();
+    metricNames = {'maxFiringRate', 'meanFiringRate', 'baselineRate', 'cv', 'burstIndex'};
     
-    for field = fieldnames(groupMetrics)'
-        values = groupMetrics.(field{1});
-        if ~isempty(values)
+    % Debug output
+    fprintf('Debug - Processing metrics matrix of size: [%d, %d]\n', size(metricsMatrix));
+    
+    % Calculate thresholds for each column
+    for i = 1:size(metricsMatrix, 2)
+        if ~isempty(metricsMatrix)
+            values = metricsMatrix(:,i);
             Q1 = prctile(values, 25);
             Q3 = prctile(values, 75);
             IQR = Q3 - Q1;
             
-            thresholds.MetricThresholds.(field{1}) = struct(...
+            thresholds.MetricThresholds.(metricNames{i}) = struct(...
                 'Q1', Q1, ...
                 'Q3', Q3, ...
                 'IQR', IQR, ...
@@ -238,6 +281,10 @@ function thresholds = calculateGroupThresholds(groupMetrics)
                 'LowerFence', Q1 - 2 * IQR);     % More conservative
         end
     end
+    
+    % Debug output
+    fprintf('Debug - Calculated thresholds:\n');
+    disp(thresholds);
 end
 
 function isOutlier = isUnitOutlier(metrics, thresholds, params)
@@ -246,6 +293,16 @@ function isOutlier = isUnitOutlier(metrics, thresholds, params)
         outlierThreshold = params.analysis.outlierThreshold;
     else
         outlierThreshold = 0.33;
+    end
+    
+    % Convert metrics to structure if it's a double array
+    if isnumeric(metrics)
+        metricNames = {'maxFiringRate', 'meanFiringRate', 'baselineRate', 'cv', 'burstIndex'};
+        metricsStruct = struct();
+        for i = 1:length(metricNames)
+            metricsStruct.(metricNames{i}) = metrics(i);
+        end
+        metrics = metricsStruct;
     end
     
     % Count how many metrics are outliers

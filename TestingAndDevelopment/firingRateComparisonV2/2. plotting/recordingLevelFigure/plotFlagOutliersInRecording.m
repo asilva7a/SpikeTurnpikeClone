@@ -114,23 +114,16 @@ function plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGrou
     end
 
     % Save figure
-    if nargin > 4 && ~isempty(figureFolder)
-        try
-            saveDir = fullfile(figureFolder, '0. expFigures');
-            if ~exist(saveDir, 'dir')
-                mkdir(saveDir);
-            end
-            
-            timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-            fileName = sprintf('outlierAnalysis_%s.fig', timeStamp);
-            savePath = fullfile(saveDir, fileName);
-            
-            savefig(gcf, savePath);
-            fprintf('Figure saved to: %s\n', savePath);
-            
-        catch ME
-            fprintf('Error saving figure:\n');
-            fprintf('Message: %s\n', ME.message);
+    try
+        if ~exist(figureFolder, 'dir')
+            mkdir(figureFolder);
         end
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('outlierAnalysis_%s.fig', timeStamp);
+        savePath = fullfile(figureFolder, fileName);
+        savefig(gcf, savePath);
+        fprintf('Figure saved to: %s\n', savePath);
+    catch ME
+        fprintf('Error saving figure: %s\n', ME.message);
     end
 end
