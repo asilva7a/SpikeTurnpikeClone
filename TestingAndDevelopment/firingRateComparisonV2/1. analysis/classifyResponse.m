@@ -3,29 +3,40 @@ function [responseType, responseMetrics] = classifyResponse(stats, psth, treatme
     responseMetrics = struct();
     responseMetrics.stats = stats;
     
+    % Initialize response classification
+    responseType = struct('type', '', 'subtype', '');
+    
     % Classify response based on multiple criteria
     if stats.p_value < 0.01  % Statistically significant change
         if stats.reliability > 0.7  % High reliability
             if stats.percent_change > 20 && stats.cohens_d > 0.8
-                responseType = 'Strong_Increase';
+                responseType.type = 'Increased';
+                responseType.subtype = 'Strong';
             elseif stats.percent_change < -20 && stats.cohens_d < -0.8
-                responseType = 'Strong_Decrease';
+                responseType.type = 'Decreased';
+                responseType.subtype = 'Strong';
             elseif stats.cohens_d > 0.5
-                responseType = 'Moderate_Increase';
+                responseType.type = 'Increased';
+                responseType.subtype = 'Moderate';
             elseif stats.cohens_d < -0.5
-                responseType = 'Moderate_Decrease';
+                responseType.type = 'Decreased';
+                responseType.subtype = 'Moderate';
             else
-                responseType = 'Weak_Change';
+                responseType.type = 'Changed';
+                responseType.subtype = 'Weak';
             end
         else  % Lower reliability
             if stats.mean_post > stats.mean_pre
-                responseType = 'Variable_Increase';
+                responseType.type = 'Increased';
+                responseType.subtype = 'Variable';
             else
-                responseType = 'Variable_Decrease';
+                responseType.type = 'Decreased';
+                responseType.subtype = 'Variable';
             end
         end
     else  % Not statistically significant
-        responseType = 'No_Change';
+        responseType.type = 'No_Change';
+        responseType.subtype = 'None';
     end
     
     % Add response strength metrics
