@@ -1,4 +1,4 @@
-function [responseType, responseMetrics] = classifyUnitResponse(unitData, params)
+function [responseType, responseMetrics] = classifyUnitResponse(unitData, params, opts)
     % Classifies unit response using multiple criteria
     %
     % Inputs:
