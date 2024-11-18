@@ -216,7 +216,7 @@ function [cellDataStruct, groupIQRs] = flagOutliersInPooledData(cellDataStruct, 
             plotFlagOutliersInRecording(cellDataStruct, psthDataGroup, unitInfoGroup, paths.figureFolder);
             fprintf('Plotting complete\n');
         catch ME
-            fprintf('Error during plotting: %s\n', ME.message);
+            fprintf('Error during b plotting: %s\n', ME.message);
         end
     end
         
