@@ -84,8 +84,7 @@ cellDataStruct = determineResponseType(cellDataStruct, paths, params, ...
     'tagSparse', true);
 
 % Detect Outliers in Response Groups
-cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
-    'both', figureFolder, dataFolder);
+cellDataStruct = flagOutliersInPooledData(cellDataStruct, params, paths);
 
 % Calculate PSTH percent change 
 cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
