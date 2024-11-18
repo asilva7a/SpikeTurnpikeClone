@@ -44,7 +44,6 @@ disp('Starting main script...');
 
 
 %% Get User Input for Directories
-% In main script
 clear; clc;
 
 try
@@ -71,7 +70,6 @@ try
 end
 
 %% Data Analysis
-
 % Generate PTSH for each unit using param file
 cellDataStruct = generateAllPSTHs(cellDataStruct, paths, params);
 
@@ -81,26 +79,19 @@ cellDataStruct = smoothAllPSTHs(cellDataStruct, paths, params);
 % Calculate pre- and post-treatment firing rate 
 cellDataStruct = calculateFiringRate(cellDataStruct, paths, params);
 
-% Determine unit response type (Wilcoxon-Rank) #
-% params.preWindow/postWindow aren't being passed to classify unit
-% response: function is confused and taking the global params instead of
-% the parse options (i.e. opts.preWindow)
+% Determine unit response type
 cellDataStruct = determineResponseType(cellDataStruct, paths, params, ...
-    'tagSparse', true, ...
-    'preWindow', [0, 1800], ...
-    'postWindow', [2000, 3800]);
+    'tagSparse', true);
 
-
-% Detect Outliers in Response Groups (CV and 1.5*IQR of max firing rate)
+% Detect Outliers in Response Groups
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, ...
-    'multi', figureFolder, dataFolder);
+    'both', figureFolder, dataFolder);
 
 % Calculate PSTH percent change 
 cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
 
 % Filter tagged units from remaining analysis
 cellDataStruct = getCleanUnits(cellDataStruct);
-
 
 %% Plotting 
 % Plot Time Locked smoothed PSTHs (mean + std. error of the mean);
@@ -128,7 +119,7 @@ plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 1860, ...
     'mean+sem', 'single', true);
 
 % Plot Time locked percent change PSTHs Group (mean+individual units)
-plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... % Name too similar to other function; differentiate somehow
+plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ... 
     'mean+individual', 'single', true);
 
 % Plot Time locked percent change PSTHs Group (mean+sem)
@@ -160,6 +151,13 @@ plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, 1860, ...
 
 % Plot Wave-forms
 plotAllMeanWaveforms(cellDataStruct);
+
+plotAllRawPSTHs(cellDataStruct, params, figureFolder, dataFolder);
+
+plotAllSmoothedPSTHs(cellDataStruct, params, figureFolder, dataFolder);
+
+plotAllPercentChanged(cellDataStruct, params, figureFolder, dataFolder);
+
 
 % Plot Time Series with aesthetic binning
 % Do in Cmd Line
