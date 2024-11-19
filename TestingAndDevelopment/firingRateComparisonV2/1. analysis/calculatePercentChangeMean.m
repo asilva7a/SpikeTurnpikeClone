@@ -1,21 +1,25 @@
-function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder, baselineWindow, treatmentTime, postWindow)
-    % Set default parameters
-    if nargin < 3
-        baselineWindow = [1500, 1800];
-        treatmentTime = 1860;
-        postWindow = [2000, 4000];
-    end
-
+function cellDataStruct = calculatePercentChangeMean(cellDataStruct, paths, params, varargin)
+    % Parse input parameters
+    p = inputParser;
+    addRequired(p, 'cellDataStruct', @isstruct);
+    addRequired(p, 'paths', @isstruct);
+    addRequired(p, 'params', @isstruct);
+    
+    % Optional parameters with defaults
+    addParameter(p, 'baselineWindow', [1500, 1800], @(x) isnumeric(x) && length(x)==2);
+    addParameter(p, 'postWindow', [2000, 4000], @(x) isnumeric(x) && length(x)==2);
+    addParameter(p, 'scalingFactor', 0.5, @isnumeric);
+    
+    parse(p, cellDataStruct, paths, params, varargin{:});
+    opts = p.Results;
+    
     % Validate windows relative to treatment time
-    if baselineWindow(2) >= treatmentTime
+    if opts.baselineWindow(2) >= params.treatmentTime
         error('Baseline window must end before treatment time');
     end
-    if postWindow(1) <= treatmentTime
+    if opts.postWindow(1) <= params.treatmentTime
         error('Post window must start after treatment time');
     end
-    
-    % Constants
-    SCALING_FACTOR = 0.5;
     
     % Process each unit
     groupNames = fieldnames(cellDataStruct);
@@ -29,25 +33,25 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
             
             % Pre-allocate cell array for parallel processing if needed
             numUnits = length(units);
-            if numUnits > 100  % Only use parallel if many units
-                % Pre-allocate arrays to store results
+            if numUnits > 100 % Only use parallel if many units
                 tempResults = cell(numUnits, 1);
-                unitIDs = units;  % Store unit IDs for later reference
+                unitIDs = units;
+                unitDataArray = cell(numUnits, 1);
                 
                 % Extract unit data for parallel processing
-                unitDataArray = cell(numUnits, 1);
                 for u = 1:numUnits
                     unitDataArray{u} = cellDataStruct.(groupName).(recordingName).(units{u});
                 end
                 
                 % Process in parallel
                 parfor u = 1:numUnits
-                    tempResults{u} = processUnit(unitDataArray{u}, baselineWindow, postWindow, SCALING_FACTOR);
+                    tempResults{u} = processUnit(unitDataArray{u}, opts.baselineWindow, ...
+                        opts.postWindow, opts.scalingFactor);
                 end
                 
                 % Update structure after parallel loop
                 for u = 1:numUnits
-                    if ~isempty(tempResults{u})  % Only update if processing was done
+                    if ~isempty(tempResults{u})
                         cellDataStruct.(groupName).(recordingName).(unitIDs{u}) = tempResults{u};
                     end
                 end
@@ -58,7 +62,8 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
                     unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                     
                     % Process unit directly
-                    processedData = processUnit(unitData, baselineWindow, postWindow, SCALING_FACTOR);
+                    processedData = processUnit(unitData, opts.baselineWindow, ...
+                        opts.postWindow, opts.scalingFactor);
                     if ~isempty(processedData)
                         cellDataStruct.(groupName).(recordingName).(unitID) = processedData;
                     end
@@ -68,16 +73,13 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder,
     end
     
     % Save results
-    if nargin >= 2 && ~isempty(dataFolder)
-        try
-            save(dataFolder, 'cellDataStruct', '-v7.3', '-nocompression');
-            fprintf('Data saved successfully to: %s\n', dataFolder);
-        catch ME
-            fprintf('Error saving data: %s\n', ME.message);
-        end
+    try
+        save(paths.cellDataStructPath, 'cellDataStruct', '-v7.3', '-nocompression');
+        fprintf('Data saved successfully to: %s\n', paths.cellDataStructPath);
+    catch ME
+        fprintf('Error saving data: %s\n', ME.message);
     end
 end
-
 
 function stats = getStats(data)
     % Efficient statistics calculation
