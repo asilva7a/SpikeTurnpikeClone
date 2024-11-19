@@ -22,7 +22,8 @@ function plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder)
     if ~isempty(fieldnames(expStats))
         createFigureFromStats(expStats, 'Experimental', COLORS, saveDir);
     end
-    if ~isempty(fieldnames(ctrlStats))        createFigureFromStats(ctrlStats, 'Control', COLORS, saveDir);
+    if ~isempty(fieldnames(ctrlStats)) 
+        createFigureFromStats(ctrlStats, 'Control', COLORS, saveDir);
     end
 end
 
