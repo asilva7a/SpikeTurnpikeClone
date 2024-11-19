@@ -6,8 +6,8 @@ function cellDataStruct = calculatePercentChangeMean(cellDataStruct, paths, para
     addRequired(p, 'params', @isstruct);
     
     % Optional parameters with defaults
-    addParameter(p, 'baselineWindow', [1500, 1800], @(x) isnumeric(x) && length(x)==2);
-    addParameter(p, 'postWindow', [2000, 4000], @(x) isnumeric(x) && length(x)==2);
+    addParameter(p, 'baselineWindow', [300, 1800], @(x) isnumeric(x) && length(x)==2);
+    addParameter(p, 'postWindow', [2000, 3500], @(x) isnumeric(x) && length(x)==2);
     addParameter(p, 'scalingFactor', 0.5, @isnumeric);
     
     parse(p, cellDataStruct, paths, params, varargin{:});
