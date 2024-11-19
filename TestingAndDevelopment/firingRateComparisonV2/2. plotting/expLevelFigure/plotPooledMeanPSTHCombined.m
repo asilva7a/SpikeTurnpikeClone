@@ -24,8 +24,8 @@ function plotPooledMeanPSTHCombined(cellDataStruct, paths, params, varargin)
     
     % Constants with improved colors
     COLORS = struct(...
-        'Increased', [1, 0, 1], ...    % Magenta
-        'Decreased', [0, 1, 1], ...    % Cyan
+        'Increased', [1, 0, 0], ...    % Magenta
+        'Decreased', [0, 0, 1], ...    % Cyan
         'No_Change', [0.7, 0.7, 0.7]); % Grey
     
     % Initialize data collection
