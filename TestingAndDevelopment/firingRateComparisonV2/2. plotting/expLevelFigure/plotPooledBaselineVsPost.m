@@ -10,7 +10,7 @@ function plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder)
     COLORS = struct(...
         'Increased', [1, 0, 0, 0.3], ...    % Red
         'Decreased', [0, 0, 1, 0.3], ...    % Blue
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
+        'No_Change', [0.5, 0.5, 0.5, 0.3]);  % Grey
     
     % Create save directory
     saveDir = fullfile(figureFolder, '0. expFigures');
@@ -22,8 +22,7 @@ function plotPooledBaselineVsPost(expStats, ctrlStats, figureFolder)
     if ~isempty(fieldnames(expStats))
         createFigureFromStats(expStats, 'Experimental', COLORS, saveDir);
     end
-    if ~isempty(fieldnames(ctrlStats))
-        createFigureFromStats(ctrlStats, 'Control', COLORS, saveDir);
+    if ~isempty(fieldnames(ctrlStats))        createFigureFromStats(ctrlStats, 'Control', COLORS, saveDir);
     end
 end
 
@@ -38,7 +37,7 @@ function createFigureFromStats(groupStats, groupTitle, colors, saveDir)
     title(t, sprintf('%s Groups: Baseline vs Post-Treatment', groupTitle), ...
         'FontSize', 14, 'FontWeight', 'bold');
     
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     titles = {'Enhanced Units', 'Decreased Units', 'No Change Units'};
     
     % Process each response type
@@ -106,10 +105,10 @@ function plotPanelFromStats(statsData, title_str, color)
     scatter(x2, post_data, 15, color(1:3), 'filled', 'MarkerFaceAlpha', 0.5);
     
     % Consistent axis formatting
-    axis([0.5 2.5 0 3]);
+    axis([0.5 2.5 0 2]);
     set(gca, 'XTick', [1 2], ...
         'XTickLabel', {'Baseline', 'Post'}, ...
-        'YTick', 0:0.5:3, ...
+        'YTick', -1:0.5:2, ...
         'FontSize', 10);
     
     % Add grid
@@ -130,7 +129,7 @@ function plotPanelFromStats(statsData, title_str, color)
        isfield(statsData.testResults.wilcoxon, 'p')
         
         p_value = statsData.testResults.wilcoxon.p;
-        ypos = 2.8;  % Consistent position for p-value
+        ypos = 1.8;  % Consistent position for p-value
         
         if p_value < 0.05
             text(1.5, ypos, sprintf('p = %.3f *', p_value), ...
