@@ -3,7 +3,7 @@ function plotPooledPercentChangeBaselineVsPost(expStats, ctrlStats, figureFolder
     COLORS = struct(...
         'Increased', [1, 0, 0, 0.3], ...    % Red
         'Decreased', [0, 0, 1, 0.3], ...    % Blue
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
+        'No_Change', [0.5, 0.5, 0.5, 0.3]);  % Grey
     
     % Create save directory
     saveDir = fullfile(figureFolder, '0. expFigures');
@@ -22,7 +22,7 @@ function createFigureFromStats(groupStats, groupTitle, colors, saveDir)
     fig = figure('Position', [100, 100, 1600, 500]);
     sgtitle(sprintf('%s Groups: Baseline vs Post-Treatment', groupTitle));
     
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     titles = {'Enhanced Units', 'Decreased Units', 'No Change Units'};
     
     % Find global y-limits across all panels
@@ -116,7 +116,7 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
     % Add vertical dashed line at treatment time
     xline(1.5, '--k', 'LineWidth', 1, 'Alpha', 0.5);
     
-    % Add p-value and confidence intervals
+    % Add p-value
     if length(baseline_data) > 1 && length(post_data) > 1
         % Get statistics
         p_value = statsData.testResults.wilcoxon.p;  % Changed from p_holm to p
@@ -133,16 +133,6 @@ function plotPanelFromStats(statsData, title_str, color, yMin, yMax)
                  'FontSize', 10);
         else
             text(1.5, topPos, sprintf('p = %.3f', p_value), ...
-                 'HorizontalAlignment', 'center', ...
-                 'FontSize', 10);
-        end
-        
-        % Add confidence intervals if available
-        if isfield(statsData.stats, 'baseline') && isfield(statsData.stats, 'post') && ...
-           isfield(statsData.stats.baseline, 'CI') && isfield(statsData.stats.post, 'CI')
-            text(1.5, midPos, sprintf('CI: [%.1f, %.1f] vs [%.1f, %.1f]', ...
-                 statsData.stats.baseline.CI(1), statsData.stats.baseline.CI(2), ...
-                 statsData.stats.post.CI(1), statsData.stats.post.CI(2)), ...
                  'HorizontalAlignment', 'center', ...
                  'FontSize', 10);
         end
