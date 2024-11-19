@@ -1,9 +1,8 @@
-function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, boxCarWindow, varargin)
+function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, varargin)
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
     addRequired(p, 'figureFolder');
-    addRequired(p, 'boxCarWindow', @isnumeric);
     addParameter(p, 'TreatmentTime', 1860, @isnumeric);
     addParameter(p, 'UnitFilter', 'both', @ischar);
     addParameter(p, 'OutlierFilter', true, @islogical);
@@ -13,7 +12,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, boxCa
     addParameter(p, 'TraceAlpha', 0.2, @(x) isnumeric(x) && x >= 0 && x <= 1);
     addParameter(p, 'YLimits', [], @(x) isempty(x) || (isnumeric(x) && length(x) == 2));
     addParameter(p, 'FontSize', 10, @isnumeric);
-    parse(p, cellDataStruct, figureFolder, boxCarWindow, varargin{:});
+    parse(p, cellDataStruct, figureFolder, varargin{:});
     opts = p.Results;
 
     % Constants with improved colors
@@ -53,7 +52,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, boxCa
     end
 end
 
-function [responseData, timeVector] = collectUnitData(recordingData, unitFilter, outlierFilter, boxCarWindow)
+function [responseData, timeVector] = collectUnitData(recordingData, unitFilter, outlierFilter)
     % Initialize data structures
     responseData = struct(...
         'Increased', [], ...
@@ -76,9 +75,6 @@ function [responseData, timeVector] = collectUnitData(recordingData, unitFilter,
             if isempty(timeVector) && isfield(unitData, 'binEdges') && isfield(unitData, 'binWidth')
                 timeVector = unitData.binEdges(1:end-1) + unitData.binWidth/2;
             end
-            
-            % Smooth data with boxcar window
-            smoothedPSTH = smoothdata(unitData.psthPercentChange, 'movmean', boxCarWindow);
             
             % Add data to appropriate response type
             responseType = strrep(unitData.responseType, ' ', '');
