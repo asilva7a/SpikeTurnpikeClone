@@ -1,21 +1,26 @@
-function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
-    % Set defaults
-    if nargin < 6, outlierFilter = true; end
-    if nargin < 5, unitFilter = 'both'; end
-    if nargin < 4, plotType = 'mean+sem'; end
-    if nargin < 3, treatmentTime = 1860; end
+function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, varargin)
+    % Parse optional parameters
+    p = inputParser;
+    addRequired(p, 'cellDataStruct');
+    addRequired(p, 'figureFolder');
+    addParameter(p, 'TreatmentTime', 1860, @isnumeric);
+    addParameter(p, 'UnitFilter', 'both', @ischar);
+    addParameter(p, 'OutlierFilter', true, @islogical);
+    addParameter(p, 'PlotType', 'mean+sem', @ischar);
+    parse(p, cellDataStruct, figureFolder, varargin{:});
+    opts = p.Results;
     
     % Constants
     COLORS = struct(...
         'Increased', [1, 0, 0, 0.3], ...    % Red
         'Decreased', [0, 0, 1, 0.3], ...    % Blue
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
+        'No_Change', [0.5, 0.5, 0.5, 0.3]);  % Grey
     
     % Initialize data collection
     responseData = struct(...
         'Increased', [], ...
         'Decreased', [], ...
-        'NoChange', [], ...
+        'No_Change', [], ...
         'timeVector', []);
     
     % Create save directory
@@ -44,7 +49,7 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
                 unitData = cellDataStruct.(groupName).(recordingName).(units{u});
                 
                 % Check unit validity
-                if ~isValidUnit(unitData, unitFilter, outlierFilter)
+                if ~isValidUnit(unitData, opts.UnitFilter, opts.OutlierFilter)
                     continue;
                 end
                 
@@ -56,7 +61,7 @@ function plotPooledPercentPSTHCombined(cellDataStruct, figureFolder, treatmentTi
     
     % Create and save figure if data exists
     if ~isempty(responseData.timeVector)
-        createAndSaveFigure(responseData, treatmentTime, plotType, COLORS, saveDir);
+        createAndSaveFigure(responseData, opts.TreatmentTime, opts.PlotType, COLORS, saveDir);
     else
         warning('Plot:NoData', 'No valid units found for plotting');
     end
@@ -101,7 +106,7 @@ function createAndSaveFigure(responseData, treatmentTime, plotType, colors, save
     fig = figure('Position', [100, 100, 1600, 500]);
     sgtitle(sprintf('Pooled Emx and Pvalb - %s', plotType));
     
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     for i = 1:length(responseTypes)
         subplot(1, 3, i);
         plotResponseType(responseData.(responseTypes{i}), responseData.timeVector, ...
@@ -147,3 +152,4 @@ function plotResponseType(data, timeVector, color, plotTitle, treatmentTime, plo
     grid on;
     hold off;
 end
+
