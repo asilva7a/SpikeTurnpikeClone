@@ -1,5 +1,4 @@
 function plotPooledMeanPSTHCombined(cellDataStruct, paths, params, varargin)
-
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
@@ -20,7 +19,6 @@ function plotPooledMeanPSTHCombined(cellDataStruct, paths, params, varargin)
     
     parse(p, cellDataStruct, paths, params, varargin{:});
     opts = p.Results;
-
     
     % Constants with improved colors
     COLORS = struct(...
@@ -56,7 +54,6 @@ function plotPooledMeanPSTHCombined(cellDataStruct, paths, params, varargin)
             recordingName = recordings{r};
             responseData = processRecording(cellDataStruct.(groupName).(recordingName), ...
                 responseData, opts.UnitFilter, opts.OutlierFilter);
-
         end
     end
     
@@ -116,7 +113,7 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
     
     % Create legend for both panels
     leg = legend([h1.mainLine, h2.mainLine, h3.mainLine], ...
-        {'Increased', 'Decreased', 'No Change'}, ...
+        {'Enhanced', 'Diminished', 'No Change'}, ...
         'Orientation', 'horizontal');
     leg.Layout.Tile = 'south'; % Place legend below both panels
     
@@ -134,6 +131,31 @@ end
 
 function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
     hold on;
+    
+    % Initialize handles
+    h1 = [];
+    h2 = [];
+    
+    % Plot individual traces if enabled
+    if strcmp(opts.PlotType, 'mean+individual')
+        % Plot Increased individual traces
+        if ~isempty(responseData.Increased)
+            for i = 1:size(responseData.Increased, 1)
+                plot(timeVector, responseData.Increased(i,:), ...
+                    'Color', [colors.Increased 0.05], ...
+                    'LineWidth', opts.LineWidth/3);
+            end
+        end
+        
+        % Plot Decreased individual traces
+        if ~isempty(responseData.Decreased)
+            for i = 1:size(responseData.Decreased, 1)
+                plot(timeVector, responseData.Decreased(i,:), ...
+                    'Color', [colors.Decreased 0.05], ...
+                    'LineWidth', opts.LineWidth/3);
+            end
+        end
+    end
     
     % Plot Increased units
     if ~isempty(responseData.Increased)
@@ -171,13 +193,14 @@ function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, trea
     end
     
     % Add labels
-    title(sprintf('Experimental Responses\n(Inc: n=%d, Dec: n=%d)', ...
+    title(sprintf('Modulated Units\n(Enh: n=%d, Dim: n=%d)', ...
         size(responseData.Increased,1), size(responseData.Decreased,1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
     
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
+
 
 function h = plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
     if isempty(data)
@@ -187,6 +210,14 @@ function h = plotResponseType(data, timeVector, color, titleStr, treatmentTime, 
     end
     
     hold on;
+    
+    % Plot individual traces if enabled
+    if strcmp(opts.PlotType, 'mean+individual')
+        for i = 1:size(data, 1)
+            plot(timeVector, data(i,:), 'Color', [color 0.05], ...  % Much more transparent
+                'LineWidth', opts.LineWidth/3);
+        end
+    end
     
     % Calculate mean and SEM
     meanData = mean(data, 1, 'omitnan');
@@ -243,4 +274,3 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
               isfield(unitData, 'binEdges') && ...
               isfield(unitData, 'binWidth');
 end
-
