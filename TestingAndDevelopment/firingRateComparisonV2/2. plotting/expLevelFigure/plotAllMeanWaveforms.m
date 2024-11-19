@@ -36,11 +36,6 @@ function plotAllMeanWaveforms(cellDataStruct)
                     continue;
                 end
                 
-                % Skip outliers
-                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
-                    continue;
-                end
-                
                 % Only process single units
                 if ~unitData.IsSingleUnit
                     continue;
@@ -70,8 +65,8 @@ function plotAllMeanWaveforms(cellDataStruct)
                 end
             end
         end
-    end
-    
+end
+
     % Print summary
     fprintf('\nSummary:\n');
     fprintf('Total units: %d\n', size(waveforms_all, 2));
@@ -130,4 +125,15 @@ function plotAllMeanWaveforms(cellDataStruct)
         grid on;
         set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
     end
+
+    % Save figure
+    try
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('allSingleUnitMeanWaveforms_%s.fig', timeStamp);
+        savefig(fig, fullfile(saveDir, fileName));
+        close(fig);
+    catch ME
+        warning('Save:Error', 'Error saving figure: %s', ME.message);
+    end
+    
 end
