@@ -1,4 +1,26 @@
 function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, varargin)
+%% Example Use:
+% Basic usage
+% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 10);
+%
+% *Input:
+% * CellDataStruct
+% * figureFolder
+% * boxCar Width
+%
+% With optional parameters
+% plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, 10, ...
+%     'TreatmentTime', 1860, ...
+%     'UnitFilter', 'single', ...
+%     'OutlierFilter', true, ...
+%     'PlotType', 'mean+sem', ...
+%     'ShowGrid', true, ...
+%     'LineWidth', 2, ...
+%     'TraceAlpha', 0.3, ...
+%     'YLimits', [0 5], ...
+%     'FontSize', 12);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
@@ -38,7 +60,7 @@ function plotTimeLockedPercentChangeCombined(cellDataStruct, figureFolder, varar
             
             % Collect and organize unit data
             [responseData, timeVector] = collectUnitData(cellDataStruct.(groupName).(recordingName), ...
-                                                       opts.UnitFilter, opts.OutlierFilter, boxCarWindow);
+                                                       opts.UnitFilter, opts.OutlierFilter);
             
             if isempty(timeVector)
                 warning('Plot:NoData', 'No valid units found in %s/%s', groupName, recordingName);
@@ -79,7 +101,7 @@ function [responseData, timeVector] = collectUnitData(recordingData, unitFilter,
             % Add data to appropriate response type
             responseType = strrep(unitData.responseType, ' ', '');
             if isfield(responseData, responseType)
-                responseData.(responseType) = [responseData.(responseType); smoothedPSTH];
+                responseData.(responseType) = [responseData.(responseType); unitData.psthPercentChange];
             end
         end
     end
@@ -89,7 +111,7 @@ function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, 
     fig = figure('Position', [100, 100, 1200, 400]);
     t = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
     
-    title(t, sprintf('%s - %s (Box Car: %ds)', groupName, recordingName, opts.boxCarWindow), ...
+    title(t, sprintf('%s - %s', groupName, recordingName), ...
           'FontSize', opts.FontSize + 4);
     
     responseTypes = {'Increased', 'Decreased', 'No_Change'};
@@ -101,8 +123,8 @@ function createAndSaveFigure(responseData, timeVector, opts, colors, groupName, 
     
     % Save figure
     timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-    filename = sprintf('%s_%s_PercentChange_BoxCar%ds_%s', ...
-                      groupName, recordingName, opts.boxCarWindow, timestamp);
+    filename = sprintf('%s_%s_PercentChange_%s', ...
+                      groupName, recordingName, timestamp);
     savefig(fig, fullfile(saveDir, [filename '.fig']));
     saveas(fig, fullfile(saveDir, [filename '.png']));
     close(fig);
@@ -124,17 +146,14 @@ function plotResponseType(data, timeVector, color, titleStr, opts)
         end
     end
     
-    % Calculate and plot mean ± SEM
+    % Calculate mean and SEM
     meanData = mean(data, 1, 'omitnan');
     semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
     
-    % Plot shaded error bars
-    fill([timeVector, fliplr(timeVector)], ...
-         [meanData + semData, fliplr(meanData - semData)], ...
-         color, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    
-    % Plot mean line
-    plot(timeVector, meanData, 'Color', color, 'LineWidth', opts.LineWidth);
+    % Use shadedErrorBar for mean±SEM plot
+    shadedErrorBar(timeVector, meanData, semData, ...
+                  'lineprops', {'Color', color, 'LineWidth', opts.LineWidth}, ...
+                  'patchSaturation', 0.2);
     
     % Add treatment line
     xline(opts.TreatmentTime, '--k', 'LineWidth', 1, 'Alpha', 0.5);
