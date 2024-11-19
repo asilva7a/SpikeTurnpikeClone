@@ -147,6 +147,15 @@ function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, 
             'patchSaturation', 0.2);
     end
     
+    % Plot No Change units
+    if ~isempty(responseData.No_Change)
+        meanNC = mean(responseData.No_Change, 1, 'omitnan');
+        semNC = std(responseData.No_Change, 0, 1, 'omitnan') / sqrt(size(responseData.No_Change, 1));
+        h3 = shadedErrorBar(timeVector, meanNC, semNC, ...
+            'lineProps', {'Color', colors.No_Change, 'LineWidth', opts.LineWidth}, ...
+            'patchSaturation', 0.2);
+    end
+    
     % Add treatment line
     xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 2, 'Alpha', 0.5);
     
@@ -165,12 +174,13 @@ function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, 
     end
     
     % Add labels
-    title(sprintf('Experimental Responses\n(Inc: n=%d, Dec: n=%d)', ...
-        size(responseData.Increased,1), size(responseData.Decreased,1)), ...
+    title(sprintf('Response Types\n(Inc: n=%d, Dec: n=%d, NC: n=%d)', ...
+        size(responseData.Increased,1), size(responseData.Decreased,1), size(responseData.No_Change,1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
     
-    % Add legend using the actual line handles
-    legend([h1.mainLine, h2.mainLine], {'Increased', 'Decreased'}, 'Location', 'northeast');
+    % Add legend using all line handles
+    legend([h1.mainLine, h2.mainLine, h3.mainLine], ...
+        {'Increased', 'Decreased', 'No Change'}, 'Location', 'northeast');
     
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
