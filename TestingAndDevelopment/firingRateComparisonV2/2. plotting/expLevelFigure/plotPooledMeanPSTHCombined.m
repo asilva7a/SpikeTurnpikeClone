@@ -122,7 +122,7 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
         timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
         fileName = sprintf('Pooled_Responses_%s_%s', opts.PlotType, timestamp);
         savefig(fig, fullfile(saveDir, [fileName '.fig']));
-        saveas(fig, fullfile(saveDir, [fileName '.png']));
+        print(fig, fullfile(saveDir, [fileName '.tif']), '-dtiff', '-r300');
         close(fig);
     catch ME
         warning('Save:Error', 'Error saving figure: %s', ME.message);
