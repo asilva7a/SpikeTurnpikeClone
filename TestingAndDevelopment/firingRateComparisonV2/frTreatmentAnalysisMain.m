@@ -87,7 +87,7 @@ cellDataStruct = determineResponseType(cellDataStruct, paths, params, ...
 cellDataStruct = flagOutliersInPooledData(cellDataStruct, params, paths);
 
 % Calculate PSTH percent change 
-cellDataStruct = calculatePercentChangeMean(cellDataStruct, dataFolder);
+cellDataStruct = calculatePercentChangeMean(cellDataStruct, paths, params);
 
 % Filter tagged units from remaining analysis
 cellDataStruct = getCleanUnits(cellDataStruct);
