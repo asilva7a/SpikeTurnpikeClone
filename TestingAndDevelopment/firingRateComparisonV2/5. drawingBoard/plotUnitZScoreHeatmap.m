@@ -5,7 +5,6 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
     addRequired(p, 'figureFolder');
     addParameter(p, 'UnitFilter', 'both', @ischar);
     addParameter(p, 'OutlierFilter', true, @islogical);
-    addParameter(p, 'BoxCarWindow', 10, @isnumeric);
     addParameter(p, 'ColorLimits', [-2 2], @(x) isempty(x) || (isnumeric(x) && length(x) == 2));
     addParameter(p, 'FontSize', 10, @isnumeric);
     parse(p, cellDataStruct, figureFolder, varargin{:});
@@ -63,8 +62,9 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
                     colorKey = sprintf('%s_%s', responseType, subtype);
                     
                     % Store data
-                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; ...
-                        smoothdata(unitData.psthZScore, 'movmean', opts.BoxCarWindow)];
+                    % Store data without additional smoothing
+                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; 
+                        unitData.psthZScore];
                     groupData.(groupName).CohensD = [groupData.(groupName).CohensD; ...
                         unitData.responseMetrics.stats.cohens_d];
                     groupData.(groupName).Labels = [groupData.(groupName).Labels; unitID];
