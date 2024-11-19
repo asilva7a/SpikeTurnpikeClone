@@ -1,4 +1,4 @@
-function plotGridPSTHZScores(cellDataStruct, paths)
+function plotGridPSTHZScores(cellDataStruct, ~)
     % Define more distinct color scheme for response types and subtypes
     colorMap = containers.Map();
     
@@ -116,64 +116,85 @@ function plotGridPSTHZScores(cellDataStruct, paths)
         'Changed_Weak', 'No_Change_None'
     };
     
-    % Plot legend items with more spacing
-    spacing = 1.2; % Increase spacing between items
+    % Create legend figure with better formatting
+    legendFig = figure('Position', [1600 500 300 400]);
+    ax = axes('Position', [0.1 0.1 0.8 0.8]);
+    hold(ax, 'on');
+    
+    % Define order and labels for legend entries
+    responseTypes = {
+        'Increased_Strong', 'Increased_Moderate', 'Increased_Variable', ...
+        'Decreased_Strong', 'Decreased_Moderate', 'Decreased_Variable', ...
+        'Changed_Weak', 'No_Change_None'
+    };
+    
+    legendLabels = {
+        'Enhanced (Strong)', 'Enhanced (Moderate)', 'Enhanced (Variable)', ...
+        'Diminished (Strong)', 'Diminished (Moderate)', 'Diminished (Variable)', ...
+        'Changed (Weak)', 'No Change'
+    };
+    
+    % Create invisible scatter points for legend
+    h = zeros(length(responseTypes), 1);
     for i = 1:length(responseTypes)
-        y_pos = (length(responseTypes) - i + 1) * spacing;
-        plot([0.1 0.4], [y_pos y_pos], '-', 'Color', colorMap(responseTypes{i}), 'LineWidth', 2.5);
-        text(0.5, y_pos, strrep(responseTypes{i}, '_', ' '), ...
-            'FontSize', 10, ...
-            'FontWeight', 'bold', ...
-            'VerticalAlignment', 'middle');
+        h(i) = plot(NaN, NaN, '-', 'Color', colorMap(responseTypes{i}), ...
+            'LineWidth', 2.5, 'DisplayName', legendLabels{i});
     end
     
-    % Customize legend figure
-    title('Response Types and Subtypes', 'FontSize', 12, 'FontWeight', 'bold');
-    axis off;
-    set(gcf, 'Color', 'white');
+    % Create legend
+    leg = legend(h, legendLabels, ...
+        'Location', 'northoutside', ...
+        'Orientation', 'vertical', ...
+        'FontSize', 10, ...
+        'Box', 'off');
     
-    % Adjust figure size to content
-    ax = gca;
-    ax.Position = [0.1 0.1 0.8 0.8];
+    % Adjust figure and legend appearance
+    title(ax, 'Response Types', 'FontSize', 12, 'FontWeight', 'bold');
+    axis(ax, 'off');
+    set(legendFig, 'Color', 'white');
     
-    hold off;
+    % Adjust legend position
+    leg.Position(1:2) = [0.1 0.1];
+    
+    hold(ax, 'off');
 
-%     % Save figures
-%     try
-%         % Create save directory
-%         saveDir = fullfile(paths.figureFolder, '0. expFigures');
-%         if ~isfolder(saveDir)
-%             mkdir(saveDir);
-%         end
-% 
-%         timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-% 
-%         % Save group figures
-%         for f = 1:length(allFigures)-1
-%             fig = allFigures(f);
-%             figure(fig);
-%             groupName = get(get(fig, 'CurrentAxes'), 'Title');
-%             if isempty(groupName)
-%                 groupName = sprintf('group%d', f);
-%             end
-% 
-%             savefig(fig, fullfile(saveDir, sprintf('gridPSTHZScores_%s_%s.fig', ...
-%                 strrep(groupName.String, ' ', ''), timeStamp)));
-%             print(fig, fullfile(saveDir, sprintf('gridPSTHZScores_%s_%s.tif', ...
-%                 strrep(groupName.String, ' ', ''), timeStamp)), '-dtiff', '-r300');
-%         end
-% 
-%         % Save legend
-%         fig = allFigures(end);
-%         savefig(fig, fullfile(saveDir, sprintf('gridPSTHZScores_legend_%s.fig', timeStamp)));
-%         print(fig, fullfile(saveDir, sprintf('gridPSTHZScores_legend_%s.tif', timeStamp)), '-dtiff', '-r300');
-% 
-%         fprintf('Figures saved successfully to: %s\n', saveDir);
-% 
-%         close all;
-%     catch ME
-%         warning('Save:Error', 'Error saving figures: %s\n%s', ME.message, ME.stack(1).name);
-%     end
+
+    % Save figures
+    try
+        % Create save directory
+        saveDir = fullfile(paths.figureFolder, '0. expFigures');
+        if ~isfolder(saveDir)
+            mkdir(saveDir);
+        end
+
+        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+
+        % Save group figures
+        for f = 1:length(allFigures)-1
+            fig = allFigures(f);
+            figure(fig);
+            groupName = get(get(fig, 'CurrentAxes'), 'Title');
+            if isempty(groupName)
+                groupName = sprintf('group%d', f);
+            end
+
+            savefig(fig, fullfile(saveDir, sprintf('gridPSTHZScores_%s_%s.fig', ...
+                strrep(groupName.String, ' ', ''), timeStamp)));
+            print(fig, fullfile(saveDir, sprintf('gridPSTHZScores_%s_%s.tif', ...
+                strrep(groupName.String, ' ', ''), timeStamp)), '-dtiff', '-r300');
+        end
+
+        % Save legend
+        fig = allFigures(end);
+        savefig(fig, fullfile(saveDir, sprintf('gridPSTHZScores_legend_%s.fig', timeStamp)));
+        print(fig, fullfile(saveDir, sprintf('gridPSTHZScores_legend_%s.tif', timeStamp)), '-dtiff', '-r300');
+
+        fprintf('Figures saved successfully to: %s\n', saveDir);
+
+        close all;
+    catch ME
+        warning('Save:Error', 'Error saving figures: %s\n%s', ME.message, ME.stack(1).name);
+    end
 end
 
 
