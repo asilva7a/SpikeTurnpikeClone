@@ -2,7 +2,7 @@ function [expStats, ctrlStats] = calculatePooledPercentChangeStats(cellDataStruc
     % Set defaults
     if nargin < 4, outlierFilter = true; end
     if nargin < 3, unitFilter = 'both'; end
-    if nargin < 2, treatmentTime = 1860; end
+   if nargin < 2, treatmentTime = 1860; end
     
     % Initialize data structures
     expData = initializeDataStructure();
@@ -24,7 +24,7 @@ function [expStats, ctrlStats] = calculatePooledPercentChangeStats(cellDataStruc
 end
 
 function dataStruct = initializeDataStructure()
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     dataStruct = struct();
     for rt = responseTypes
         dataStruct.(rt{1}) = struct(...
@@ -101,7 +101,7 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
 end
 
 function groupStats = calculateGroupStats(data)
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
     groupStats = struct();
     
     for rt = responseTypes
