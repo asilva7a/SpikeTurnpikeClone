@@ -140,17 +140,14 @@ function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts
         end
     end
     
-    % Calculate and plot mean ± SEM
+    % Calculate mean and SEM
     meanData = mean(data, 1, 'omitnan');
     semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
     
-    % Plot shaded error bars
-    fill([timeVector, fliplr(timeVector)], ...
-        [meanData + semData, fliplr(meanData - semData)], ...
-        color, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    
-    % Plot mean line
-    plot(timeVector, meanData, 'Color', color, 'LineWidth', opts.LineWidth);
+    % Plot mean ± SEM using shadedErrorBar
+    shadedErrorBar(timeVector, meanData, semData, ...
+        'lineProps', {'Color', color, 'LineWidth', opts.LineWidth}, ...
+        'patchSaturation', 0.2);
     
     % Add treatment line
     xline(treatmentTime, '--k', 'LineWidth', 1, 'Alpha', 0.5);
