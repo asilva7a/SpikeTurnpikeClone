@@ -92,7 +92,21 @@ function responseData = processRecording(recordingData, responseData, unitFilter
 end
 
 function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
-    fig = figure('Position', [100, 100, 800, 400]);
+    % Delete any existing figures with the same name
+    existingFigs = findall(0, 'Type', 'figure', 'Name', 'PooledResponses');
+    if ~isempty(existingFigs)
+        delete(existingFigs);
+    end
+    
+    % Create new figure with unique name and handle
+    fig = figure('Position', [100, 100, 800, 400], ...
+                'Name', 'PooledResponses', ...
+                'NumberTitle', 'off', ...
+                'Visible', 'on');
+    
+    % Clear the figure
+    clf(fig);
+    
     t = tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
     
     title(t, sprintf('Pooled Response Types'), ...
@@ -117,17 +131,33 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
         'Orientation', 'horizontal');
     leg.Layout.Tile = 'south'; % Place legend below both panels
     
-    % Save figure
+    % Save figure with unique identifier
     try
-        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('Pooled_Responses_%s_%s', opts.PlotType, timestamp);
-        savefig(fig, fullfile(saveDir, [fileName '.fig']));
-        saveas(fig, fullfile(saveDir, [fileName '.png']));
-        close(fig);
+        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
+        plotType = strrep(opts.PlotType, '+', '_');
+        fileName = sprintf('Pooled_Responses_%s_%s', plotType, timestamp);
+        
+        % Create full file paths
+        figPath = fullfile(saveDir, [fileName '.fig']);
+        pngPath = fullfile(saveDir, [fileName '.png']);
+        
+        % Save files
+        savefig(fig, figPath);
+        saveas(fig, pngPath);
+        
+        fprintf('Saved figure to:\n%s\n%s\n', figPath, pngPath);
+        
     catch ME
         warning('Save:Error', 'Error saving figure: %s', ME.message);
     end
+    
+    % Close the figure and clear it from memory
+    if ishandle(fig)
+        delete(fig);
+    end
+    clear fig;
 end
+
 
 function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
     hold on;
