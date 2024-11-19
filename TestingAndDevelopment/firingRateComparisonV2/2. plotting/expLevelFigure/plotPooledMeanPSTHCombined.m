@@ -95,18 +95,20 @@ function responseData = processRecording(recordingData, responseData, unitFilter
 end
 
 function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
-    fig = figure('Position', [100, 100, 1200, 400]);
-    t = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    fig = figure('Position', [100, 100, 800, 400]);  % Adjusted width for 2 panels
+    t = tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
     
-    title(t, sprintf('Pooled Emx and Pvalb Response Types'), ...
+    title(t, sprintf('Pooled Response Types'), ...
         'FontSize', opts.FontSize + 4, 'Interpreter', 'none');
     
-    responseTypes = {'Increased', 'Decreased', 'No_Change'};
-    for i = 1:length(responseTypes)
-        nexttile
-        plotResponseType(responseData.(responseTypes{i}), responseData.timeVector, ...
-            colors.(responseTypes{i}), responseTypes{i}, treatmentTime, opts);
-    end
+    % First panel: Experimental (Increased and Decreased)
+    nexttile
+    plotExperimentalPanel(responseData, responseData.timeVector, colors, treatmentTime, opts);
+    
+    % Second panel: No Change
+    nexttile
+    plotResponseType(responseData.No_Change, responseData.timeVector, ...
+        colors.No_Change, 'No Change', treatmentTime, opts);
     
     % Add common xlabel and ylabel to the tiledlayout
     xlabel(t, 'Time (s)', 'FontSize', opts.FontSize);
@@ -115,13 +117,63 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
     % Save figure
     try
         timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('Pooled_Emx_Pvalb_%s_%s', opts.PlotType, timestamp);
+        fileName = sprintf('Pooled_Responses_%s_%s', opts.PlotType, timestamp);
         savefig(fig, fullfile(saveDir, [fileName '.fig']));
         saveas(fig, fullfile(saveDir, [fileName '.png']));
         close(fig);
     catch ME
         warning('Save:Error', 'Error saving figure: %s', ME.message);
     end
+end
+
+function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
+    hold on;
+    
+    % Plot Increased units
+    if ~isempty(responseData.Increased)
+        meanInc = mean(responseData.Increased, 1, 'omitnan');
+        semInc = std(responseData.Increased, 0, 1, 'omitnan') / sqrt(size(responseData.Increased, 1));
+        h1 = shadedErrorBar(timeVector, meanInc, semInc, ...
+            'lineProps', {'Color', colors.Increased, 'LineWidth', opts.LineWidth}, ...
+            'patchSaturation', 0.2);
+    end
+    
+    % Plot Decreased units
+    if ~isempty(responseData.Decreased)
+        meanDec = mean(responseData.Decreased, 1, 'omitnan');
+        semDec = std(responseData.Decreased, 0, 1, 'omitnan') / sqrt(size(responseData.Decreased, 1));
+        h2 = shadedErrorBar(timeVector, meanDec, semDec, ...
+            'lineProps', {'Color', colors.Decreased, 'LineWidth', opts.LineWidth}, ...
+            'patchSaturation', 0.2);
+    end
+    
+    % Add treatment line
+    xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 2, 'Alpha', 0.5);
+    
+    % Set axis properties
+    if ~isempty(opts.YLimits)
+        ylim(opts.YLimits);
+    end
+    xlim([0 max(timeVector)]);
+    
+    % Make plot square
+    axis square
+    
+    if opts.ShowGrid
+        grid on;
+        set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
+    end
+    
+    % Add labels
+    title(sprintf('Experimental Responses\n(Inc: n=%d, Dec: n=%d)', ...
+        size(responseData.Increased,1), size(responseData.Decreased,1)), ...
+        'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
+    
+    % Add legend using the actual line handles
+    legend([h1.mainLine, h2.mainLine], {'Increased', 'Decreased'}, 'Location', 'northeast');
+    
+    set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
+    hold off;
 end
 
 function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
@@ -157,6 +209,9 @@ function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts
         ylim(opts.YLimits);
     end
     xlim([0 max(timeVector)]);
+
+    % Make plot square
+    axis square
     
     if opts.ShowGrid
         grid on;
@@ -166,7 +221,7 @@ function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts
     % Add labels
     title(sprintf('%s Units (n=%d)', strrep(titleStr, '_', ' '), size(data, 1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
-    
+
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
