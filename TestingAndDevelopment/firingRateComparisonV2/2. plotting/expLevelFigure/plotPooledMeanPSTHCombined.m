@@ -95,7 +95,7 @@ function responseData = processRecording(recordingData, responseData, unitFilter
 end
 
 function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
-    fig = figure('Position', [100, 100, 800, 400]);  % Adjusted width for 2 panels
+    fig = figure('Position', [100, 100, 800, 400]);
     t = tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
     
     title(t, sprintf('Pooled Response Types'), ...
@@ -103,16 +103,22 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
     
     % First panel: Experimental (Increased and Decreased)
     nexttile
-    plotExperimentalPanel(responseData, responseData.timeVector, colors, treatmentTime, opts);
+    [h1, h2] = plotExperimentalPanel(responseData, responseData.timeVector, colors, treatmentTime, opts);
     
     % Second panel: No Change
     nexttile
-    plotResponseType(responseData.No_Change, responseData.timeVector, ...
+    h3 = plotResponseType(responseData.No_Change, responseData.timeVector, ...
         colors.No_Change, 'No Change', treatmentTime, opts);
     
     % Add common xlabel and ylabel to the tiledlayout
     xlabel(t, 'Time (s)', 'FontSize', opts.FontSize);
     ylabel(t, 'Firing Rate (Hz)', 'FontSize', opts.FontSize);
+    
+    % Create legend for both panels
+    leg = legend([h1.mainLine, h2.mainLine, h3.mainLine], ...
+        {'Increased', 'Decreased', 'No Change'}, ...
+        'Orientation', 'horizontal');
+    leg.Layout.Tile = 'south'; % Place legend below both panels
     
     % Save figure
     try
@@ -126,7 +132,7 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
     end
 end
 
-function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
+function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
     hold on;
     
     % Plot Increased units
@@ -147,15 +153,6 @@ function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, 
             'patchSaturation', 0.2);
     end
     
-    % Plot No Change units
-    if ~isempty(responseData.No_Change)
-        meanNC = mean(responseData.No_Change, 1, 'omitnan');
-        semNC = std(responseData.No_Change, 0, 1, 'omitnan') / sqrt(size(responseData.No_Change, 1));
-        h3 = shadedErrorBar(timeVector, meanNC, semNC, ...
-            'lineProps', {'Color', colors.No_Change, 'LineWidth', opts.LineWidth}, ...
-            'patchSaturation', 0.2);
-    end
-    
     % Add treatment line
     xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 2, 'Alpha', 0.5);
     
@@ -174,40 +171,29 @@ function plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, 
     end
     
     % Add labels
-    title(sprintf('Response Types\n(Inc: n=%d, Dec: n=%d, NC: n=%d)', ...
-        size(responseData.Increased,1), size(responseData.Decreased,1), size(responseData.No_Change,1)), ...
+    title(sprintf('Experimental Responses\n(Inc: n=%d, Dec: n=%d)', ...
+        size(responseData.Increased,1), size(responseData.Decreased,1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
-    
-    % Add legend using all line handles
-    legend([h1.mainLine, h2.mainLine, h3.mainLine], ...
-        {'Increased', 'Decreased', 'No Change'}, 'Location', 'northeast');
     
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
 
-function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
+function h = plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
     if isempty(data)
         title(sprintf('%s (No Data)', titleStr), 'Interpreter', 'none');
+        h = [];
         return;
     end
     
     hold on;
-    
-    % Plot individual traces if enabled
-    if strcmp(opts.PlotType, 'mean+individual')
-        for i = 1:size(data, 1)
-            plot(timeVector, data(i,:), 'Color', [color opts.TraceAlpha], ...
-                'LineWidth', opts.LineWidth/3);
-        end
-    end
     
     % Calculate mean and SEM
     meanData = mean(data, 1, 'omitnan');
     semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
     
     % Plot mean ± SEM using shadedErrorBar
-    shadedErrorBar(timeVector, meanData, semData, ...
+    h = shadedErrorBar(timeVector, meanData, semData, ...
         'lineProps', {'Color', color, 'LineWidth', opts.LineWidth}, ...
         'patchSaturation', 0.2);
     
@@ -219,7 +205,7 @@ function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts
         ylim(opts.YLimits);
     end
     xlim([0 max(timeVector)]);
-
+    
     % Make plot square
     axis square
     
@@ -231,7 +217,7 @@ function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts
     % Add labels
     title(sprintf('%s Units (n=%d)', strrep(titleStr, '_', ' '), size(data, 1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
-
+    
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
