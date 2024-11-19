@@ -1,19 +1,26 @@
 {
-	"name": "MATLAB",
-	"image": "mathworks/matlab:latest",
-	"hostRequirements": {
-	  "cpus": 4
-	},
-	"portsAttributes": {
-	  "8888": {
-		"label": "MATLAB",
-		"onAutoForward": "openBrowser"
-	  }
-	},
-	"waitFor": "updateContentCommand",
-	"updateContentCommand": {
-	  "install-git": "sudo apt-get update && sudo apt-get install git -y",
-	  "update-matlab-proxy": "sudo python3 -m pip install --upgrade pip matlab-proxy"
-	},
-	"postStartCommand": "run.sh -browser"
-  }
+    "name": "MATLAB",
+    "image": "mathworks/matlab:latest",
+    "hostRequirements": {
+        "cpus": 4
+    },
+    "features": {
+        "ghcr.io/mathworks/devcontainer-features/matlab:0": {
+            "release": "r2024b",
+            "products": "MATLAB Simulink Deep_Learning_Toolbox"
+        }
+    },
+    "portsAttributes": {
+        "8888": {
+            "label": "MATLAB",
+            "onAutoForward": "openBrowser"
+        }
+    },
+    "waitFor": "updateContentCommand",
+    "updateContentCommand": {
+        "install-git": "sudo apt-get update && sudo apt-get install git -y",
+        "update-matlab-proxy": "sudo python3 -m pip install --upgrade pip matlab-proxy"
+    },
+    "postStartCommand": "run.sh -browser",
+    "runArgs": ["--init", "--shm-size=512M"]
+}
