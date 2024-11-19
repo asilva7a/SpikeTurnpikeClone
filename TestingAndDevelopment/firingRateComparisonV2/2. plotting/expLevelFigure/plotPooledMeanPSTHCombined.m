@@ -92,21 +92,7 @@ function responseData = processRecording(recordingData, responseData, unitFilter
 end
 
 function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
-    % Delete any existing figures with the same name
-    existingFigs = findall(0, 'Type', 'figure', 'Name', 'PooledResponses');
-    if ~isempty(existingFigs)
-        delete(existingFigs);
-    end
-    
-    % Create new figure with unique name and handle
-    fig = figure('Position', [100, 100, 800, 400], ...
-                'Name', 'PooledResponses', ...
-                'NumberTitle', 'off', ...
-                'Visible', 'on');
-    
-    % Clear the figure
-    clf(fig);
-    
+    fig = figure('Position', [100, 100, 800, 400]);
     t = tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
     
     title(t, sprintf('Pooled Response Types'), ...
@@ -131,63 +117,65 @@ function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
         'Orientation', 'horizontal');
     leg.Layout.Tile = 'south'; % Place legend below both panels
     
-    % Save figure with unique identifier
+    % Save figure
     try
-        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
-        plotType = strrep(opts.PlotType, '+', '_');
-        fileName = sprintf('Pooled_Responses_%s_%s', plotType, timestamp);
-        
-        % Create full file paths
-        figPath = fullfile(saveDir, [fileName '.fig']);
-        pngPath = fullfile(saveDir, [fileName '.png']);
-        
-        % Save files
-        savefig(fig, figPath);
-        saveas(fig, pngPath);
-        
-        fprintf('Saved figure to:\n%s\n%s\n', figPath, pngPath);
-        
+        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('Pooled_Responses_%s_%s', opts.PlotType, timestamp);
+        savefig(fig, fullfile(saveDir, [fileName '.fig']));
+        saveas(fig, fullfile(saveDir, [fileName '.png']));
+        close(fig);
     catch ME
         warning('Save:Error', 'Error saving figure: %s', ME.message);
     end
-    
-    % Close the figure and clear it from memory
-    if ishandle(fig)
-        delete(fig);
-    end
-    clear fig;
 end
 
-
 function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, treatmentTime, opts)
-    hold on;
-    
-    % Initialize handles
     h1 = [];
     h2 = [];
-    
-    % Plot individual traces if enabled
+    hold on;
+
     if strcmp(opts.PlotType, 'mean+individual')
+        % Plot individual traces in batches
+        batchSize = 10;  % Adjust based on memory constraints
+        
         % Plot Increased individual traces
         if ~isempty(responseData.Increased)
-            for i = 1:size(responseData.Increased, 1)
-                plot(timeVector, responseData.Increased(i,:), ...
-                    'Color', [colors.Increased 0.05], ...
-                    'LineWidth', opts.LineWidth/3);
+            numBatches = ceil(size(responseData.Increased, 1) / batchSize);
+            for b = 1:numBatches
+                startIdx = (b-1)*batchSize + 1;
+                endIdx = min(b*batchSize, size(responseData.Increased, 1));
+                
+                for i = startIdx:endIdx
+                    plot(timeVector, responseData.Increased(i,:), ...
+                        'Color', [colors.Increased 0.05], ...
+                        'LineWidth', opts.LineWidth/3, ...
+                        'HandleVisibility', 'off', ...
+                        'Tag', 'individual_trace');
+                end
+                drawnow;  % Update display and clear memory after each batch
             end
         end
         
         % Plot Decreased individual traces
         if ~isempty(responseData.Decreased)
-            for i = 1:size(responseData.Decreased, 1)
-                plot(timeVector, responseData.Decreased(i,:), ...
-                    'Color', [colors.Decreased 0.05], ...
-                    'LineWidth', opts.LineWidth/3);
+            numBatches = ceil(size(responseData.Decreased, 1) / batchSize);
+            for b = 1:numBatches
+                startIdx = (b-1)*batchSize + 1;
+                endIdx = min(b*batchSize, size(responseData.Decreased, 1));
+                
+                for i = startIdx:endIdx
+                    plot(timeVector, responseData.Decreased(i,:), ...
+                        'Color', [colors.Decreased 0.05], ...
+                        'LineWidth', opts.LineWidth/3, ...
+                        'HandleVisibility', 'off', ...
+                        'Tag', 'individual_trace');
+                end
+                drawnow;  % Update display and clear memory after each batch
             end
         end
     end
-    
-    % Plot Increased units
+
+    % Plot mean traces (for both plot types)
     if ~isempty(responseData.Increased)
         meanInc = mean(responseData.Increased, 1, 'omitnan');
         semInc = std(responseData.Increased, 0, 1, 'omitnan') / sqrt(size(responseData.Increased, 1));
@@ -195,8 +183,7 @@ function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, trea
             'lineProps', {'Color', colors.Increased, 'LineWidth', opts.LineWidth}, ...
             'patchSaturation', 0.2);
     end
-    
-    % Plot Decreased units
+
     if ~isempty(responseData.Decreased)
         meanDec = mean(responseData.Decreased, 1, 'omitnan');
         semDec = std(responseData.Decreased, 0, 1, 'omitnan') / sqrt(size(responseData.Decreased, 1));
@@ -204,33 +191,27 @@ function [h1, h2] = plotExperimentalPanel(responseData, timeVector, colors, trea
             'lineProps', {'Color', colors.Decreased, 'LineWidth', opts.LineWidth}, ...
             'patchSaturation', 0.2);
     end
-    
-    % Add treatment line
+
+    % Add formatting
     xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 2, 'Alpha', 0.5);
     
-    % Set axis properties
     if ~isempty(opts.YLimits)
         ylim(opts.YLimits);
     end
     xlim([0 max(timeVector)]);
-    
-    % Make plot square
-    axis square
+    axis square;
     
     if opts.ShowGrid
         grid on;
         set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
     end
-    
-    % Add labels
+
     title(sprintf('Modulated Units\n(Enh: n=%d, Dim: n=%d)', ...
         size(responseData.Increased,1), size(responseData.Decreased,1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
-    
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
-
 
 function h = plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
     if isempty(data)
@@ -238,50 +219,56 @@ function h = plotResponseType(data, timeVector, color, titleStr, treatmentTime, 
         h = [];
         return;
     end
-    
+
     hold on;
     
-    % Plot individual traces if enabled
+    % Plot individual traces in batches if enabled
     if strcmp(opts.PlotType, 'mean+individual')
-        for i = 1:size(data, 1)
-            plot(timeVector, data(i,:), 'Color', [color 0.05], ...  % Much more transparent
-                'LineWidth', opts.LineWidth/3);
+        batchSize = 10;  % Adjust based on memory constraints
+        numBatches = ceil(size(data, 1) / batchSize);
+        
+        for b = 1:numBatches
+            startIdx = (b-1)*batchSize + 1;
+            endIdx = min(b*batchSize, size(data, 1));
+            
+            for i = startIdx:endIdx
+                plot(timeVector, data(i,:), ...
+                    'Color', [color 0.05], ...
+                    'LineWidth', opts.LineWidth/3, ...
+                    'HandleVisibility', 'off', ...
+                    'Tag', 'individual_trace');
+            end
+            drawnow;  % Update display and clear memory after each batch
         end
     end
-    
-    % Calculate mean and SEM
+
+    % Plot mean ± SEM
     meanData = mean(data, 1, 'omitnan');
     semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
-    
-    % Plot mean ± SEM using shadedErrorBar
     h = shadedErrorBar(timeVector, meanData, semData, ...
         'lineProps', {'Color', color, 'LineWidth', opts.LineWidth}, ...
         'patchSaturation', 0.2);
-    
-    % Add treatment line
+
+    % Formatting
     xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 2, 'Alpha', 0.5);
     
-    % Set axis properties
     if ~isempty(opts.YLimits)
         ylim(opts.YLimits);
     end
     xlim([0 max(timeVector)]);
-    
-    % Make plot square
-    axis square
+    axis square;
     
     if opts.ShowGrid
         grid on;
         set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
     end
-    
-    % Add labels
+
     title(sprintf('%s Units (n=%d)', strrep(titleStr, '_', ' '), size(data, 1)), ...
         'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
-    
     set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
     hold off;
 end
+
 
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     % Check outlier status
