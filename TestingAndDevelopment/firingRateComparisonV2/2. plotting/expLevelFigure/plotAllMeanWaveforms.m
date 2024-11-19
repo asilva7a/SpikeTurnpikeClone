@@ -65,14 +65,14 @@ function plotAllMeanWaveforms(cellDataStruct)
                 end
             end
         end
-end
+    end
 
     % Print summary
     fprintf('\nSummary:\n');
     fprintf('Total units: %d\n', size(waveforms_all, 2));
     fprintf('Enhanced units: %d\n\n', size(waveforms_enhanced, 2));
     
-    % Plotting
+        % Plotting
     figure('Position', [100 100 1000 800]);
     T = tiledlayout(2,1);
     
@@ -80,7 +80,7 @@ end
     nexttile(T);
     hold on;
     for unitInd = 1:size(waveforms_enhanced,2)
-        p = plot(waveforms_enhanced(:,unitInd), 'Color', [1 0 1 0.3]); % Magenta for enhanced
+        p = plot(waveforms_enhanced(:,unitInd), 'Color', [1 0 0, 0.2]); % Red for enhanced
         % Data tips for unit identification
         p.DataTipTemplate.DataTipRows(1:2) = [dataTipTextRow("Rec:", repmat(mouseLabels_enhanced(unitInd),size(waveforms_enhanced,1))),...
                                              dataTipTextRow("Cell:", repmat(cellID_Labels_enhanced(unitInd),size(waveforms_enhanced,1)))];
@@ -90,9 +90,10 @@ end
     % Plot mean enhanced waveform
     if ~isempty(waveforms_enhanced)
         meanWF_enhanced = mean(waveforms_enhanced,2);
-        plot(meanWF_enhanced, 'Color', [1 0 1], 'LineWidth', 2);
+        plot(meanWF_enhanced, 'Color', [1 0 0], 'LineWidth', 2);
     end
     title(sprintf('Enhanced Units Only (n=%d)', size(waveforms_enhanced,2)));
+    xlim([0 120]);  % Set x-axis limit
     hold off;
     
     % Bottom panel: All units
@@ -106,10 +107,11 @@ end
         p.DataTipTemplate.set('Interpreter','none');
     end
     
-    % Plot mean of all waveforms
+    % Plot mean of all waveforms in grey instead of black
     meanWF_all = mean(waveforms_all,2);
-    plot(meanWF_all, 'Color', 'k', 'LineWidth', 2);
+    plot(meanWF_all, 'Color', [0.6 0.6 0.6], 'LineWidth', 2);  % Changed to grey
     title(sprintf('All Units (n=%d)', size(waveforms_all,2)));
+    xlim([0 120]);  % Set x-axis limit
     hold off;
     
     % Add overall title
@@ -128,9 +130,17 @@ end
 
     % Save figure
     try
+        % Create figure handle
         timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('allSingleUnitMeanWaveforms_%s.fig', timeStamp);
-        savefig(fig, fullfile(saveDir, fileName));
+        fileName = sprintf('allSingleUnitMeanWaveforms_%s', timeStamp);
+        
+        % Get current figure handle
+        fig = gcf;
+        
+        % Save both .fig and high-resolution .tif
+        savefig(fig, fullfile(saveDir, [fileName '.fig']));
+        print(fig, fullfile(saveDir, [fileName '.tif']), '-dtiff', '-r300');
+        
         close(fig);
     catch ME
         warning('Save:Error', 'Error saving figure: %s', ME.message);
