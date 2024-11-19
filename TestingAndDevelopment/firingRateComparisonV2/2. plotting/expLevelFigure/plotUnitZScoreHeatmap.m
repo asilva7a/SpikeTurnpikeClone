@@ -1,4 +1,61 @@
-function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
+function [figHandles, unitTable] = plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
+% PLOTUNITZSCOREHEATMAP Creates heatmaps and Cohen's d plots for neural unit responses
+%
+% This function creates two visualizations of neural unit responses:
+% 1. A Cohen's d effect size plot showing the magnitude of unit responses
+% 2. A Z-score heatmap showing the temporal dynamics of unit responses
+%
+% Both plots are organized by experimental group (EMX and PVALB) and sorted by
+% effect size (Cohen's d) within each group.
+%
+% Inputs:
+%   cellDataStruct - Structure containing neural recording data with fields:
+%       .psthZScore - Z-scored PSTH data
+%       .responseMetrics - Response statistics including Cohen's d
+%       .responseType - Unit response classification
+%       .IsSingleUnit - Boolean indicating if unit is single-unit
+%
+%   figureFolder - String, path to save output figures
+%
+%   Name-Value Pair Arguments:
+%       'UnitFilter' - String, 'both'|'single'|'multi', default: 'both'
+%           Filter for unit type selection
+%
+%       'OutlierFilter' - Logical, default: true
+%           Whether to exclude outlier units
+%
+%       'ColorLimits' - [min max], default: [-2 2]
+%           Z-score color limits for heatmap
+%
+%       'FontSize' - Numeric, default: 10
+%           Base font size for plot text
+%
+% Outputs:
+%   figHandles - Array of figure handles [Cohen's d plot, Heatmap]
+%
+%   unitTable - Table containing unit statistics:
+%       .UnitID - Unit identifier
+%       .Group - Experimental group (EMX/PVALB)
+%       .CohensD - Effect size measure
+%       .CI_Pre - Confidence interval for pre-treatment period [lower upper]
+%       .CI_Post - Confidence interval for post-treatment period [lower upper]
+%       .ResponseType - Unit response classification
+%       .Subtype - Response subtype classification
+%
+% Example:
+%   [figs, stats] = plotUnitZScoreHeatmap(data, './figures', ...
+%                   'UnitFilter', 'single', 'ColorLimits', [-3 3]);
+%
+% Notes:
+%   - Units are sorted by Cohen's d value within each group
+%   - EMX units are plotted first, followed by PVALB units
+%   - Color coding indicates response type and subtype
+%   - Treatment time is marked at 1860/5 timepoint
+%   - Figures are saved as both .fig and .tif (300 DPI) formats
+%
+% See also: IMAGESC, COLORMAP, REDBLUE
+
+%% Resolve Input Args
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
@@ -20,6 +77,8 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
     colorMap('Decreased_Variable') = [0.4 0.4 1];    % Light blue
     colorMap('Changed_Weak') = [0.5 0 0.5];         % Purple
     colorMap('No_Change_None') = [0.4 0.4 0.4];     % Gray
+    
+    %% Main Function
 
     % Process each group separately first
     groupData = struct();
@@ -100,6 +159,8 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
     pvalb_colors_sorted = groupData.Pvalb.Colors(pvalb_idx, :);
     pvalb_psth_sorted = groupData.Pvalb.PSTHs(pvalb_idx, :);
     
+    %% Plotting
+
     % Plot Cohen's d (fig1)
     figure(fig1);
     hold on;
@@ -187,8 +248,8 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
     end
 end
 
-% Helper functions 
-
+%% Helper functions 
+% Validate Units
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     % Check outlier status
     if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
@@ -207,6 +268,7 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     isValid = true;
 end
 
+% Generate color bank for heat-map
 function c = redblue(m)
     % Custom red-blue colormap
     if nargin < 1
