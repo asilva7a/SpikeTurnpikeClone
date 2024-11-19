@@ -22,31 +22,23 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
     colorMap('Changed_Weak') = [0.5 0 0.5];         % Purple
     colorMap('No_Change_None') = [0.4 0.4 0.4];     % Gray
 
-    % Initialize storage for EMX and PVALB groups
-    groupsToPlot = {'Emx', 'Pvalb'};
+    % Process each group separately first
+    groupData = struct();
+    groupsToProcess = {'Emx', 'Pvalb'}; % Order matters for plotting
     
-    % Pre-initialize combinedData structure
-    combinedData = struct();
-    combinedData.PSTHs = [];
-    combinedData.CohensD = [];
-    combinedData.Labels = {};
-    combinedData.Colors = [];
-    combinedData.GroupLabels = {};
-    
-    % Process selected groups
-    for g = 1:length(groupsToPlot)
-        groupName = groupsToPlot{g};
+    % Process each group
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
         if ~isfield(cellDataStruct, groupName)
-            warning('Group %s not found in data structure', groupName);
-            continue;
+            error('Group %s not found in data structure', groupName);
         end
         
         % Initialize arrays for this group
-        PSTHs = [];
-        CohensD = [];
-        Labels = {};
-        Colors = [];
-        GroupLabels = {};
+        groupData.(groupName) = struct();
+        groupData.(groupName).PSTHs = [];
+        groupData.(groupName).CohensD = [];
+        groupData.(groupName).Colors = [];
+        groupData.(groupName).Labels = {};
         
         % Process recordings in this group
         recordings = fieldnames(cellDataStruct.(groupName));
@@ -71,107 +63,132 @@ function plotUnitZScoreHeatmap(cellDataStruct, figureFolder, varargin)
                     colorKey = sprintf('%s_%s', responseType, subtype);
                     
                     % Store data
-                    PSTHs = [PSTHs; smoothdata(unitData.psthZScore, 'movmean', opts.BoxCarWindow)];
-                    CohensD = [CohensD; unitData.responseMetrics.stats.cohens_d];
-                    Labels = [Labels; unitID];
-                    GroupLabels = [GroupLabels; groupName];
+                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; ...
+                        smoothdata(unitData.psthZScore, 'movmean', opts.BoxCarWindow)];
+                    groupData.(groupName).CohensD = [groupData.(groupName).CohensD; ...
+                        unitData.responseMetrics.stats.cohens_d];
+                    groupData.(groupName).Labels = [groupData.(groupName).Labels; unitID];
                     
-                    % Get color
                     if colorMap.isKey(colorKey)
-                        Colors = [Colors; colorMap(colorKey)];
+                        groupData.(groupName).Colors = [groupData.(groupName).Colors; colorMap(colorKey)];
                     else
-                        Colors = [Colors; [0.7 0.7 0.7]];
+                        groupData.(groupName).Colors = [groupData.(groupName).Colors; [0.7 0.7 0.7]];
                     end
                 end
             end
         end
         
-        % Sort by Cohen's d within group
-        if ~isempty(CohensD)
-            [~, sortIdx] = sort(CohensD, 'descend');
-            
-            % Concatenate sorted data
-            combinedData.PSTHs = [combinedData.PSTHs; PSTHs(sortIdx,:)];
-            combinedData.CohensD = [combinedData.CohensD; CohensD(sortIdx)];
-            combinedData.Labels = [combinedData.Labels; Labels(sortIdx)];
-            combinedData.Colors = [combinedData.Colors; Colors(sortIdx,:)];
-            combinedData.GroupLabels = [combinedData.GroupLabels; GroupLabels(sortIdx)];
-        end
+        % Sort each group by Cohen's d
+        [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
+        groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
+        groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
+        groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
+        groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+    end
+
+    % Create separate figures for Cohen's d and heatmap
+    fig1 = figure('Position', [100 100 800 800]);
+    fig2 = figure('Position', [100 100 800 800]);
+    
+    % Sort EMX data by Cohen's d
+    [emx_d_sorted, emx_idx] = sort(groupData.Emx.CohensD, 'descend');
+    emx_colors_sorted = groupData.Emx.Colors(emx_idx, :);
+    emx_psth_sorted = groupData.Emx.PSTHs(emx_idx, :);
+    
+    % Sort PVALB data by Cohen's d
+    [pvalb_d_sorted, pvalb_idx] = sort(groupData.Pvalb.CohensD, 'descend');
+    pvalb_colors_sorted = groupData.Pvalb.Colors(pvalb_idx, :);
+    pvalb_psth_sorted = groupData.Pvalb.PSTHs(pvalb_idx, :);
+    
+    % Plot Cohen's d (fig1)
+    figure(fig1);
+    hold on;
+    
+    % Plot EMX Cohen's d values first
+    for i = 1:length(emx_d_sorted)
+        barh(i, emx_d_sorted(i), 'FaceColor', emx_colors_sorted(i,:), 'EdgeColor', 'none');
     end
     
-    % Check if we have any data to plot
-    if isempty(combinedData.PSTHs)
-        error('No valid data found for plotting');
+    % Add separator
+    yline(length(emx_d_sorted) + 0.5, 'k-', 'LineWidth', 2);
+    
+    % Plot PVALB Cohen's d values second
+    for i = 1:length(pvalb_d_sorted)
+        barh(i + length(emx_d_sorted), pvalb_d_sorted(i), 'FaceColor', pvalb_colors_sorted(i,:), 'EdgeColor', 'none');
     end
     
-    % Create figure
-    fig = figure('Position', [100 100 1500 800]);
-    t = tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+    % Format Cohen's d plot
+    yticks([length(emx_d_sorted)/2, length(emx_d_sorted) + length(pvalb_d_sorted)/2]);
+    yticklabels({'EMX', 'PVALB'});
+    xlabel('Cohen''s d', 'FontSize', opts.FontSize);
+    ylabel('Units (Ranked)', 'FontSize', opts.FontSize);
+    title('Effect Size', 'FontSize', opts.FontSize + 2);
+    set(gca, 'YDir', 'reverse');
+    grid on;
     
-    % Plot combined heatmap
-    nexttile
-    if isempty(opts.ColorLimits)
-        imagesc(combinedData.PSTHs);
-    else
-        imagesc(combinedData.PSTHs, opts.ColorLimits);
-    end
+    % Plot Z-score heatmap (fig2)
+    figure(fig2);
+    
+    % Combine sorted PSTHs
+    combinedPSTHs = [emx_psth_sorted; pvalb_psth_sorted];
+    imagesc(combinedPSTHs, opts.ColorLimits);
     colormap(redblue(256));
     c = colorbar;
     c.Label.String = 'Z-Score';
     
-    % Add group separation line
+    % Add treatment time line and separator
     hold on;
-    emxCount = sum(strcmp(combinedData.GroupLabels, 'Emx'));
-    yline(emxCount + 0.5, 'w-', 'LineWidth', 2);
-    
-    % Add treatment time line
     xline(1860/5, '--w', 'LineWidth', 1);
+    yline(length(emx_d_sorted) + 0.5, 'w-', 'LineWidth', 2);
+    hold off;
     
-    % Add group labels
-    yticks([emxCount/2, emxCount + (length(combinedData.GroupLabels) - emxCount)/2]);
+    % Format heatmap
+    yticks([length(emx_d_sorted)/2, length(emx_d_sorted) + length(pvalb_d_sorted)/2]);
     yticklabels({'EMX', 'PVALB'});
-    
     xlabel('Time (ms)', 'FontSize', opts.FontSize);
     ylabel('Units (Ranked by Cohen''s d)', 'FontSize', opts.FontSize);
     title('Z-Score Changes', 'FontSize', opts.FontSize + 2);
+    set(gca, 'YDir', 'reverse');
     
-    % Plot combined Cohen's d values
-    nexttile
-    for i = 1:length(combinedData.CohensD)
-        barh(i, combinedData.CohensD(i), 'FaceColor', combinedData.Colors(i,:), 'EdgeColor', 'none');
-        hold on;
+    % Save figures
+    try
+        timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+        
+        % Save Cohen's d plot
+        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        
+        % Save heatmap
+        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        
+        close(fig1);
+        close(fig2);
+    catch ME
+        warning('Save:Error', 'Error saving figures: %s', ME.message);
     end
-    hold off;
-    
-    % Add group separation line
-    hold on;
-    yline(emxCount + 0.5, 'k-', 'LineWidth', 2);
-    
-    xlabel('Cohen''s d', 'FontSize', opts.FontSize);
-    ylabel('Units (Ranked)', 'FontSize', opts.FontSize);
-    title('Effect Size', 'FontSize', opts.FontSize + 2);
-    
-    % Add group labels
-    yticks([emxCount/2, emxCount + (length(combinedData.GroupLabels) - emxCount)/2]);
-    yticklabels({'EMX', 'PVALB'});
-    
-    % Add overall title
-    title(t, 'Population Z-Score Response: EMX vs PVALB', 'FontSize', opts.FontSize + 4);
-    
-    % Save figure
-    saveDir = fullfile(figureFolder, '0. expFigures');
-    if ~isfolder(saveDir)
-        mkdir(saveDir);
+
+    % Save figures
+    try
+        timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+        
+        % Save Cohen's d plot
+        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        
+        % Save heatmap
+        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        
+        close(fig1);
+        close(fig2);
+    catch ME
+        warning('Save:Error', 'Error saving figures: %s', ME.message);
     end
-    
-    timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-    filename = sprintf('ZScoreHeatmap_EMXvsPVALB_BoxCar%ds_%s', opts.BoxCarWindow, timestamp);
-    savefig(fig, fullfile(saveDir, [filename '.fig']));
-    saveas(fig, fullfile(saveDir, [filename '.png']));
-    close(fig);
 end
 
-% Helper functions remain the same
+% Helper functions 
+
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     % Check outlier status
     if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
