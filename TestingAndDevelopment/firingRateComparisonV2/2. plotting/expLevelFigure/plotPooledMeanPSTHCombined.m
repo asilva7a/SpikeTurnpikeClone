@@ -1,25 +1,42 @@
-function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime, plotType, unitFilter, outlierFilter)
-    % Set defaults
-    if nargin < 6, outlierFilter = true; end
-    if nargin < 5, unitFilter = 'both'; end
-    if nargin < 4, plotType = 'mean+sem'; end
-    if nargin < 3, treatmentTime = 1860; end
+function plotPooledMeanPSTHCombined(cellDataStruct, paths, params, varargin)
+
+    % Parse optional parameters
+    p = inputParser;
+    addRequired(p, 'cellDataStruct');
+    addRequired(p, 'paths');
+    addRequired(p, 'params');
     
-    % Constants
+    % Analysis parameters
+    addParameter(p, 'UnitFilter', 'both', @ischar);
+    addParameter(p, 'OutlierFilter', true, @islogical);
+    
+    % Plotting parameters
+    addParameter(p, 'PlotType', 'mean+sem', @ischar);
+    addParameter(p, 'ShowGrid', true, @islogical);
+    addParameter(p, 'LineWidth', 1.5, @isnumeric);
+    addParameter(p, 'TraceAlpha', 0.2, @(x) isnumeric(x) && x >= 0 && x <= 1);
+    addParameter(p, 'YLimits', [], @(x) isempty(x) || (isnumeric(x) && length(x) == 2));
+    addParameter(p, 'FontSize', 10, @isnumeric);
+    
+    parse(p, cellDataStruct, paths, params, varargin{:});
+    opts = p.Results;
+
+    
+    % Constants with improved colors
     COLORS = struct(...
-        'Increased', [1, 0, 0, 0.3], ...    % Red
-        'Decreased', [0, 0, 1, 0.3], ...    % Blue
-        'NoChange', [0.5, 0.5, 0.5, 0.3]);  % Grey
+        'Increased', [1, 0, 1], ...    % Magenta
+        'Decreased', [0, 1, 1], ...    % Cyan
+        'No_Change', [0.7, 0.7, 0.7]); % Grey
     
     % Initialize data collection
     responseData = struct(...
         'Increased', [], ...
         'Decreased', [], ...
-        'NoChange', [], ...
+        'No_Change', [], ...
         'timeVector', []);
     
     % Create save directory
-    saveDir = fullfile(figureFolder, '0. expFigures');
+    saveDir = fullfile(paths.figureFolder, '0. expFigures');
     if ~isfolder(saveDir)
         mkdir(saveDir);
     end
@@ -38,13 +55,14 @@ function plotPooledMeanPSTHCombined(cellDataStruct, figureFolder, treatmentTime,
         for r = 1:length(recordings)
             recordingName = recordings{r};
             responseData = processRecording(cellDataStruct.(groupName).(recordingName), ...
-                                         responseData, unitFilter, outlierFilter);
+                responseData, opts.UnitFilter, opts.OutlierFilter);
+
         end
     end
     
     % Create and save figure if data exists
     if ~isempty(responseData.timeVector)
-        createAndSaveFigure(responseData, treatmentTime, plotType, COLORS, saveDir);
+        createAndSaveFigure(responseData, params.treatmentTime, opts, COLORS, saveDir);
     else
         warning('Plot:NoData', 'No valid units found for plotting');
     end
@@ -76,6 +94,86 @@ function responseData = processRecording(recordingData, responseData, unitFilter
     end
 end
 
+function createAndSaveFigure(responseData, treatmentTime, opts, colors, saveDir)
+    fig = figure('Position', [100, 100, 1200, 400]);
+    t = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+    
+    title(t, sprintf('Pooled Emx and Pvalb Response Types'), ...
+        'FontSize', opts.FontSize + 4, 'Interpreter', 'none');
+    
+    responseTypes = {'Increased', 'Decreased', 'No_Change'};
+    for i = 1:length(responseTypes)
+        nexttile
+        plotResponseType(responseData.(responseTypes{i}), responseData.timeVector, ...
+            colors.(responseTypes{i}), responseTypes{i}, treatmentTime, opts);
+    end
+    
+    % Add common xlabel and ylabel to the tiledlayout
+    xlabel(t, 'Time (s)', 'FontSize', opts.FontSize);
+    ylabel(t, 'Firing Rate (Hz)', 'FontSize', opts.FontSize);
+    
+    % Save figure
+    try
+        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
+        fileName = sprintf('Pooled_Emx_Pvalb_%s_%s', opts.PlotType, timestamp);
+        savefig(fig, fullfile(saveDir, [fileName '.fig']));
+        saveas(fig, fullfile(saveDir, [fileName '.png']));
+        close(fig);
+    catch ME
+        warning('Save:Error', 'Error saving figure: %s', ME.message);
+    end
+end
+
+function plotResponseType(data, timeVector, color, titleStr, treatmentTime, opts)
+    if isempty(data)
+        title(sprintf('%s (No Data)', titleStr), 'Interpreter', 'none');
+        return;
+    end
+    
+    hold on;
+    
+    % Plot individual traces if enabled
+    if strcmp(opts.PlotType, 'mean+individual')
+        for i = 1:size(data, 1)
+            plot(timeVector, data(i,:), 'Color', [color opts.TraceAlpha], ...
+                'LineWidth', opts.LineWidth/3);
+        end
+    end
+    
+    % Calculate and plot mean ± SEM
+    meanData = mean(data, 1, 'omitnan');
+    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
+    
+    % Plot shaded error bars
+    fill([timeVector, fliplr(timeVector)], ...
+        [meanData + semData, fliplr(meanData - semData)], ...
+        color, 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    
+    % Plot mean line
+    plot(timeVector, meanData, 'Color', color, 'LineWidth', opts.LineWidth);
+    
+    % Add treatment line
+    xline(treatmentTime, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+    
+    % Set axis properties
+    if ~isempty(opts.YLimits)
+        ylim(opts.YLimits);
+    end
+    xlim([0 max(timeVector)]);
+    
+    if opts.ShowGrid
+        grid on;
+        set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
+    end
+    
+    % Add labels
+    title(sprintf('%s Units (n=%d)', strrep(titleStr, '_', ' '), size(data, 1)), ...
+        'FontSize', opts.FontSize + 1, 'Interpreter', 'none');
+    
+    set(gca, 'FontSize', opts.FontSize, 'Box', 'off', 'TickDir', 'out');
+    hold off;
+end
+
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     % Check outlier status
     if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
@@ -91,56 +189,10 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
         return;
     end
     
-    isValid = true;
+    % Check required fields
+    isValid = isfield(unitData, 'psthSmoothed') && ...
+              isfield(unitData, 'responseType') && ...
+              isfield(unitData, 'binEdges') && ...
+              isfield(unitData, 'binWidth');
 end
 
-function createAndSaveFigure(responseData, treatmentTime, plotType, colors, saveDir)
-    fig = figure('Position', [100, 100, 1600, 500]);
-    sgtitle(sprintf('Pooled Emx and Pvalb - %s', plotType));
-    
-    responseTypes = {'Increased', 'Decreased', 'NoChange'};
-    for i = 1:length(responseTypes)
-        subplot(1, 3, i);
-        plotResponseType(responseData.(responseTypes{i}), responseData.timeVector, ...
-                        colors.(responseTypes{i}), responseTypes{i}, ...
-                        treatmentTime, plotType);
-    end
-    
-    % Save figure
-    try
-        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('Pooled_Emx_Pvalb_%s_smoothedPSTH_%s.fig', plotType, timeStamp);
-        savefig(fig, fullfile(saveDir, fileName));
-        close(fig);
-    catch ME
-        warning('Save:Error', 'Error saving figure: %s', ME.message);
-    end
-end
-
-function plotResponseType(data, timeVector, color, plotTitle, treatmentTime, plotType)
-    if isempty(data)
-        title(sprintf('%s (No Data)', plotTitle));
-        return;
-    end
-    
-    meanData = mean(data, 1, 'omitnan');
-    semData = std(data, 0, 1, 'omitnan') / sqrt(size(data, 1));
-    
-    hold on;
-    if strcmp(plotType, 'mean+sem')
-        shadedErrorBar(timeVector, meanData, semData, ...
-                      'lineprops', {'Color', color(1:3), 'LineWidth', 2});
-    elseif strcmp(plotType, 'mean+individual')
-        plot(timeVector, data', 'Color', [color(1:3), color(4)], 'LineWidth', 0.5);
-        plot(timeVector, meanData, 'Color', color(1:3), 'LineWidth', 2);
-    end
-    
-    xline(treatmentTime, '--', 'Color', [0, 1, 0], 'LineWidth', 1.5);
-    xlabel('Time (s)');
-    ylabel('Firing Rate (spikes/s)');
-    title(sprintf('%s (n=%d)', plotTitle, size(data, 1)));
-    ylim([0 2.0]);
-    xlim([0 5400]);
-    grid on;
-    hold off;
-end
