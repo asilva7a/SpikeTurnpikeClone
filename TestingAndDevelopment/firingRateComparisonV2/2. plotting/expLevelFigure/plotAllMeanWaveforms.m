@@ -1,7 +1,7 @@
 function plotAllMeanWaveforms(cellDataStruct)
     % Initialize storage vectors
-    waveforms_all = []; % [samples x units]
-    waveforms_enhanced = []; % [samples x units]
+    waveforms_all = [];        % [samples x units]
+    waveforms_enhanced = [];   % [samples x units]
     groupsLabels_all = {};
     mouseLabels_all = {};
     cellID_Labels_all = {};
@@ -11,6 +11,10 @@ function plotAllMeanWaveforms(cellDataStruct)
     
     % Get data from structure
     groupNames = fieldnames(cellDataStruct);
+    
+    % Add debugging output header
+    fprintf('\nEnhanced Units Found:\n');
+    fprintf('-------------------\n');
     
     % Collect waveforms
     for g = 1:length(groupNames)
@@ -32,6 +36,11 @@ function plotAllMeanWaveforms(cellDataStruct)
                     continue;
                 end
                 
+                % Skip outliers
+                if isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
+                    continue;
+                end
+                
                 % Only process single units
                 if ~unitData.IsSingleUnit
                     continue;
@@ -48,7 +57,12 @@ function plotAllMeanWaveforms(cellDataStruct)
                 
                 % Check if enhanced (Increased response type) and store separately
                 if isfield(unitData, 'responseType') && ...
-                   strcmp(strrep(unitData.responseType, ' ', ''), 'Increased')  % Matches exact response type
+                   strcmp(strrep(unitData.responseType, ' ', ''), 'Increased')
+                    % Debug output for each enhanced unit
+                    fprintf('Group: %s | Recording: %s | Unit: %s\n', ...
+                        groupName, recordingName, unitID);
+                    
+                    % Store enhanced unit data
                     waveforms_enhanced = [waveforms_enhanced, waveform];
                     groupsLabels_enhanced{end+1,1} = groupName;
                     mouseLabels_enhanced{end+1,1} = recordingName;
@@ -57,6 +71,11 @@ function plotAllMeanWaveforms(cellDataStruct)
             end
         end
     end
+    
+    % Print summary
+    fprintf('\nSummary:\n');
+    fprintf('Total units: %d\n', size(waveforms_all, 2));
+    fprintf('Enhanced units: %d\n\n', size(waveforms_enhanced, 2));
     
     % Plotting
     figure('Position', [100 100 1000 800]);
@@ -67,10 +86,9 @@ function plotAllMeanWaveforms(cellDataStruct)
     hold on;
     for unitInd = 1:size(waveforms_enhanced,2)
         p = plot(waveforms_enhanced(:,unitInd), 'Color', [1 0 1 0.3]); % Magenta for enhanced
-        
         % Data tips for unit identification
         p.DataTipTemplate.DataTipRows(1:2) = [dataTipTextRow("Rec:", repmat(mouseLabels_enhanced(unitInd),size(waveforms_enhanced,1))),...
-            dataTipTextRow("Cell:", repmat(cellID_Labels_enhanced(unitInd),size(waveforms_enhanced,1)))];
+                                             dataTipTextRow("Cell:", repmat(cellID_Labels_enhanced(unitInd),size(waveforms_enhanced,1)))];
         p.DataTipTemplate.set('Interpreter','none');
     end
     
@@ -87,10 +105,9 @@ function plotAllMeanWaveforms(cellDataStruct)
     hold on;
     for unitInd = 1:size(waveforms_all,2)
         p = plot(waveforms_all(:,unitInd), 'Color', [0.7 0.7 0.7 0.3]);
-        
         % Data tips for unit identification
         p.DataTipTemplate.DataTipRows(1:2) = [dataTipTextRow("Rec:", repmat(mouseLabels_all(unitInd),size(waveforms_all,1))),...
-            dataTipTextRow("Cell:", repmat(cellID_Labels_all(unitInd),size(waveforms_all,1)))];
+                                             dataTipTextRow("Cell:", repmat(cellID_Labels_all(unitInd),size(waveforms_all,1)))];
         p.DataTipTemplate.set('Interpreter','none');
     end
     
