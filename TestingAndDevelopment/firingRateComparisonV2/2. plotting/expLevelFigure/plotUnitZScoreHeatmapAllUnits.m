@@ -181,7 +181,16 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     figure(fig2);
     t = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
     title(t, 'Z-Score Changes', 'FontSize', opts.FontSize + 2);
-
+    
+    % Find maximum number of units for consistent scaling
+    maxUnits = 0;
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
+        if isfield(groupData, groupName) && ~isempty(groupData.(groupName).PSTHs)
+            maxUnits = max(maxUnits, size(groupData.(groupName).PSTHs, 1));
+        end
+    end
+    
     % Plot each group in its own subplot
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
@@ -189,18 +198,20 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             continue;
         end
         
-        nexttile
+        % Create tile and get handle
+        ax = nexttile;
+        
+        % Plot data
         imagesc(groupData.(groupName).PSTHs, opts.ColorLimits);
         colormap(redblue(256));
         
         % Add treatment time line
         hold on;
-        xline(1860, '--k', 'LineWidth', 1);
+        xline(1860/5, '--k', 'LineWidth', 3);
         hold off;
         
         % Add labels
-        ylabel(sprintf('%s Units (n=%d)', groupName, size(groupData.(groupName).PSTHs, 1)), ...
-            'FontSize', opts.FontSize);
+        ylabel(sprintf('%s', groupName), 'FontSize', opts.FontSize);
         
         % Only add xlabel to bottom subplot
         if g == length(groupsToProcess)
@@ -209,9 +220,18 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             set(gca, 'XTickLabel', []);
         end
         
-        set(gca, 'YDir', 'reverse');
+        % Remove y-axis numbers
+        set(gca, 'YTick', [], 'YDir', 'reverse');
+        
+        % Set height of subplot proportional to its number of units
+        numUnits = size(groupData.(groupName).PSTHs, 1);
+        newHeight = ax.Position(4) * (numUnits/maxUnits);
+        ax.Position(4) = newHeight;
+        
+        % Set consistent unit scaling
+        ylim([0.5 numUnits+0.5]);
     end
-
+    
     % Add common colorbar
     cb = colorbar;
     cb.Layout.Tile = 'east';
