@@ -57,7 +57,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
         if ~isfield(cellDataStruct, groupName)
-            error('Group %s not found in data structure', groupName);
+            continue;
         end
 
         % Process recordings in this group
@@ -106,12 +106,14 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             end
         end
         
-        % Sort each group's data by Cohen's d
-        [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
-        groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
-        groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
-        groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
-        groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+        % Sort this group's data by Cohen's d
+        if ~isempty(groupData.(groupName).CohensD)
+            [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
+            groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
+            groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
+            groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
+            groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+        end
     end
 
     % Create table
@@ -124,17 +126,6 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
                                      'CI_Post_Lower', 'CI_Post_Upper', ...
                                      'ResponseType', 'Subtype'});
 
-    % Combine sorted data from all groups
-    combinedPSTHs = [];
-    combinedCohensD = [];
-    combinedColors = [];
-    for g = 1:length(groupsToProcess)
-        groupName = groupsToProcess{g};
-        combinedPSTHs = [combinedPSTHs; groupData.(groupName).PSTHs];
-        combinedCohensD = [combinedCohensD; groupData.(groupName).CohensD];
-        combinedColors = [combinedColors; groupData.(groupName).Colors];
-    end
-
     % Create figures
     fig1 = figure('Position', [100 100 800 800]);
     fig2 = figure('Position', [100 100 800 800]);
@@ -142,10 +133,12 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     % Plot Cohen's d (fig1)
     figure(fig1);
     hold on;
-    
     currentIdx = 1;
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
+        if ~isfield(groupData, groupName) || isempty(groupData.(groupName).CohensD)
+            continue;
+        end
         numUnits = length(groupData.(groupName).CohensD);
         
         for i = 1:numUnits
@@ -156,7 +149,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         end
         
         if g < length(groupsToProcess)
-            yline(currentIdx - 0.5, 'k-', 'LineWidth', 2);
+            yline(currentIdx - 0.5, 'k-', 'LineWidth', 4);
         end
     end
 
@@ -186,29 +179,43 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
 
     % Plot Z-score heatmap (fig2)
     figure(fig2);
-    imagesc(combinedPSTHs, opts.ColorLimits);
-    colormap(redblue(256));
-    c = colorbar;
-    c.Label.String = 'Z-Score';
+    t = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+    title(t, 'Z-Score Changes', 'FontSize', opts.FontSize + 2);
 
-    % Add treatment time line
-    hold on;
-    xline(1860/5, '--w', 'LineWidth', 1);
-    
-    % Add group separation lines
-    currentIdx = 0;
-    for g = 1:length(groupsToProcess)-1
+    % Plot each group in its own subplot
+    for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
-        currentIdx = currentIdx + length(groupData.(groupName).CohensD);
-        yline(currentIdx + 0.5, 'w-', 'LineWidth', 4);  % Increased from 2 to 4
+        if ~isfield(groupData, groupName) || isempty(groupData.(groupName).PSTHs)
+            continue;
+        end
+        
+        nexttile
+        imagesc(groupData.(groupName).PSTHs, opts.ColorLimits);
+        colormap(redblue(256));
+        
+        % Add treatment time line
+        hold on;
+        xline(1860, '--k', 'LineWidth', 1);
+        hold off;
+        
+        % Add labels
+        ylabel(sprintf('%s Units (n=%d)', groupName, size(groupData.(groupName).PSTHs, 1)), ...
+            'FontSize', opts.FontSize);
+        
+        % Only add xlabel to bottom subplot
+        if g == length(groupsToProcess)
+            xlabel('Time (ms)', 'FontSize', opts.FontSize);
+        else
+            set(gca, 'XTickLabel', []);
+        end
+        
+        set(gca, 'YDir', 'reverse');
     end
 
-    hold off;
-
-    xlabel('Time (ms)', 'FontSize', opts.FontSize);
-    ylabel('Units (Ranked by Cohen''s d)', 'FontSize', opts.FontSize);
-    title('Z-Score Changes', 'FontSize', opts.FontSize + 2);
-    set(gca, 'YDir', 'reverse');
+    % Add common colorbar
+    cb = colorbar;
+    cb.Layout.Tile = 'east';
+    cb.Label.String = 'Z-Score';
 
     % Save figures
     saveDir = fullfile(paths.figureFolder, '0. expFigures');
@@ -261,7 +268,7 @@ end
 function c = redblue(m)
     % Custom red-blue colormap
     if nargin < 1
-       m = 256;
+        m = 256;
     end
     
     bottom = [0 0 1];
