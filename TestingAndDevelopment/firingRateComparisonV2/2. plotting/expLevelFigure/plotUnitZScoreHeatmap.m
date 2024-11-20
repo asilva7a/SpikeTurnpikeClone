@@ -105,6 +105,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmap(cellDataStruct, figureF
             recordingName = recordings{r};
             units = fieldnames(cellDataStruct.(groupName).(recordingName));
             
+           % In the main processing loop where units are being checked:
             for u = 1:length(units)
                 unitID = units{u};
                 unitData = cellDataStruct.(groupName).(recordingName).(unitID);
@@ -113,17 +114,22 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmap(cellDataStruct, figureF
                 if ~isValidUnit(unitData, opts.UnitFilter, opts.OutlierFilter)
                     continue;
                 end
-                
+            
                 if isfield(unitData, 'psthZScore') && isfield(unitData, 'responseMetrics')
+                    % Only include Strong or Moderate responses
+                    if ~isfield(unitData.responseMetrics, 'subtype') || ...
+                       (~strcmp(unitData.responseMetrics.subtype, 'Strong') && ...
+                        ~strcmp(unitData.responseMetrics.subtype, 'Moderate'))
+                        continue;
+                    end
+            
                     % Get response type and subtype
                     responseType = strrep(unitData.responseType, ' ', '_');
                     subtype = unitData.responseMetrics.subtype;
                     colorKey = sprintf('%s_%s', responseType, subtype);
-                    
+            
                     % Store data
-                    % Store data without additional smoothing
-                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; 
-                        unitData.psthZScore];
+                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; unitData.psthZScore];
                     groupData.(groupName).CohensD = [groupData.(groupName).CohensD; ...
                         unitData.responseMetrics.stats.cohens_d];
                     groupData.(groupName).Labels = [groupData.(groupName).Labels; unitID];
@@ -135,14 +141,15 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmap(cellDataStruct, figureF
                     end
                 end
             end
-        end
         
-        % Sort each group by Cohen's d
-        [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
-        groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
-        groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
-        groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
-        groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+            % Sort each group by Cohen's d
+            [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
+            groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
+            groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
+            groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
+            groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+       
+        end
     end
 
     % Create separate figures for Cohen's d and heatmap
@@ -187,67 +194,41 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmap(cellDataStruct, figureF
     set(gca, 'YDir', 'reverse');
     grid on;
     
-    % Plot Z-score heatmap (fig2)
+     % Plot Z-score heatmap (fig2)
     figure(fig2);
     
-    % Combine sorted PSTHs
-    combinedPSTHs = [emx_psth_sorted; pvalb_psth_sorted];
-    imagesc(combinedPSTHs, opts.ColorLimits);
-    colormap(redblue(256));
-    c = colorbar;
-    c.Label.String = 'Z-Score';
+    % Calculate gap size (e.g., 2 units worth of space)
+    gapSize = 2;
     
-    % Add treatment time line and separator
+    % Create white gap between groups using NaN values
+    whiteGap = nan(gapSize, size(emx_psth_sorted, 2));
+    combinedPSTHs = [emx_psth_sorted; whiteGap; pvalb_psth_sorted];
+    
+    % Plot heatmap
+    imagesc(combinedPSTHs);
+    colormap(redblue(256));
+    set(gca, 'Color', 'w');  % Set background color to white (for NaN values)
+    
+    % Add colorbar without text
+    c = colorbar;
+    c.Label.String = '';
+    c.TickLabels = [];
+    
+    % Customize appearance
+    set(gca, 'XTickLabel', [], 'YTickLabel', [], ...
+        'FontSize', opts.FontSize, ...
+        'Box', 'off', ...
+        'TickDir', 'out');
+    
+    % Add treatment time marker
     hold on;
-    xline(1860/5, '--w', 'LineWidth', 1);
-    yline(length(emx_d_sorted) + 0.5, 'w-', 'LineWidth', 2);
+    timeInBins = 1800 * (1000/5);  % Convert 1800 seconds to bins
+    xline(timeInBins, ':', 'Color', 'k', 'LineWidth', 3);
     hold off;
     
-    % Format heatmap
-    yticks([length(emx_d_sorted)/2, length(emx_d_sorted) + length(pvalb_d_sorted)/2]);
-    yticklabels({'EMX', 'PVALB'});
-    xlabel('Time (ms)', 'FontSize', opts.FontSize);
-    ylabel('Units (Ranked by Cohen''s d)', 'FontSize', opts.FontSize);
-    title('Z-Score Changes', 'FontSize', opts.FontSize + 2);
-    set(gca, 'YDir', 'reverse');
+    % Set color limits
+    clim(opts.ColorLimits);
     
-    % Save figures
-    try
-        timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-        
-        % Save Cohen's d plot
-        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
-        
-        % Save heatmap
-        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
-        
-        close(fig1);
-        close(fig2);
-    catch ME
-        warning('Save:Error', 'Error saving figures: %s', ME.message);
-    end
-
-    % Save figures
-    try
-        timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-        
-        % Save Cohen's d plot
-        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
-        
-        % Save heatmap
-        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
-        
-        close(fig1);
-        close(fig2);
-    catch ME
-        warning('Save:Error', 'Error saving figures: %s', ME.message);
-    end
-end
-
 %% Helper functions 
 % Validate Units
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
@@ -284,4 +265,4 @@ function c = redblue(m)
     top_half = interp1([0 1], [middle; top], linspace(0,1,floor(m/2)));
     
     c = [bottom_half; top_half(2:end,:)];
-end
+end 
