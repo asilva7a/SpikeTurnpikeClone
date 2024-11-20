@@ -17,11 +17,17 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     parse(p, cellDataStruct, paths, varargin{:});
     opts = p.Results;
 
-    % Define color scheme for response types
+    % Define color scheme for response types and subtypes
     colorMap = containers.Map();
-    colorMap('Increased') = [1 0 0];        % Red for enhanced
-    colorMap('Decreased') = [0 0 1];        % Blue for diminished
-    colorMap('No_Change') = [0.7 0.7 0.7];  % Gray for no change
+    colorMap('Increased_Strong') = [0.8 0 0];        % Deep red
+    colorMap('Increased_Moderate') = [1 0.2 0.2];    % Bright red
+    colorMap('Increased_Variable') = [1 0.4 0.4];    % Light red
+    colorMap('Decreased_Strong') = [0 0 0.8];        % Deep blue
+    colorMap('Decreased_Moderate') = [0 0.2 1];      % Bright blue
+    colorMap('Decreased_Variable') = [0.4 0.4 1];    % Light blue
+    colorMap('Changed_Weak') = [0.5 0 0.5];         % Purple
+    colorMap('No_Change_None') = [0.4 0.4 0.4];     % Gray
+
 
     % Initialize storage for all units
     allPSTHs = [];
@@ -33,6 +39,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     % Initialize table data
     tableData = struct();
     tableData.UnitID = {};
+    tableData.Subtype = {}; 
     tableData.Group = {};
     tableData.CohensD = [];
     tableData.CI_Pre_Lower = [];
@@ -41,13 +48,14 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     tableData.CI_Post_Upper = [];
     tableData.ResponseType = {};
 
-    % Process each group
-    groupsToProcess = {'Emx', 'Pvalb'};
-    for g = 1:length(groupsToProcess)
-        groupName = groupsToProcess{g};
-        if ~isfield(cellDataStruct, groupName)
-            error('Group %s not found in data structure', groupName);
-        end
+    % Initialize group data structure before the processing loop
+    groupsToProcess = {'Emx', 'Pvalb', 'Control'};
+
+    groupData = struct();
+    for groupName = groupsToProcess
+        groupData.(groupName{1}) = struct('PSTHs', [], 'CohensD', [], ...
+            'Colors', [], 'Labels', {});
+    end
         
         % Process recordings in this group
         recordings = fieldnames(cellDataStruct.(groupName));
@@ -65,25 +73,26 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
                 end
                 
                 if isfield(unitData, 'psthZScore') && isfield(unitData, 'responseMetrics')
-                    % Get response type
-                    responseType = strrep(unitData.responseType, ' ', '');
+                    % Get response type and subtype
+                    responseType = strrep(unitData.responseType, ' ', '_');
+                    subtype = unitData.responseMetrics.subtype;
+                    colorKey = sprintf('%s_%s', responseType, subtype);
                     
                     % Store data
-                    allPSTHs = [allPSTHs; unitData.psthZScore];
-                    allCohensD = [allCohensD; unitData.responseMetrics.stats.cohens_d];
-                    allLabels = [allLabels; unitID];
-                    allGroups = [allGroups; groupName];
+                    groupData.(groupName).PSTHs = [groupData.(groupName).PSTHs; unitData.psthZScore];
+                    groupData.(groupName).CohensD = [groupData.(groupName).CohensD; unitData.responseMetrics.stats.cohens_d];
+                    groupData.(groupName).Labels = [groupData.(groupName).Labels; unitID];
                     
-                    % Assign color based on response type
-                    if colorMap.isKey(responseType)
-                        allColors = [allColors; colorMap(responseType)];
+                    if colorMap.isKey(colorKey)
+                        groupData.(groupName).Colors = [groupData.(groupName).Colors; colorMap(colorKey)];
                     else
-                        allColors = [allColors; [0.7 0.7 0.7]];
+                        groupData.(groupName).Colors = [groupData.(groupName).Colors; [0.7 0.7 0.7]];
                     end
-                    
+
                     % Store data for table
                     tableData.UnitID{end+1} = unitID;
                     tableData.Group{end+1} = groupName;
+                    tableData.Subtype{end+1} = subtype;
                     tableData.CohensD(end+1) = unitData.responseMetrics.stats.cohens_d;
                     tableData.CI_Pre_Lower(end+1) = unitData.responseMetrics.stats.ci_pre(1);
                     tableData.CI_Pre_Upper(end+1) = unitData.responseMetrics.stats.ci_pre(2);
@@ -118,10 +127,13 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
 
     % Plot Cohen's d (fig1)
     figure(fig1);
+    
     hold on;
+    
     for i = 1:length(sortedD)
         barh(i, sortedD(i), 'FaceColor', sortedColors(i,:), 'EdgeColor', 'none');
     end
+
     xlabel('Cohen''s d', 'FontSize', opts.FontSize);
     ylabel('Units (Ranked)', 'FontSize', opts.FontSize);
     title('Effect Size', 'FontSize', opts.FontSize + 2);
@@ -129,11 +141,20 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     grid on;
 
     % Add legend for Cohen's d plot
-    h1 = plot(nan, nan, 'Color', colorMap('Increased'), 'LineWidth', 2);
-    h2 = plot(nan, nan, 'Color', colorMap('Decreased'), 'LineWidth', 2);
-    h3 = plot(nan, nan, 'Color', colorMap('No_Change'), 'LineWidth', 2);
-    legend([h1 h2 h3], {'Enhanced', 'Diminished', 'No Change'}, ...
-        'Location', 'southeast', ...
+    h1 = plot(nan, nan, 'Color', colorMap('Increased_Strong'), 'LineWidth', 2);
+    h2 = plot(nan, nan, 'Color', colorMap('Increased_Moderate'), 'LineWidth', 2);
+    h3 = plot(nan, nan, 'Color', colorMap('Increased_Variable'), 'LineWidth', 2);
+    h4 = plot(nan, nan, 'Color', colorMap('Decreased_Strong'), 'LineWidth', 2);
+    h5 = plot(nan, nan, 'Color', colorMap('Decreased_Moderate'), 'LineWidth', 2);
+    h6 = plot(nan, nan, 'Color', colorMap('Decreased_Variable'), 'LineWidth', 2);
+    h7 = plot(nan, nan, 'Color', colorMap('Changed_Weak'), 'LineWidth', 2);
+    h8 = plot(nan, nan, 'Color', colorMap('No_Change_None'), 'LineWidth', 2);
+    
+    legend([h1 h2 h3 h4 h5 h6 h7 h8], ...
+        {'Enhanced (Strong)', 'Enhanced (Moderate)', 'Enhanced (Variable)', ...
+         'Diminished (Strong)', 'Diminished (Moderate)', 'Diminished (Variable)', ...
+         'Changed (Weak)', 'No Change'}, ...
+        'Location', 'eastoutside', ...
         'FontSize', opts.FontSize, ...
         'Box', 'off');
 
@@ -159,29 +180,23 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     if ~isfolder(saveDir)
         mkdir(saveDir);
     end
-
+    
     try
         timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
         
         % Save Cohen's d plot
-        savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
-        print(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
         
         % Save heatmap
-        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
-        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
-        
-        % Save table
-        writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
+        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
+        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
         
         close(fig1);
         close(fig2);
     catch ME
         warning('Save:Error', 'Error saving figures: %s', ME.message);
     end
-
-    % Return figure handles
-    figHandles = [fig1, fig2];
 end
 
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
