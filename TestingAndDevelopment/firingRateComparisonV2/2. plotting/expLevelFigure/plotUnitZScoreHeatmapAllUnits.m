@@ -1,4 +1,4 @@
-function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct, paths, varargin)
+function [unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct, paths, varargin)
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
@@ -124,36 +124,108 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     fig1 = figure('Position', [100 100 800 800]);
     fig2 = figure('Position', [100 100 800 800]);
 
-    % Plot Cohen's d (fig1)
+    % In the main plotting section for Cohen's d (fig1), modify the plotting loop:
+    % Main plotting section for Cohen's d (fig1)
     figure(fig1);
     hold on;
     currentIdx = 1;
+    
+    % Initialize debug logging
+    debugLog = struct();
+    debugLog.groupStats = struct();
+    
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
         if ~isfield(groupData, groupName) || isempty(groupData.(groupName).CohensD)
+            fprintf('Skipping empty group: %s\n', groupName);
             continue;
         end
-        numUnits = length(groupData.(groupName).CohensD);
         
-        for i = 1:numUnits
-            barh(currentIdx, groupData.(groupName).CohensD(i), ...
-                'FaceColor', groupData.(groupName).Colors(i,:), ...
-                'EdgeColor', 'none');
+        % Get all units for this group
+        groupMask = strcmp(tableData.Group, groupName);
+        groupUnits = tableData.UnitID(groupMask);
+        groupCohenD = tableData.CohensD(groupMask);
+        groupResponses = tableData.ResponseType(groupMask);
+        
+        % Sort within group
+        [sortedCohenD, sortIdx] = sort(groupCohenD, 'descend');
+        sortedUnits = groupUnits(sortIdx);
+        sortedResponses = groupResponses(sortIdx);
+        
+        % Debug output before plotting
+        fprintf('\nGroup: %s\n', groupName);
+        fprintf('Total units: %d\n', length(sortedUnits));
+        fprintf('Cohen''s d range: %.3f to %.3f\n', min(sortedCohenD), max(sortedCohenD));
+        
+        % Store group statistics
+        debugLog.groupStats.(groupName).totalUnits = length(sortedUnits);
+        debugLog.groupStats.(groupName).cohenDRange = [min(sortedCohenD), max(sortedCohenD)];
+        debugLog.groupStats.(groupName).noChangeUnits = [];
+        
+        % Plot bars in sorted order
+        groupStartIdx = currentIdx;
+        noChangeIndices = [];
+        
+        for i = 1:length(sortedUnits)
+            % Debug unit info
+            fprintf('Unit %d: %s, Cohen''s d: %.3f, Response: %s\n', ...
+                i, sortedUnits{i}, sortedCohenD(i), sortedResponses{i});
+            
+            % Get color based on response type
+            responseType = sortedResponses{i};
+            colorKey = sprintf('%s_%s', responseType, 'None');
+            
+            if colorMap.isKey(colorKey)
+                barColor = colorMap(colorKey);
+            else
+                barColor = [0.7 0.7 0.7];
+                fprintf('Warning: Missing color for response type: %s\n', responseType);
+            end
+            
+            % Plot bar
+            barh(currentIdx, sortedCohenD(i), 'FaceColor', barColor, 'EdgeColor', 'none');
+            
+            % Track No Change units
+            if strcmp(responseType, 'No_Change')
+                noChangeIndices = [noChangeIndices; currentIdx];
+                debugLog.groupStats.(groupName).noChangeUnits(end+1) = i;
+                fprintf('No Change Unit Found - Index: %d, UnitID: %s, Cohen''s d: %.3f\n', ...
+                    currentIdx, sortedUnits{i}, sortedCohenD(i));
+            end
+            
             currentIdx = currentIdx + 1;
         end
         
+        % Add lines for No Change units
+        if ~isempty(noChangeIndices)
+            % Find consecutive sequences
+            breaks = find(diff(noChangeIndices) > 1);
+            startIdx = [noChangeIndices(1); noChangeIndices(breaks + 1)];
+            endIdx = [noChangeIndices(breaks); noChangeIndices(end)];
+            
+            % Plot lines and debug output
+            fprintf('\nNo Change Sequences in %s:\n', groupName);
+            for k = 1:length(startIdx)
+                yline(startIdx(k) - 0.5, 'k--', 'LineWidth', 1);
+                yline(endIdx(k) + 0.5, 'k--', 'LineWidth', 1);
+                fprintf('Sequence %d: Units %d to %d\n', k, startIdx(k), endIdx(k));
+            end
+        end
+        
+        % Add group separator
         if g < length(groupsToProcess)
             yline(currentIdx - 0.5, 'k-', 'LineWidth', 4);
         end
     end
-
+    
+    % Finalize plot
     xlabel('Cohen''s d', 'FontSize', opts.FontSize);
     ylabel('Units (Ranked)', 'FontSize', opts.FontSize);
     title('Effect Size', 'FontSize', opts.FontSize + 2);
     set(gca, 'YDir', 'reverse');
     grid on;
-
-    % Add legend for Cohen's d plot
+    
+    % Add legend
     h1 = plot(nan, nan, 'Color', colorMap('Increased_Strong'), 'LineWidth', 2);
     h2 = plot(nan, nan, 'Color', colorMap('Increased_Moderate'), 'LineWidth', 2);
     h3 = plot(nan, nan, 'Color', colorMap('Increased_Variable'), 'LineWidth', 2);
@@ -162,7 +234,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     h6 = plot(nan, nan, 'Color', colorMap('Decreased_Variable'), 'LineWidth', 2);
     h7 = plot(nan, nan, 'Color', colorMap('Changed_Weak'), 'LineWidth', 2);
     h8 = plot(nan, nan, 'Color', colorMap('No_Change_None'), 'LineWidth', 2);
-
+    
     legend([h1 h2 h3 h4 h5 h6 h7 h8], ...
         {'Enhanced (Strong)', 'Enhanced (Moderate)', 'Enhanced (Variable)', ...
          'Diminished (Strong)', 'Diminished (Moderate)', 'Diminished (Variable)', ...
@@ -170,6 +242,18 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         'Location', 'eastoutside', ...
         'FontSize', opts.FontSize, ...
         'Box', 'off');
+    
+    % Print final debugging summary
+    fprintf('\nFinal Summary:\n');
+    groupNames = fieldnames(debugLog.groupStats);
+    for g = 1:length(groupNames)
+        gName = groupNames{g};
+        stats = debugLog.groupStats.(gName);
+        fprintf('\n%s Group:\n', gName);
+        fprintf('Total units: %d\n', stats.totalUnits);
+        fprintf('Cohen''s d range: %.3f to %.3f\n', stats.cohenDRange(1), stats.cohenDRange(2));
+        fprintf('No Change units: %d\n', length(stats.noChangeUnits));
+    end
 
     % Plot Z-score heatmap (fig2)
     figure(fig2);
