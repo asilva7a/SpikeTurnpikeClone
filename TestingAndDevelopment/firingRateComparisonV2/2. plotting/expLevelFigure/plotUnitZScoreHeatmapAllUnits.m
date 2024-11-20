@@ -198,7 +198,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             continue;
         end
         
-        % Create tile and get handle
+        % Create tile
         ax = nexttile;
         
         % Plot data
@@ -207,7 +207,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         
         % Add treatment time line
         hold on;
-        xline(1860/5, '--k', 'LineWidth', 3);
+        xline(1860, '--k', 'LineWidth', 1);
         hold off;
         
         % Add labels
@@ -220,15 +220,11 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             set(gca, 'XTickLabel', []);
         end
         
-        % Remove y-axis numbers
+        % Remove y-axis numbers and set reverse direction
         set(gca, 'YTick', [], 'YDir', 'reverse');
         
-        % Set height of subplot proportional to its number of units
+        % Set limits for consistent unit scaling
         numUnits = size(groupData.(groupName).PSTHs, 1);
-        newHeight = ax.Position(4) * (numUnits/maxUnits);
-        ax.Position(4) = newHeight;
-        
-        % Set consistent unit scaling
         ylim([0.5 numUnits+0.5]);
     end
     
