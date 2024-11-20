@@ -272,33 +272,28 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
 end
 
 function c = redblue(m)
+    % If no input, use current figure's colormap size
     if nargin < 1
-        m = 256;
+        m = size(get(gcf,'colormap'),1);
     end
     
-    bottom = [0 0 1];     % Blue
-    middle = [1 1 1];     % White
-    top = [1 0 0];       % Red
-    
-    % Calculate number of points for each segment
-    whitePoints = round(m * 0.1);  % 20% of points for white region (±0.1)
-    colorPoints = round((m - whitePoints) / 2);  % Remaining points split between red and blue
-    
-    % Create three segments
-    bottom_to_white = interp1([0 1], [bottom; middle], linspace(0, 1, colorPoints));
-    white_region = repmat(middle, whitePoints, 1);
-    white_to_top = interp1([0 1], [middle; top], linspace(0, 1, colorPoints));
-    
-    % Combine segments
-    c = [bottom_to_white; white_region; white_to_top];
-    
-    % Ensure exactly m rows
-    if size(c,1) > m
-        c = c(1:m,:);
-    elseif size(c,1) < m
-        c = [c; repmat(c(end,:), m-size(c,1), 1)];
+    if (mod(m,2) == 0)
+        % Even number of points
+        m1 = m*0.5;
+        r = (0:m1-1)'/max(m1-1,1);
+        g = r;
+        r = [r; ones(m1,1)];
+        g = [g; flipud(g)];
+        b = flipud(r);
+    else
+        % Odd number of points
+        m1 = floor(m*0.5);
+        r = (0:m1-1)'/max(m1,1);
+        g = r;
+        r = [r; ones(m1+1,1)];
+        g = [g; 1; flipud(g)];
+        b = flipud(r);
     end
+    
+    c = [r g b];
 end
-
-
-
