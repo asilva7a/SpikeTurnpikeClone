@@ -1,11 +1,4 @@
 function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct, paths, varargin)
-    % PLOTUNITZSCOREHEATMAP Creates heatmaps of neural unit responses using Z-scores
-    %
-    % This function creates two visualizations:
-    % 1. A Z-score heatmap showing temporal dynamics of all units
-    % 2. A Cohen's d plot showing effect sizes for all units
-    % Units are sorted by Cohen's d and colored by response type
-    
     % Parse optional parameters
     p = inputParser;
     addRequired(p, 'cellDataStruct');
@@ -17,7 +10,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     parse(p, cellDataStruct, paths, varargin{:});
     opts = p.Results;
 
-    % Define color scheme for response types and subtypes
+    % Define color scheme
     colorMap = containers.Map();
     colorMap('Increased_Strong') = [0.8 0 0];        % Deep red
     colorMap('Increased_Moderate') = [1 0.2 0.2];    % Bright red
@@ -59,7 +52,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         if ~isfield(cellDataStruct, groupName)
             continue;
         end
-
+        
         % Process recordings in this group
         recordings = fieldnames(cellDataStruct.(groupName));
         for r = 1:length(recordings)
@@ -106,13 +99,14 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             end
         end
         
-        % Sort this group's data by Cohen's d
+        % Sort data after collecting all units for this group
         if ~isempty(groupData.(groupName).CohensD)
             [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
             groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
             groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
             groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
             groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
+            groupData.(groupName).UnitRanks = (1:length(sortIdx))';
         end
     end
 
@@ -182,15 +176,6 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     t = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
     title(t, 'Z-Score Changes', 'FontSize', opts.FontSize + 2);
     
-    % Find maximum number of units for consistent scaling
-    maxUnits = 0;
-    for g = 1:length(groupsToProcess)
-        groupName = groupsToProcess{g};
-        if isfield(groupData, groupName) && ~isempty(groupData.(groupName).PSTHs)
-            maxUnits = max(maxUnits, size(groupData.(groupName).PSTHs, 1));
-        end
-    end
-    
     % Plot each group in its own subplot
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
@@ -198,13 +183,15 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
             continue;
         end
         
-        % Create tile
         ax = nexttile;
-        
-        % Plot data
-        imagesc(groupData.(groupName).PSTHs, opts.ColorLimits);
+        h = imagesc(groupData.(groupName).PSTHs, opts.ColorLimits);
         colormap(redblue(256));
-        
+
+        % Add tooltips
+        dcm = datacursormode(gcf);
+        set(dcm, 'Enable', 'on');
+        set(dcm, 'UpdateFcn', @(obj,event_obj) customDataTipFunction(obj,event_obj,groupData.(groupName)));
+
         % Add treatment time line
         hold on;
         xline(1860, '--k', 'LineWidth', 1);
@@ -213,17 +200,13 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         % Add labels
         ylabel(sprintf('%s', groupName), 'FontSize', opts.FontSize);
         
-        % Only add xlabel to bottom subplot
         if g == length(groupsToProcess)
             xlabel('Time (ms)', 'FontSize', opts.FontSize);
         else
             set(gca, 'XTickLabel', []);
         end
         
-        % Remove y-axis numbers and set reverse direction
         set(gca, 'YTick', [], 'YDir', 'reverse');
-        
-        % Set limits for consistent unit scaling
         numUnits = size(groupData.(groupName).PSTHs, 1);
         ylim([0.5 numUnits+0.5]);
     end
@@ -239,38 +222,77 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
         mkdir(saveDir);
     end
 
+   try
+    if ~exist(paths.figureFolder, 'dir')
+        mkdir(paths.figureFolder);
+    end
+    if ~exist(saveDir, 'dir')
+        mkdir(saveDir);
+    end
+    catch ME
+        warning('Directory:CreateError', 'Unable to create save directory: %s\nError: %s', saveDir, ME.message);
+        % Continue with the rest of the function even if directory creation fails
+    end
+    
+    % Modify the save block to handle errors for each file separately
     try
         timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
         
-        % Save Cohen's d plot
-        savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
-        print(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        % Try to save each file individually
+        try
+            savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
+        catch ME1
+            warning('Save:Error', 'Error saving Cohen''s d figure: %s', ME1.message);
+        end
         
-        % Save heatmap
-        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
-        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        try
+            print(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        catch ME2
+            warning('Save:Error', 'Error saving Cohen''s d TIFF: %s', ME2.message);
+        end
         
-        % Save table
-        writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
+        try
+            savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
+        catch ME3
+            warning('Save:Error', 'Error saving heatmap figure: %s', ME3.message);
+        end
         
-        close(fig1);
-        close(fig2);
+        try
+            print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        catch ME4
+            warning('Save:Error', 'Error saving heatmap TIFF: %s', ME4.message);
+        end
+        
+        try
+            writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
+        catch ME5
+            warning('Save:Error', 'Error saving unit table: %s', ME5.message);
+        end
+        
     catch ME
-        warning('Save:Error', 'Error saving figures: %s', ME.message);
+        warning('Save:Error', 'General error in save process: %s', ME.message);
     end
-
-    % Return figure handles
     figHandles = [fig1, fig2];
 end
 
+
+%% Helper Functions
+
+% Custom Tool Tip for units in heat map (doesn't work)
+function txt = customDataTipFunction(~, event_obj, groupData)
+    pos = event_obj.Position;
+    txt = {sprintf('Unit: %s', groupData.Labels{pos(1)}), ...
+           sprintf('Rank: %d', groupData.UnitRanks(pos(1))), ...
+           sprintf('Z-Score: %.2f', event_obj.Target.CData(pos(1), pos(2)))};
+end
+
+% Validate Existing Units Pass Filter Checks
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
-    % Check outlier status
     if outlierFilter && isfield(unitData, 'isOutlierExperimental') && unitData.isOutlierExperimental
         isValid = false;
         return;
     end
     
-    % Check unit type
     isSingleUnit = isfield(unitData, 'IsSingleUnit') && unitData.IsSingleUnit == 1;
     if strcmp(unitFilter, 'single') && ~isSingleUnit || ...
        strcmp(unitFilter, 'multi') && isSingleUnit
@@ -281,8 +303,8 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     isValid = true;
 end
 
+% Buld Color Map
 function c = redblue(m)
-    % Custom red-blue colormap
     if nargin < 1
         m = 256;
     end
@@ -291,9 +313,9 @@ function c = redblue(m)
     middle = [1 1 1];
     top = [1 0 0];
     
-    % Create color segments
     bottom_half = interp1([0 1], [bottom; middle], linspace(0,1,ceil(m/2)));
     top_half = interp1([0 1], [middle; top], linspace(0,1,floor(m/2)));
     
     c = [bottom_half; top_half(2:end,:)];
 end
+
