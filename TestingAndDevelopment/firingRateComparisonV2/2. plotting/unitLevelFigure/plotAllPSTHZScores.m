@@ -1,30 +1,19 @@
-function plotAllPSTHZScores(cellDataStruct)
-    % Initialize storage vectors
-    zscores_all = [];         % [time x units]
-    zscores_enhanced = [];    % [time x units]
-    stats_all = [];          % Store statistics
-    stats_enhanced = [];     % Store statistics for enhanced units
-    groupsLabels_all = {};
-    mouseLabels_all = {};
-    cellID_Labels_all = {};
-    groupsLabels_enhanced = {};
-    mouseLabels_enhanced = {};
-    cellID_Labels_enhanced = {};
+function plotAllPSTHZScores(cellDataStruct, treatmentTime, figureFolder)
+    % Set defaults
+    if nargin < 2 || isempty(treatmentTime)
+        treatmentTime = 2000;
+        fprintf('No treatment time specified. Using default: %d ms.\n', treatmentTime);
+    end
     
-    % Get data from structure
+    if nargin < 3 || isempty(figureFolder)
+        error('Plot:NoFolder', 'Figure folder path is required');
+    end
+    
+    % Initialize results tracking
+    results = struct('total', 0, 'success', 0, 'errors', 0);
+    
+    % Process each group
     groupNames = fieldnames(cellDataStruct);
-    
-    fprintf('\nEnhanced Units Found:\n');
-    fprintf('-------------------\n');
-    
-    % Get first unit's time vector for plotting
-    firstGroup = groupNames{1};
-    firstRecording = fieldnames(cellDataStruct.(firstGroup)){1};
-    firstUnit = fieldnames(cellDataStruct.(firstGroup).(firstRecording)){1};
-    timeVector = cellDataStruct.(firstGroup).(firstRecording).(firstUnit).binEdges(1:end-1) + ...
-                cellDataStruct.(firstGroup).(firstRecording).(firstUnit).binWidth/2;
-    
-    % Collect zscores
     for g = 1:length(groupNames)
         groupName = groupNames{g};
         recordings = fieldnames(cellDataStruct.(groupName));
@@ -35,133 +24,172 @@ function plotAllPSTHZScores(cellDataStruct)
             
             for u = 1:length(units)
                 unitID = units{u};
-                unitData = cellDataStruct.(groupName).(recordingName).(unitID);
+                results.total = results.total + 1;
                 
-                % Check if unit has required fields
-                if ~isfield(unitData, 'psthZScore') || ...
-                   ~isfield(unitData, 'psthZScoreStats') || ...
-                   ~isfield(unitData, 'responseType')
-                    continue;
-                end
-                
-                % Get zscore and stats
-                zscore = unitData.psthZScore;
-                stats = unitData.psthZScoreStats;
-                
-                % Store in all units
-                zscores_all = [zscores_all, zscore'];
-                stats_all = [stats_all; stats];
-                groupsLabels_all{end+1,1} = groupName;
-                mouseLabels_all{end+1,1} = recordingName;
-                cellID_Labels_all{end+1,1} = unitID;
-                
-                % Check if enhanced
-                if strcmp(strrep(unitData.responseType, ' ', ''), 'Increased')
-                    fprintf('Group: %s | Recording: %s | Unit: %s\n', ...
-                        groupName, recordingName, unitID);
+                try
+                    % Get unit data
+                    unitData = cellDataStruct.(groupName).(recordingName).(unitID);
                     
-                    zscores_enhanced = [zscores_enhanced, zscore'];
-                    stats_enhanced = [stats_enhanced; stats];
-                    groupsLabels_enhanced{end+1,1} = groupName;
-                    mouseLabels_enhanced{end+1,1} = recordingName;
-                    cellID_Labels_enhanced{end+1,1} = unitID;
+                    % Validate data
+                    if ~isValidUnit(unitData)
+                        warning('Plot:InvalidUnit', 'Invalid Z-score data for unit %s', unitID);
+                        continue;
+                    end
+                    
+                    % Create unit directory
+                    saveDir = fullfile(figureFolder, groupName, recordingName, unitID);
+                    if ~isfolder(saveDir)
+                        mkdir(saveDir);
+                    end
+                    
+                    % Create and save plot
+                    if generateAndSavePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
+                        results.success = results.success + 1;
+                    else
+                        results.errors = results.errors + 1;
+                    end
+                    
+                catch ME
+                    results.errors = results.errors + 1;
+                    warning('Plot:UnitError', 'Error processing unit %s: %s', unitID, ME.message);
                 end
             end
         end
     end
+    
+    % Display summary
+    displaySummary(results);
+end
 
-    % Print summary
-    fprintf('\nSummary:\n');
-    fprintf('Total units: %d\n', size(zscores_all, 2));
-    fprintf('Enhanced units: %d\n\n', size(zscores_enhanced, 2));
-    
-    % Plotting
-    figure('Position', [100 100 1200 1000]);
-    T = tiledlayout(3,1);
-    
-    % Top panel: Enhanced units only
-    nexttile(T, [1 1]);
-    hold on;
-    for unitInd = 1:size(zscores_enhanced,2)
-        p = plot(timeVector, zscores_enhanced(:,unitInd), 'Color', [1 0 0, 0.2]);
-        p.DataTipTemplate.DataTipRows(1:2) = [dataTipTextRow("Rec:", repmat(mouseLabels_enhanced(unitInd),length(timeVector),1)),...
-                                             dataTipTextRow("Cell:", repmat(cellID_Labels_enhanced(unitInd),length(timeVector),1))];
-        p.DataTipTemplate.set('Interpreter','none');
-    end
-    
-    % Plot mean enhanced zscore
-    if ~isempty(zscores_enhanced)
-        meanZScore_enhanced = mean(zscores_enhanced,2);
-        plot(timeVector, meanZScore_enhanced, 'Color', [1 0 0], 'LineWidth', 2);
-    end
-    title(sprintf('Enhanced Units Z-Scores (n=%d)', size(zscores_enhanced,2)));
-    xline(2000, '--k'); % Treatment time marker
-    ylabel('Z-Score');
-    hold off;
-    
-    % Middle panel: All units
-    nexttile(T, [1 1]);
-    hold on;
-    for unitInd = 1:size(zscores_all,2)
-        p = plot(timeVector, zscores_all(:,unitInd), 'Color', [0.7 0.7 0.7 0.3]);
-        p.DataTipTemplate.DataTipRows(1:2) = [dataTipTextRow("Rec:", repmat(mouseLabels_all(unitInd),length(timeVector),1)),...
-                                             dataTipTextRow("Cell:", repmat(cellID_Labels_all(unitInd),length(timeVector),1))];
-        p.DataTipTemplate.set('Interpreter','none');
-    end
-    
-    meanZScore_all = mean(zscores_all,2);
-    plot(timeVector, meanZScore_all, 'Color', [0.6 0.6 0.6], 'LineWidth', 2);
-    title(sprintf('All Units Z-Scores (n=%d)', size(zscores_all,2)));
-    xline(2000, '--k'); % Treatment time marker
-    ylabel('Z-Score');
-    hold off;
-    
-    % Bottom panel: Statistics
-    nexttile(T, [1 1]);
-    hold on;
-    
-    % Calculate and plot statistics
-    if ~isempty(stats_all)
-        % Create box plot or violin plot of baseline vs post-treatment statistics
-        baseline_stats = arrayfun(@(x) x.baseline.mean, stats_all);
-        post_stats = arrayfun(@(x) x.postTreatment.mean, stats_all);
-        
-        boxplot([baseline_stats, post_stats], ...
-                'Labels', {'Baseline', 'Post-Treatment'}, ...
-                'Colors', [0.6 0.6 0.6]);
-        
-        % Add individual points
-        scatter(ones(size(baseline_stats)) + (rand(size(baseline_stats))-0.5)*0.2, baseline_stats, 20, [0.7 0.7 0.7], 'filled', 'MarkerFaceAlpha', 0.3);
-        scatter(2*ones(size(post_stats)) + (rand(size(post_stats))-0.5)*0.2, post_stats, 20, [0.7 0.7 0.7], 'filled', 'MarkerFaceAlpha', 0.3);
-    end
-    
-    title('Population Statistics');
-    ylabel('Z-Score');
-    hold off;
-    
-    % Add overall title and labels
-    title(T, 'Population Z-Score Analysis', 'FontSize', 12);
-    xlabel(T, 'Time (ms)', 'FontSize', 10);
-    
-    % Add grid to all plots
-    for i = 1:3
-        nexttile(i);
-        grid on;
-        set(gca, 'Layer', 'top', 'GridAlpha', 0.15);
-    end
+function isValid = isValidUnit(unitData)
+    isValid = isfield(unitData, 'binEdges') && ...
+              isfield(unitData, 'psthZScore') && ...
+              ~isempty(unitData.binEdges) && ...
+              ~isempty(unitData.psthZScore);
+end
 
-    % Save figure
+function success = generateAndSavePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
     try
-        timeStamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm'));
-        fileName = sprintf('allUnitsZScores_%s', timeStamp);
+        % Create figure
+        f = figure('Visible', 'on', 'Position', [100, 100, 800, 600]);
         
-        fig = gcf;
+        % Plot PSTH
+        bar(unitData.binEdges(1:end-1), unitData.psthZScore, 'FaceColor', 'k', 'EdgeColor', 'k');
+        hold on;
         
-        savefig(fig, fullfile(pwd, [fileName '.fig']));
-        print(fig, fullfile(pwd, [fileName '.tif']), '-dtiff', '-r300');
+        % Add treatment line
+        xline(treatmentTime, '--r', 'LineWidth', 2);
         
-        close(fig);
-    catch ME
-        warning('Save:Error', 'Error saving figure: %s', ME.message);
+        % Set axes
+        xlabel('Time (s)');
+        ylabel('z Score');
+        title(sprintf('PSTH Z Score: %s - %s - %s', groupName, recordingName, unitID));
+        
+        % Set limits
+        maxY = max(unitData.psthZScore(~isnan(unitData.psthZScore)));
+        if ~isempty(maxY) && ~isnan(maxY) && maxY > 0
+            ylim([0, maxY * 1.1]);
+        else
+            ylim([0, 1]);
+        end
+        xlim([min(unitData.binEdges), max(unitData.binEdges)]);
+        
+        % Style
+        set(gca, 'Box', 'off', 'TickDir', 'out', 'FontSize', 10, 'LineWidth', 1.2);
+        
+        % Add metadata
+        addMetadata(unitData, unitID);
+        
+        % Save figure
+        timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
+        fileName = sprintf('RawPSTH_%s_%s.fig', unitID, timestamp);
+        savefig(f, fullfile(saveDir, fileName));
+        
+        close(f);
+        success = true;
+    catch
+        success = false;
     end
 end
+
+function addMetadata(unitData, unitID)
+    % Generate metadata text
+    cellType = unitData.CellType;
+    channel = unitData.TemplateChannel;
+    unitStatus = ternary(unitData.IsSingleUnit == 1, 'Single Unit', 'Not Single Unit');
+    
+    metaText = sprintf('Cell Type: %s\nChannel: %d\n%s\nUnit ID: %s', ...
+                      cellType, channel, unitStatus, unitID);
+    
+    % Create draggable annotation
+    ann = annotation('textbox', [0.7, 0.8, 0.25, 0.15], ... % [x, y, width, height]
+                    'String', metaText, ...
+                    'EdgeColor', 'k', ...         % Black border
+                    'BackgroundColor', 'w', ...   % White background
+                    'HorizontalAlignment', 'left', ...
+                    'VerticalAlignment', 'top', ...
+                    'FontSize', 8, ...
+                    'FitBoxToText', 'on', ...     % Adjust box size to fit text
+                    'LineWidth', 1, ...           % Border width
+                    'Margin', 5, ...              % Text margin inside box
+                    'Interpreter', 'none');
+    
+    % Make annotation draggable
+    set(ann, 'ButtonDownFcn', @startDragFcn);
+end
+
+function startDragFcn(src, ~)
+    % Store initial position and setup mouse callbacks
+    setappdata(src, 'InitialPosition', get(src, 'Position'));
+    setappdata(src, 'InitialClick', get(gcf, 'CurrentPoint'));
+    
+    % Set up mouse movement and release callbacks
+    set(gcf, 'WindowButtonMotionFcn', {@dragFcn, src});
+    set(gcf, 'WindowButtonUpFcn', {@stopDragFcn, src});
+end
+
+function dragFcn(~, ~, ann)
+    % Get initial data
+    initPos = getappdata(ann, 'InitialPosition');
+    initClick = getappdata(ann, 'InitialClick');
+    
+    % Get figure handle and position
+    fig = gcf();
+    figPos = get(fig, 'Position');
+    currentPoint = get(fig, 'CurrentPoint');
+    
+    % Calculate movement
+    deltaX = (currentPoint(1) - initClick(1)) / figPos(3);
+    deltaY = (currentPoint(2) - initClick(2)) / figPos(4);
+    
+    % Update position
+    newPos = initPos + [deltaX deltaY 0 0];
+    set(ann, 'Position', newPos);
+end
+
+function stopDragFcn(fig, ~, ann)
+    % Clear mouse callbacks
+    set(fig, 'WindowButtonMotionFcn', '');
+    set(fig, 'WindowButtonUpFcn', '');
+    
+    % Store final position
+    setappdata(ann, 'InitialPosition', get(ann, 'Position'));
+end
+
+function result = ternary(condition, trueVal, falseVal)
+    if condition
+        result = trueVal;
+    else
+        result = falseVal;
+    end
+end
+
+function displaySummary(results)
+    fprintf('\nProcessing Summary:\n');
+    fprintf('Total Units: %d\n', results.total);
+    fprintf('Successful: %d\n', results.success);
+    fprintf('Failed: %d\n', results.errors);
+    fprintf('Success Rate: %.1f%%\n', (results.success/results.total)*100);
+end
+
+
