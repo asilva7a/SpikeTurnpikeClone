@@ -272,6 +272,8 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
 end
 
 function c = redblue(m)
+% Credit to Adam Auton (2009.10.09) for color map
+
     % If no input, use current figure's colormap size
     if nargin < 1
         m = size(get(gcf,'colormap'),1);
