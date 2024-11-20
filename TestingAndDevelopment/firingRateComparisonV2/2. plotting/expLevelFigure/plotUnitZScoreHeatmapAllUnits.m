@@ -41,17 +41,16 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     tableData.Subtype = {};
 
     % Define groups to process
-    groupsToProcess = {'Emx', 'Pvalb'};
+    groupsToProcess = {'Emx', 'Pvalb', 'Control'};
     
     % Initialize group data structure
     groupData = struct();
     for g = 1:length(groupsToProcess)
         groupName = groupsToProcess{g};
-        groupData.(groupName) = struct(...
-            'PSTHs', [], ...
-            'CohensD', [], ...
-            'Colors', [], ...
-            'Labels', {});
+        groupData(1).(groupName).PSTHs = [];
+        groupData(1).(groupName).CohensD = [];
+        groupData(1).(groupName).Colors = [];
+        groupData(1).(groupName).Labels = {};
     end
 
     % Process each group
