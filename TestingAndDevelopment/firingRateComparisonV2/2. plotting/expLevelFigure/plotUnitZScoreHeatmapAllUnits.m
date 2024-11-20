@@ -216,65 +216,33 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     cb.Layout.Tile = 'east';
     cb.Label.String = 'Z-Score';
 
-    % Save figures
+   % Save figures
     saveDir = fullfile(paths.figureFolder, '0. expFigures');
-    if ~isfolder(saveDir)
-        mkdir(saveDir);
-    end
-
-   try
-    if ~exist(paths.figureFolder, 'dir')
-        mkdir(paths.figureFolder);
-    end
+    
+    % Create directory if it doesn't exist
     if ~exist(saveDir, 'dir')
         mkdir(saveDir);
     end
-    catch ME
-        warning('Directory:CreateError', 'Unable to create save directory: %s\nError: %s', saveDir, ME.message);
-        % Continue with the rest of the function even if directory creation fails
-    end
     
-    % Modify the save block to handle errors for each file separately
     try
         timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
         
-        % Try to save each file individually
-        try
-            savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
-        catch ME1
-            warning('Save:Error', 'Error saving Cohen''s d figure: %s', ME1.message);
-        end
+        % Save Cohen's d plot (fig only)
+        savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
         
-        try
-            print(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
-        catch ME2
-            warning('Save:Error', 'Error saving Cohen''s d TIFF: %s', ME2.message);
-        end
+        % Save heatmap (fig only)
+        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
         
-        try
-            savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
-        catch ME3
-            warning('Save:Error', 'Error saving heatmap figure: %s', ME3.message);
-        end
+        % Save table
+        writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
         
-        try
-            print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
-        catch ME4
-            warning('Save:Error', 'Error saving heatmap TIFF: %s', ME4.message);
-        end
-        
-        try
-            writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
-        catch ME5
-            warning('Save:Error', 'Error saving unit table: %s', ME5.message);
-        end
-        
+        % Close figures
+        close(fig1);
+        close(fig2);
     catch ME
-        warning('Save:Error', 'General error in save process: %s', ME.message);
+        warning('Save:Error', 'Error saving files: %s', ME.message);
     end
-    figHandles = [fig1, fig2];
 end
-
 
 %% Helper Functions
 
@@ -303,19 +271,34 @@ function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
     isValid = true;
 end
 
-% Buld Color Map
 function c = redblue(m)
     if nargin < 1
         m = 256;
     end
     
-    bottom = [0 0 1];
-    middle = [1 1 1];
-    top = [1 0 0];
+    bottom = [0 0 1];     % Blue
+    middle = [1 1 1];     % White
+    top = [1 0 0];       % Red
     
-    bottom_half = interp1([0 1], [bottom; middle], linspace(0,1,ceil(m/2)));
-    top_half = interp1([0 1], [middle; top], linspace(0,1,floor(m/2)));
+    % Calculate number of points for each segment
+    whitePoints = round(m * 0.1);  % 20% of points for white region (±0.1)
+    colorPoints = round((m - whitePoints) / 2);  % Remaining points split between red and blue
     
-    c = [bottom_half; top_half(2:end,:)];
+    % Create three segments
+    bottom_to_white = interp1([0 1], [bottom; middle], linspace(0, 1, colorPoints));
+    white_region = repmat(middle, whitePoints, 1);
+    white_to_top = interp1([0 1], [middle; top], linspace(0, 1, colorPoints));
+    
+    % Combine segments
+    c = [bottom_to_white; white_region; white_to_top];
+    
+    % Ensure exactly m rows
+    if size(c,1) > m
+        c = c(1:m,:);
+    elseif size(c,1) < m
+        c = [c; repmat(c(end,:), m-size(c,1), 1)];
+    end
 end
+
+
 
