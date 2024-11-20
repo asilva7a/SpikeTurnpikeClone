@@ -22,5 +22,14 @@
         "update-matlab-proxy": "sudo python3 -m pip install --upgrade pip matlab-proxy"
     },
     "postStartCommand": "run.sh -browser",
-    "runArgs": ["--init", "--shm-size=512M"]
+    "runArgs": ["--init", "--shm-size=512M"],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "matlab.installPath": "/opt/matlab/R2024b",
+                "matlab.matlabpath": "/opt/matlab/R2024b/bin/matlab",
+                "matlab.mlintpath": "/opt/matlab/R2024b/bin/glnxa64/mlint"
+            }
+        }
+    }
 }
