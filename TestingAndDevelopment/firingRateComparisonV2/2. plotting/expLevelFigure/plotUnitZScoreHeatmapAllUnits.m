@@ -28,18 +28,9 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     colorMap('Changed_Weak') = [0.5 0 0.5];         % Purple
     colorMap('No_Change_None') = [0.4 0.4 0.4];     % Gray
 
-
-    % Initialize storage for all units
-    allPSTHs = [];
-    allCohensD = [];
-    allColors = [];
-    allLabels = {};
-    allGroups = {};
-    
     % Initialize table data
     tableData = struct();
     tableData.UnitID = {};
-    tableData.Subtype = {}; 
     tableData.Group = {};
     tableData.CohensD = [];
     tableData.CI_Pre_Lower = [];
@@ -47,16 +38,29 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     tableData.CI_Post_Lower = [];
     tableData.CI_Post_Upper = [];
     tableData.ResponseType = {};
+    tableData.Subtype = {};
 
-    % Initialize group data structure before the processing loop
-    groupsToProcess = {'Emx', 'Pvalb', 'Control'};
-
+    % Define groups to process
+    groupsToProcess = {'Emx', 'Pvalb'};
+    
+    % Initialize group data structure
     groupData = struct();
-    for groupName = groupsToProcess
-        groupData.(groupName{1}) = struct('PSTHs', [], 'CohensD', [], ...
-            'Colors', [], 'Labels', {});
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
+        groupData.(groupName) = struct(...
+            'PSTHs', [], ...
+            'CohensD', [], ...
+            'Colors', [], ...
+            'Labels', {});
     end
-        
+
+    % Process each group
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
+        if ~isfield(cellDataStruct, groupName)
+            error('Group %s not found in data structure', groupName);
+        end
+
         % Process recordings in this group
         recordings = fieldnames(cellDataStruct.(groupName));
         for r = 1:length(recordings)
@@ -88,7 +92,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
                     else
                         groupData.(groupName).Colors = [groupData.(groupName).Colors; [0.7 0.7 0.7]];
                     end
-
+                    
                     % Store data for table
                     tableData.UnitID{end+1} = unitID;
                     tableData.Group{end+1} = groupName;
@@ -102,24 +106,35 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
                 end
             end
         end
+        
+        % Sort each group's data by Cohen's d
+        [~, sortIdx] = sort(groupData.(groupName).CohensD, 'descend');
+        groupData.(groupName).PSTHs = groupData.(groupName).PSTHs(sortIdx, :);
+        groupData.(groupName).CohensD = groupData.(groupName).CohensD(sortIdx);
+        groupData.(groupName).Colors = groupData.(groupName).Colors(sortIdx, :);
+        groupData.(groupName).Labels = groupData.(groupName).Labels(sortIdx);
     end
 
     % Create table
     unitTable = table(tableData.UnitID', tableData.Group', tableData.CohensD', ...
                      tableData.CI_Pre_Lower', tableData.CI_Pre_Upper', ...
                      tableData.CI_Post_Lower', tableData.CI_Post_Upper', ...
-                     tableData.ResponseType', ...
+                     tableData.ResponseType', tableData.Subtype', ...
                      'VariableNames', {'UnitID', 'Group', 'CohensD', ...
                                      'CI_Pre_Lower', 'CI_Pre_Upper', ...
                                      'CI_Post_Lower', 'CI_Post_Upper', ...
-                                     'ResponseType'});
+                                     'ResponseType', 'Subtype'});
 
-    % Sort all data by Cohen's d
-    [sortedD, sortIdx] = sort(allCohensD, 'descend');
-    sortedPSTHs = allPSTHs(sortIdx, :);
-    sortedColors = allColors(sortIdx, :);
-    sortedLabels = allLabels(sortIdx);
-    sortedGroups = allGroups(sortIdx);
+    % Combine sorted data from all groups
+    combinedPSTHs = [];
+    combinedCohensD = [];
+    combinedColors = [];
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
+        combinedPSTHs = [combinedPSTHs; groupData.(groupName).PSTHs];
+        combinedCohensD = [combinedCohensD; groupData.(groupName).CohensD];
+        combinedColors = [combinedColors; groupData.(groupName).Colors];
+    end
 
     % Create figures
     fig1 = figure('Position', [100 100 800 800]);
@@ -127,11 +142,23 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
 
     % Plot Cohen's d (fig1)
     figure(fig1);
-    
     hold on;
     
-    for i = 1:length(sortedD)
-        barh(i, sortedD(i), 'FaceColor', sortedColors(i,:), 'EdgeColor', 'none');
+    currentIdx = 1;
+    for g = 1:length(groupsToProcess)
+        groupName = groupsToProcess{g};
+        numUnits = length(groupData.(groupName).CohensD);
+        
+        for i = 1:numUnits
+            barh(currentIdx, groupData.(groupName).CohensD(i), ...
+                'FaceColor', groupData.(groupName).Colors(i,:), ...
+                'EdgeColor', 'none');
+            currentIdx = currentIdx + 1;
+        end
+        
+        if g < length(groupsToProcess)
+            yline(currentIdx - 0.5, 'k-', 'LineWidth', 2);
+        end
     end
 
     xlabel('Cohen''s d', 'FontSize', opts.FontSize);
@@ -149,7 +176,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     h6 = plot(nan, nan, 'Color', colorMap('Decreased_Variable'), 'LineWidth', 2);
     h7 = plot(nan, nan, 'Color', colorMap('Changed_Weak'), 'LineWidth', 2);
     h8 = plot(nan, nan, 'Color', colorMap('No_Change_None'), 'LineWidth', 2);
-    
+
     legend([h1 h2 h3 h4 h5 h6 h7 h8], ...
         {'Enhanced (Strong)', 'Enhanced (Moderate)', 'Enhanced (Variable)', ...
          'Diminished (Strong)', 'Diminished (Moderate)', 'Diminished (Variable)', ...
@@ -160,7 +187,7 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
 
     % Plot Z-score heatmap (fig2)
     figure(fig2);
-    imagesc(sortedPSTHs, opts.ColorLimits);
+    imagesc(combinedPSTHs, opts.ColorLimits);
     colormap(redblue(256));
     c = colorbar;
     c.Label.String = 'Z-Score';
@@ -168,6 +195,14 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     % Add treatment time line
     hold on;
     xline(1860/5, '--w', 'LineWidth', 1);
+    
+    % Add group separation lines
+    currentIdx = 0;
+    for g = 1:length(groupsToProcess)-1
+        groupName = groupsToProcess{g};
+        currentIdx = currentIdx + length(groupData.(groupName).CohensD);
+        yline(currentIdx + 0.5, 'w-', 'LineWidth', 2);
+    end
     hold off;
 
     xlabel('Time (ms)', 'FontSize', opts.FontSize);
@@ -180,23 +215,29 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     if ~isfolder(saveDir)
         mkdir(saveDir);
     end
-    
+
     try
         timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
         
         % Save Cohen's d plot
-        savefig(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig1, fullfile(saveDir, sprintf('CohensD_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        savefig(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.fig', timestamp)));
+        print(fig1, fullfile(saveDir, sprintf('CohensD_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
         
         % Save heatmap
-        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.fig', timestamp)));
-        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_EMXvsPVALB_%s.tif', timestamp)), '-dtiff', '-r300');
+        savefig(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.fig', timestamp)));
+        print(fig2, fullfile(saveDir, sprintf('ZScoreHeatmap_AllUnits_%s.tif', timestamp)), '-dtiff', '-r300');
+        
+        % Save table
+        writetable(unitTable, fullfile(saveDir, sprintf('UnitStats_%s.csv', timestamp)));
         
         close(fig1);
         close(fig2);
     catch ME
         warning('Save:Error', 'Error saving figures: %s', ME.message);
     end
+
+    % Return figure handles
+    figHandles = [fig1, fig2];
 end
 
 function isValid = isValidUnit(unitData, unitFilter, outlierFilter)
