@@ -200,8 +200,9 @@ function [figHandles, unitTable] = plotUnitZScoreHeatmapAllUnits(cellDataStruct,
     for g = 1:length(groupsToProcess)-1
         groupName = groupsToProcess{g};
         currentIdx = currentIdx + length(groupData.(groupName).CohensD);
-        yline(currentIdx + 0.5, 'w-', 'LineWidth', 2);
+        yline(currentIdx + 0.5, 'w-', 'LineWidth', 4);  % Increased from 2 to 4
     end
+
     hold off;
 
     xlabel('Time (ms)', 'FontSize', opts.FontSize);
@@ -260,7 +261,7 @@ end
 function c = redblue(m)
     % Custom red-blue colormap
     if nargin < 1
-        m = 256;
+       m = 256;
     end
     
     bottom = [0 0 1];
