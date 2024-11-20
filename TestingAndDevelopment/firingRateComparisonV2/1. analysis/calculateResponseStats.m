@@ -12,8 +12,13 @@ function stats = calculateResponseStats(preRate, postRate, binWidth)
     pooled_std = sqrt((var(preRate, 'omitnan') + var(postRate, 'omitnan'))/2);
     stats.cohens_d = (stats.mean_post - stats.mean_pre) / pooled_std;
     
-    % Wilcoxon signed rank test
-    [stats.p_value, stats.h_wilcox] = signrank(preRate, postRate, 'alpha', 0.01);
+    % Wilcoxon signed rank test with Bonferroni correction
+    n_comparisons = length(preRate);
+    alpha_corrected = 0.01 / n_comparisons;
+    [stats.p_value, stats.h_wilcox] = signrank(preRate, postRate, 'alpha', alpha_corrected);
+    
+    % FDR control using Benjamini-Hochberg
+    [stats.p_value_fdr, stats.significant_fdr] = benjaminiHochberg(stats.p_value, 0.05);
     
     % Bootstrap confidence intervals
     nBootstraps = 1000;
@@ -27,7 +32,7 @@ function stats = calculateResponseStats(preRate, postRate, binWidth)
     
     % Signal-to-Noise Ratio
     stats.snr = abs(stats.mean_post - stats.mean_pre) / ...
-                sqrt(stats.std_pre^2 + stats.std_post^2);
+        sqrt(stats.std_pre^2 + stats.std_post^2);
     
     % Reliability score (combines effect size and significance)
     stats.reliability = abs(stats.cohens_d) * (1 - stats.p_value);
@@ -39,5 +44,23 @@ function stats = calculateResponseStats(preRate, postRate, binWidth)
     stats.variance_post = var(postRate, 'omitnan');
     stats.kruskal_p = kruskalwallis([preRate(:); postRate(:)], ...
         [ones(size(preRate(:))); 2*ones(size(postRate(:)))], 'off');
+end
+
+function [p_fdr, significant] = benjaminiHochberg(p_values, q)
+    % Benjamini-Hochberg FDR control
+    [sorted_p, idx] = sort(p_values);
+    n = length(p_values);
+    k = (1:n)' * q / n;
+    significant = zeros(size(p_values));
+    cutoff = find(sorted_p <= k, 1, 'last');
+    
+    if ~isempty(cutoff)
+        significant(idx(1:cutoff)) = 1;
+    end
+    
+    % Calculate FDR-adjusted p-values
+    p_fdr = min(1, sorted_p .* (n ./ (1:n)'));
+    p_fdr = cummin(p_fdr(end:-1:1));  % Enforce monotonicity
+    p_fdr(idx) = p_fdr;  % Restore original order
 end
 
