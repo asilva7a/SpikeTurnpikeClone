@@ -121,3 +121,29 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
         plot_project_boxplot(all_amplitudes, recording_labels, group_labels, save_path);
     end
 end
+
+function stats = calculate_unit_stats(amplitudes, level)
+    % Calculate basic statistics
+    stats.n_samples = length(amplitudes);
+    stats.mean = mean(amplitudes);
+    stats.median = median(amplitudes);
+    stats.min = min(amplitudes);
+    stats.max = max(amplitudes);
+    stats.std = std(amplitudes);
+    stats.std_error = stats.std / sqrt(stats.n_samples);
+    stats.range = stats.max - stats.min;
+    
+    % Only calculate CI and normality test for group/recording levels
+    if nargin > 1 && (strcmp(level, 'group') || strcmp(level, 'recording'))
+        % Test for normality using Lilliefors test
+        [h, p_value] = lillietest(amplitudes);
+        stats.normality_test = struct('h', h, 'p_value', p_value);
+        stats.is_normal = ~h;
+        
+        % Calculate 95% CI using t-distribution
+        alpha = 0.05;
+        t_score = tinv(1-alpha/2, stats.n_samples-1);
+        stats.CI_lower = stats.mean - t_score * stats.std_error;
+        stats.CI_upper = stats.mean + t_score * stats.std_error;
+    end
+end
