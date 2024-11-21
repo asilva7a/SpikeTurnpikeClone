@@ -155,14 +155,14 @@ function plot_project_violin(amplitudes, recording_labels, group_labels, save_pa
     colors = lines(length(unique_groups));
     color_map = containers.Map(unique_groups, num2cell(colors, 2));
     
-    % Create violin plot
-    violinplot(amplitudes, recording_labels, 'GroupByColor', group_labels);
+    % Create boxplot
+    [g, recording_names] = findgroups(recording_labels);
+    boxplot(amplitudes, g, 'Labels', recording_names, 'Orientation', 'vertical');
     
+    % Add individual points
     hold on
-    unique_recordings = unique(recording_labels);
-    for i = 1:length(unique_recordings)
-        % Get data points for this recording
-        idx = strcmp(recording_labels, unique_recordings{i});
+    for i = 1:length(recording_names)
+        idx = strcmp(recording_labels, recording_names{i});
         recording_group = group_labels{find(idx, 1)};
         
         % Add jittered scatter plot
@@ -184,7 +184,7 @@ function plot_project_violin(amplitudes, recording_labels, group_labels, save_pa
     set(gca, 'Position', [0.1 0.2 0.7 0.7]);
     
     % Save figure
-    savefig(fullfile(save_path, 'project_amplitude_violinplot.fig'));
-    saveas(gcf, fullfile(save_path, 'project_amplitude_violinplot.png'));
+    savefig(fullfile(save_path, 'project_amplitude_boxplot.fig'));
+    saveas(gcf, fullfile(save_path, 'project_amplitude_boxplot.png'));
     close(gcf);
 end
