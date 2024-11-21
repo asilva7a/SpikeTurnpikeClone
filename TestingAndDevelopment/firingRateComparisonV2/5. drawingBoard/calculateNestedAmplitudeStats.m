@@ -156,6 +156,9 @@ function plot_project_boxplot(amplitudes, recording_labels, group_labels, save_p
     % Create boxplot
     [g, recording_names] = findgroups(recording_labels);
     boxplot(amplitudes, g, 'Labels', recording_names, 'Orientation', 'vertical');
+
+    % Create violin plot
+    violinplot(amplitudes, recording_labels, 'GroupByColor', group_labels);
     
     % Customize boxplot colors by group
     h = findobj(gca, 'Tag', 'Box');
@@ -166,10 +169,18 @@ function plot_project_boxplot(amplitudes, recording_labels, group_labels, save_p
             color_map(recording_group), 'FaceAlpha', 0.5);
     end
     
-    % Customize plot
-    xlabel('Recordings');
-    ylabel('Amplitude (µV)');
-    title('Amplitude Distribution Across Recordings');
+    % Add individual points
+    hold on
+    for i = 1:length(recording_names)
+        % Get data points for this recording
+        idx = strcmp(recording_labels, recording_names{i});
+        recording_group = group_labels{find(idx, 1)};
+        
+        % Add jittered scatter plot
+        x = rand(sum(idx),1)*0.4 - 0.2 + i;
+        scatter(x, amplitudes(idx), 20, color_map(recording_group), 'filled', 'MarkerFaceAlpha', 0.3);
+    end
+    hold off
     
     % Add legend for groups
     legend_handles = [];
