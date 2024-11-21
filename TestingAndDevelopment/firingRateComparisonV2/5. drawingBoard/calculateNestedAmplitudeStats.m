@@ -24,7 +24,7 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
             
             % Recording level arrays
             all_recording_amplitudes = [];
-            recording_stats_table = table();
+            unit_metadata_table = table();
             
             for u = 1:length(units)
                 unitID = units{u};
@@ -34,20 +34,8 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
                     amplitudes = unitData.Amplitude(:);
                     amplitudes = amplitudes(isfinite(amplitudes));
                     
-                    % Calculate unit statistics (basic stats only)
-                    unit_stats = calculate_unit_stats(amplitudes, 'unit');
-                    
-                    % Store unit stats and append data
-                    stats_by_level.(groupName).(recordingName).(unitID) = unit_stats;
-                    all_recording_amplitudes = [all_recording_amplitudes; amplitudes];
-                    
-                    % Store data for project-wide boxplot
-                    all_amplitudes = [all_amplitudes; amplitudes];
-                    recording_labels = [recording_labels; repmat({recordingName}, length(amplitudes), 1)];
-                    group_labels = [group_labels; repmat({groupName}, length(amplitudes), 1)];
-                    
-                    % Add to recording table with metadata
-                    unit_row = struct2table(unit_stats, 'AsArray', true);
+                    % Store unit metadata
+                    unit_row = table();
                     unit_row.UnitID = {unitID};
                     if isfield(unitData, 'CellType')
                         unit_row.CellType = {unitData.CellType};
@@ -55,11 +43,19 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
                     if isfield(unitData, 'IsSingleUnit')
                         unit_row.IsSingleUnit = unitData.IsSingleUnit;
                     end
-                    recording_stats_table = [recording_stats_table; unit_row];
+                    unit_metadata_table = [unit_metadata_table; unit_row];
+                    
+                    % Append amplitudes for recording level analysis
+                    all_recording_amplitudes = [all_recording_amplitudes; amplitudes];
+                    
+                    % Store data for project-wide boxplot
+                    all_amplitudes = [all_amplitudes; amplitudes];
+                    recording_labels = [recording_labels; repmat({recordingName}, length(amplitudes), 1)];
+                    group_labels = [group_labels; repmat({groupName}, length(amplitudes), 1)];
                 end
             end
             
-            % Calculate recording level stats with CI
+            % Calculate recording level stats
             if ~isempty(all_recording_amplitudes)
                 recording_stats = calculate_unit_stats(all_recording_amplitudes, 'recording');
                 stats_by_level.(groupName).(recordingName).summary = recording_stats;
@@ -68,16 +64,16 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
                 plot_level_stats(all_recording_amplitudes, recording_stats, ...
                     sprintf('%s_%s_Recording', groupName, recordingName), save_path);
                 
-                % Save recording table
-                writetable(recording_stats_table, fullfile(save_path, ...
-                    sprintf('%s_%s_units_with_metadata.csv', groupName, recordingName)));
+                % Save unit metadata table
+                writetable(unit_metadata_table, fullfile(save_path, ...
+                    sprintf('%s_%s_units_metadata.csv', groupName, recordingName)));
                 
                 % Append to group level
                 all_group_amplitudes = [all_group_amplitudes; all_recording_amplitudes];
             end
         end
         
-        % Calculate group level stats with CI
+        % Calculate group level stats
         if ~isempty(all_group_amplitudes)
             group_stats = calculate_unit_stats(all_group_amplitudes, 'group');
             stats_by_level.(groupName).summary = group_stats;
@@ -88,9 +84,9 @@ function [stats_by_level] = calculateNestedAmplitudeStats(cellDataStruct, save_p
         end
     end
     
-    % Plot project-wide boxplot
+    % Plot project-wide violin plot with points
     if ~isempty(all_amplitudes)
-        plot_project_boxplot(all_amplitudes, recording_labels, group_labels, save_path);
+        plot_project_violin(all_amplitudes, recording_labels, group_labels, save_path);
     end
 end
 
@@ -105,7 +101,7 @@ function stats = calculate_unit_stats(amplitudes, level)
     stats.std_error = stats.std / sqrt(stats.n_samples);
     stats.range = stats.max - stats.min;
     
-    % Calculate CI and normality only for recording and group levels
+    % Only calculate CI and normality test for group/recording levels
     if nargin > 1 && (strcmp(level, 'group') || strcmp(level, 'recording'))
         % Test for normality using Lilliefors test
         [h, p_value] = lillietest(amplitudes);
@@ -130,13 +126,19 @@ function plot_level_stats(amplitudes, stats, level_name, save_path)
     % Add mean and CI lines
     yl = ylim;
     plot([stats.mean stats.mean], yl, 'r-', 'LineWidth', 2);
-    plot([stats.CI_lower stats.CI_lower], yl, 'r--');
-    plot([stats.CI_upper stats.CI_upper], yl, 'r--');
+    if isfield(stats, 'CI_lower')
+        plot([stats.CI_lower stats.CI_lower], yl, 'r--');
+        plot([stats.CI_upper stats.CI_upper], yl, 'r--');
+    end
     
     xlabel('Spike Amplitude (µV)');
     ylabel('Probability');
-    title(sprintf('Amplitude Distribution - %s\nNormality Test p-value: %.3f', ...
-        level_name, stats.normality_test.p_value));
+    if isfield(stats, 'normality_test')
+        title(sprintf('Amplitude Distribution - %s\nNormality Test p-value: %.3f', ...
+            level_name, stats.normality_test.p_value));
+    else
+        title(sprintf('Amplitude Distribution - %s', level_name));
+    end
     legend('Amplitude Distribution', 'Mean', '95% CI');
     
     % Save figure
@@ -145,7 +147,7 @@ function plot_level_stats(amplitudes, stats, level_name, save_path)
     close(gcf);
 end
 
-function plot_project_boxplot(amplitudes, recording_labels, group_labels, save_path)
+function plot_project_violin(amplitudes, recording_labels, group_labels, save_path)
     figure('Name', 'Project-wide Recording Comparisons', 'Position', [100 100 1200 600]);
     
     % Get unique groups and assign colors
@@ -153,43 +155,27 @@ function plot_project_boxplot(amplitudes, recording_labels, group_labels, save_p
     colors = lines(length(unique_groups));
     color_map = containers.Map(unique_groups, num2cell(colors, 2));
     
-    % Create boxplot
-    [g, recording_names] = findgroups(recording_labels);
-    boxplot(amplitudes, g, 'Labels', recording_names, 'Orientation', 'vertical');
-
     % Create violin plot
     violinplot(amplitudes, recording_labels, 'GroupByColor', group_labels);
     
-    % Customize boxplot colors by group
-    h = findobj(gca, 'Tag', 'Box');
-    for j = 1:length(recording_names)
-        % Find group for this recording
-        recording_group = group_labels{find(strcmp(recording_labels, recording_names{j}), 1)};
-        patch(get(h(end-j+1), 'XData'), get(h(end-j+1), 'YData'), ...
-            color_map(recording_group), 'FaceAlpha', 0.5);
-    end
-    
-    % Add individual points
     hold on
-    for i = 1:length(recording_names)
+    unique_recordings = unique(recording_labels);
+    for i = 1:length(unique_recordings)
         % Get data points for this recording
-        idx = strcmp(recording_labels, recording_names{i});
+        idx = strcmp(recording_labels, unique_recordings{i});
         recording_group = group_labels{find(idx, 1)};
         
         % Add jittered scatter plot
         x = rand(sum(idx),1)*0.4 - 0.2 + i;
-        scatter(x, amplitudes(idx), 20, color_map(recording_group), 'filled', 'MarkerFaceAlpha', 0.3);
+        y = amplitudes(idx);
+        scatter(x, y, 20, color_map(recording_group), 'filled', 'MarkerFaceAlpha', 0.3);
     end
     hold off
     
-    % Add legend for groups
-    legend_handles = [];
-    legend_labels = {};
-    for i = 1:length(unique_groups)
-        legend_handles(i) = patch(NaN, NaN, colors(i,:), 'FaceAlpha', 0.5);
-        legend_labels{i} = unique_groups{i};
-    end
-    legend(legend_handles, legend_labels, 'Location', 'eastoutside');
+    % Customize plot
+    xlabel('Recordings');
+    ylabel('Amplitude (µV)');
+    title('Amplitude Distribution Across Recordings');
     
     % Rotate x-axis labels for better readability
     xtickangle(45);
@@ -198,7 +184,7 @@ function plot_project_boxplot(amplitudes, recording_labels, group_labels, save_p
     set(gca, 'Position', [0.1 0.2 0.7 0.7]);
     
     % Save figure
-    savefig(fullfile(save_path, 'project_amplitude_boxplot.fig'));
-    saveas(gcf, fullfile(save_path, 'project_amplitude_boxplot.png'));
+    savefig(fullfile(save_path, 'project_amplitude_violinplot.fig'));
+    saveas(gcf, fullfile(save_path, 'project_amplitude_violinplot.png'));
     close(gcf);
 end
