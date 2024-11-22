@@ -1,15 +1,15 @@
-function plotAllPSTHZScores(cellDataStruct, treatmentTime, figureFolder)
+function plotAllSmoothedPSTHs(cellDataStruct, treatmentTime, figureFolder)
     % Set defaults
     if nargin < 2 || isempty(treatmentTime)
-        treatmentTime = 2000;
-        fprintf('No treatment time specified. Using default: %d ms.\n', treatmentTime);
+        treatmentTime = 1860;
+        fprintf('No treatment time specified. Using default: %d seconds.\n', treatmentTime);
     end
     
     if nargin < 3 || isempty(figureFolder)
         error('Plot:NoFolder', 'Figure folder path is required');
     end
     
-    % Initialize results tracking
+    % Initialize results
     results = struct('total', 0, 'success', 0, 'errors', 0);
     
     % Process each group
@@ -32,7 +32,7 @@ function plotAllPSTHZScores(cellDataStruct, treatmentTime, figureFolder)
                     
                     % Validate data
                     if ~isValidUnit(unitData)
-                        warning('Plot:InvalidUnit', 'Invalid Z-score data for unit %s', unitID);
+                        warning('Plot:InvalidUnit', 'Invalid data for unit %s', unitID);
                         continue;
                     end
                     
@@ -42,8 +42,8 @@ function plotAllPSTHZScores(cellDataStruct, treatmentTime, figureFolder)
                         mkdir(saveDir);
                     end
                     
-                    % Create and save plot
-                    if generateAndSavePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
+                    % Generate and save plot
+                    if generatePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
                         results.success = results.success + 1;
                     else
                         results.errors = results.errors + 1;
@@ -63,18 +63,18 @@ end
 
 function isValid = isValidUnit(unitData)
     isValid = isfield(unitData, 'binEdges') && ...
-              isfield(unitData, 'psthZScore') && ...
+              isfield(unitData, 'psthSmoothed') && ...
               ~isempty(unitData.binEdges) && ...
-              ~isempty(unitData.psthZScore);
+              ~isempty(unitData.psthSmoothed);
 end
 
-function success = generateAndSavePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
+function success = generatePlot(unitData, unitID, groupName, recordingName, treatmentTime, saveDir)
     try
         % Create figure
-        f = figure('Visible', 'on', 'Position', [100, 100, 800, 600]);
+        f = figure('Visible', 'on','Position', [100, 100, 800, 600]);
         
         % Plot PSTH
-        bar(unitData.binEdges(1:end-1), unitData.psthZScore, 'FaceColor', 'k', 'EdgeColor', 'k');
+        bar(unitData.binEdges(1:end-1), unitData.psthSmoothed, 'FaceColor', 'k', 'EdgeColor', 'k');
         hold on;
         
         % Add treatment line
@@ -82,11 +82,11 @@ function success = generateAndSavePlot(unitData, unitID, groupName, recordingNam
         
         % Set axes
         xlabel('Time (s)');
-        ylabel('z Score');
-        title(sprintf('PSTH Z Score: %s - %s - %s', groupName, recordingName, unitID));
+        ylabel('Firing Rate (spikes/s)');
+        title(sprintf('Smoothed PSTH: %s - %s - %s', groupName, recordingName, unitID));
         
         % Set limits
-        maxY = max(unitData.psthZScore(~isnan(unitData.psthZScore)));
+        maxY = max(unitData.psthSmoothed(~isnan(unitData.psthSmoothed)));
         if ~isempty(maxY) && ~isnan(maxY) && maxY > 0
             ylim([0, maxY * 1.1]);
         else
@@ -102,7 +102,7 @@ function success = generateAndSavePlot(unitData, unitID, groupName, recordingNam
         
         % Save figure
         timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
-        fileName = sprintf('RawPSTH_%s_%s.fig', unitID, timestamp);
+        fileName = sprintf('SmoothedPSTH_%s_%s.fig', unitID, timestamp);
         savefig(f, fullfile(saveDir, fileName));
         
         close(f);
@@ -121,17 +121,17 @@ function addMetadata(unitData, unitID)
     metaText = sprintf('Cell Type: %s\nChannel: %d\n%s\nUnit ID: %s', ...
                       cellType, channel, unitStatus, unitID);
     
-    % Create draggable annotation
-    ann = annotation('textbox', [0.7, 0.8, 0.25, 0.15], ... % [x, y, width, height]
+    % Add metadata annotation
+    ann = annotation('textbox', [0.7, 0.8, 0.25, 0.15], ...
                     'String', metaText, ...
-                    'EdgeColor', 'k', ...         % Black border
-                    'BackgroundColor', 'w', ...   % White background
+                    'EdgeColor', 'k', ...
+                    'BackgroundColor', 'w', ...
                     'HorizontalAlignment', 'left', ...
                     'VerticalAlignment', 'top', ...
                     'FontSize', 8, ...
-                    'FitBoxToText', 'on', ...     % Adjust box size to fit text
-                    'LineWidth', 1, ...           % Border width
-                    'Margin', 5, ...              % Text margin inside box
+                    'FitBoxToText', 'on', ...
+                    'LineWidth', 1, ...
+                    'Margin', 5, ...
                     'Interpreter', 'none');
     
     % Make annotation draggable
@@ -141,11 +141,12 @@ end
 function startDragFcn(src, ~)
     % Store initial position and setup mouse callbacks
     setappdata(src, 'InitialPosition', get(src, 'Position'));
-    setappdata(src, 'InitialClick', get(gcf, 'CurrentPoint'));
+    setappdata(src, 'InitialClick', get(gcf(), 'CurrentPoint'));
     
     % Set up mouse movement and release callbacks
-    set(gcf, 'WindowButtonMotionFcn', {@dragFcn, src});
-    set(gcf, 'WindowButtonUpFcn', {@stopDragFcn, src});
+    fig = gcf();
+    set(fig, 'WindowButtonMotionFcn', {@dragFcn, src});
+    set(fig, 'WindowButtonUpFcn', {@stopDragFcn, src});
 end
 
 function dragFcn(~, ~, ann)
@@ -191,5 +192,3 @@ function displaySummary(results)
     fprintf('Failed: %d\n', results.errors);
     fprintf('Success Rate: %.1f%%\n', (results.success/results.total)*100);
 end
-
-

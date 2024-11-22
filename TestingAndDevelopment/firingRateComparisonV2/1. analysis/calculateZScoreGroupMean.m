@@ -8,7 +8,7 @@ function cellDataStruct = calculateZScoreGroupMean(cellDataStruct, paths, params
     % Optional parameters with defaults
     addParameter(p, 'baselineWindow', [0, 1860], @(x) isnumeric(x) && length(x)==2); % Full pre-treatment period
     addParameter(p, 'postWindow', [2000, 5000], @(x) isnumeric(x) && length(x)==2);
-    addParameter(p, 'scalingFactor', 0.5, @isnumeric);
+    addParameter(p, 'scalingFactor', @isnumeric);
     
     parse(p, cellDataStruct, paths, params, varargin{:});
     opts = p.Results;

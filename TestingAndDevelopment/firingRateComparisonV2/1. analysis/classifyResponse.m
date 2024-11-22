@@ -7,8 +7,8 @@ function [responseType, responseMetrics] = classifyResponse(stats, psth, treatme
     responseType = '';
     responseMetrics.subtype = '';
     
-    % Classify response based on multiple criteria
-    if stats.p_value < 0.01  % Statistically significant change
+    % Classify response based on multiple criteria with FDR control
+    if stats.p_value_fdr < 0.05 && stats.significant_fdr  % Using FDR-controlled significance
         if stats.reliability > 0.7  % High reliability
             if stats.percent_change > 20 && stats.cohens_d > 0.8
                 responseType = 'Increased';
@@ -44,7 +44,8 @@ function [responseType, responseMetrics] = classifyResponse(stats, psth, treatme
     responseMetrics.strength = struct(...
         'reliability', stats.reliability, ...
         'effect_size', stats.cohens_d, ...
-        'percent_change', stats.percent_change);
+        'percent_change', stats.percent_change, ...
+        'fdr_significance', stats.significant_fdr);
     
     % Analyze temporal pattern
     temporal = analyzeTemporalPattern(psth, treatmentTime, binWidth);
