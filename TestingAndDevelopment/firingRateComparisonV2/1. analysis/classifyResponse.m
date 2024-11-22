@@ -1,4 +1,40 @@
 function [responseType, responseMetrics] = classifyResponse(stats, psth, treatmentTime, binWidth)
+
+% Response Classification System
+% 
+% This function classifies neural responses based on multiple statistical criteria:
+%
+% CLASSIFICATION THRESHOLDS:
+% Strong Response (requires all):
+%   - FDR-corrected p-value < 0.05
+%   - Reliability > 0.7
+%   - Increased: percent change > 20% AND Cohen's d > 0.8
+%   - Decreased: percent change < -20% AND Cohen's d < -0.8
+%
+% Moderate Response (requires all):
+%   - FDR-corrected p-value < 0.05
+%   - Reliability > 0.7
+%   - Increased: Cohen's d > 0.5
+%   - Decreased: Cohen's d < -0.5
+%
+% Variable Response:
+%   - FDR-corrected p-value < 0.05
+%   - Reliability <= 0.7
+%   - Direction based on mean difference
+%
+% No Change:
+%   - Not statistically significant (FDR p >= 0.05)
+%
+% STATISTICAL METRICS:
+% - Cohen's d: Effect size measure
+% - Percent change: Relative firing rate change
+% - FDR-corrected p-value: Controls false discovery rate
+% - Reliability score: Response consistency measure
+%
+% Returns:
+%   responseType: 'Increased', 'Decreased', 'No_Change'
+%   responseMetrics.subtype: 'Strong', 'Moderate', 'Variable', 'None'
+
     % Initialize response metrics
     responseMetrics = struct();
     responseMetrics.stats = stats;
@@ -10,7 +46,7 @@ function [responseType, responseMetrics] = classifyResponse(stats, psth, treatme
     % Classify response based on multiple criteria with FDR control
     if stats.p_value_fdr < 0.05 && stats.significant_fdr  % Using FDR-controlled significance
         if stats.reliability > 0.7  % High reliability
-            if stats.percent_change > 20 && stats.cohens_d > 0.8
+            if stats.percent_change > 20 && stats.cohens_d > 0.8 
                 responseType = 'Increased';
                 responseMetrics.subtype = 'Strong';
             elseif stats.percent_change < -20 && stats.cohens_d < -0.8
